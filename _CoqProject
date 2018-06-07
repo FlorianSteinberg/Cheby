@@ -1,0 +1,17 @@
+-R . cheby
+
+under.v
+Rstruct.v
+Poly_complements.v
+seq_base.v
+CPoly.v
+Poly_exec.v
+CPoly_exec.v
+Interval_exec.v
+generalities.v
+filter_Rlt.v
+atan_derivative_improper_integral.v
+asin.v
+arcsinh.v
+rtcheby.v
+

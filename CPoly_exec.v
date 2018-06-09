@@ -230,22 +230,7 @@ Compute CP2P  (ncons 11 (0%:R: int) [::1]).
 
 Section P2CP.
 
-(*Variable R : unitRingType. This section works for unitRingType, only the proof of
-is_Tmulx_uniqe needs R to be an idomainType and only because some of the
-previous lemmas are stated in a weak form.*)
-Variable R: unitRingType.
-
-Lemma size_CPoly_Poly (l: seq R) :
-	(2%:R : R) \is a GRing.unit -> size (CPoly l) = size (Poly l).
-Proof. 
-move => I2.
-rewrite /CPoly.
-pose f (i: 'I_(size l)) := (Poly l)`_i  *: 'T_i.
-rewrite (eq_bigr f) {}/f => [ | i _]; last by rewrite coef_Poly.
-rewrite polybase_widen; last exact: size_Poly.
-Locate size_sum_pT.
-by rewrite size_sum_pT.
-Qed.
+Variable R:unitRingType.
 
 Fixpoint Cmulx_rec (l : seq R) :=
   match l with 
@@ -258,13 +243,24 @@ Lemma Cmulx_recSS a b c (l : seq R) :
 	Cmulx_rec (a :: b :: c :: l) = (a + c) / 2%:R :: Cmulx_rec (b :: c :: l).
 Proof. done. Qed.
 
+Lemma size_CPoly_Poly (l: seq R) :
+	GRing.lreg (2%:R:R)-> size (CPoly l) = size (Poly l).
+Proof. 
+rewrite /CPoly => lr2.
+pose f (i: 'I_(size l)) := (Poly l)`_i  *: 'T_i.
+rewrite (eq_bigr f) {}/f => [ | i _]; last by rewrite coef_Poly.
+rewrite polybase_widen; last exact: size_Poly.
+Locate size_sum_pT.
+by rewrite size_sum_pT.
+Qed.
+
 Lemma Cmulx_rec_spec (l : seq R)  n :
-  (2%:R : R) \is a GRing.unit -> 
+	(2%:R:R) \is a GRing.unit ->
   ('X * \sum_(i < size l) l`_i *: 'T_(n.+1 + i))%R =
   (l`_0 / 2%:R) *: 'T_n + (l`_1 / 2%:R) *: 'T_n.+1 +
   \sum_(i < size (Cmulx_rec l)) (Cmulx_rec l)`_i *: 'T_(n.+2 + i) :> {poly R}.
 Proof.
-move=> H.
+move => H.
 elim: l n => [|a [|b [|c l]] IH] n.
 - by rewrite !big_ord0 mul0r mulr0 !scale0r !add0r. 
 - rewrite ![[:: _]`_ _]/= mul0r scale0r addr0.
@@ -428,13 +424,6 @@ Fixpoint P2CP (l : seq R) :=
 Lemma P2CP_cons a l :
   P2CP (a :: l) = ladd_poly [:: a] (Cmulx (P2CP l)).
 Proof. by []. Qed.
-
-Lemma size_CPoly l:
-	(2%:R : R) \is a GRing.unit -> 
-	(size (CPoly l :{poly R}) <= size l)%nat.
-Proof.
-by move => I2; rewrite size_CPoly_Poly; first apply: size_Poly.
-Qed.
 
 Lemma P2CP_spec l :
   (2%:R : R) \is a GRing.unit -> CPoly (P2CP l) = (Poly l).

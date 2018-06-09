@@ -1,5 +1,5 @@
 From mathcomp Require Import all_ssreflect all_algebra.
-Require Import under Poly_complements seq_base.
+Require Import under Psatz Poly_complements seq_base.
 
 Set Implicit Arguments.
 Unset Strict Implicit.
@@ -325,27 +325,54 @@ End Tcheby.
 
 Notation "'T_ n " := (pT _ n) (at level 3, n at level 2, format "''T_' n").
 
+Lemma induc2 (P: nat -> Prop):
+	P 0%nat -> P 1%nat -> (forall n, P n -> P (n.+1) -> P (n.+2)) -> forall n, P n.
+Proof.
+intros.
+elim: n {-2}n (leqnn n) => [n ineq | ].
+	by have /eqP ->: (n == 0)%nat by rewrite -leqn0.
+move => [ih n ineq | ].
+	by case: n ineq => //; case.
+move => n ih [] // m ineq.
+rewrite leq_eqVlt in ineq.
+case /orP: ineq => [/eqP -> | ineq ]; last by apply ih.
+by apply /H1 /ih => //; apply /ih.
+Qed.
+
 Section LINEAR_INDEPENDENCE.
 Variable R: unitRingType.
-Variable V2 : (2%:R : R) \is a GRing.unit.
 
-Lemma pT_mulX n : 
-   'X * 'T_n.+1 = 2%:R ^-1 *: 'T_n + 2%:R ^-1 *: 'T_n.+2 :> {poly R}.
+Lemma lreg_neq0 (l x: R):
+	GRing.lreg l -> x != 0 -> l* x != 0.
 Proof.
-rewrite pTSS scalerDr addrCA scalerN subrr addr0.
-by rewrite -scaler_nat -scalerAl scalerA mulVr // scale1r.
+move => lreg /eqP ineq.
+apply /eqP => eq.
+by apply /ineq /lreg; rewrite rm0.
 Qed.
+
+Lemma mul2 (p: {poly R}):
+	2%:R *: p = p *+ 2.
+Proof.
+rewrite -polyP => i.
+by rewrite coefZ coefD -{2 3}[p`_i]mul1r -mulrDl.
+Qed.
+
+Variable r2 : GRing.lreg (2%:R : R).
 
 Lemma size_pT n : size ('T_ n : {poly R}) = n.+1.
 Proof.
-have := size_pT_leq R n.
-rewrite leq_eqVlt => /orP[/eqP//|].
-rewrite ltnS => /leq_sizeP/(_ _ (leqnn _))/eqP.
-rewrite coef_pTn natrX.
-case: n => [ | n /=]; first by rewrite /= expr0 oner_eq0.
-case: n => [ | n /= /eqP eq]; first by rewrite /= expr0 oner_eq0.
-exfalso; have /negP not:= unitr0 R; apply not.
-by rewrite -eq; apply unitrX.
+move: n; apply: induc2 => [ | | n ih1 ih2].
+		by rewrite pT0 size_poly1.
+	by rewrite pT1 size_polyX.
+suff/leP leq: (n.+3 <= size ('T_n.+2: {poly R}))%nat by have/leP leq':= size_pT_leq R (n.+2); lia.
+apply (@gtn_size _ _ (n.+2)).
+rewrite pTSS coefD coef_opp_poly -mul2 -scalerAl coefZ coef_mul_poly.
+under eq_bigr ? rewrite coefX.
+rewrite big_ord_recl big_ord_recl big1; last by move => i _ /=; rewrite !rm0.
+rewrite !lift0 -{2 }[ord0.+1]add1n !rm0 !rm1 coef_pTn (coef_pT R n) /=.
+have ->: (n < n.+2)%N || odd (n + n.+2) by apply /orP; left.
+rewrite rm0 natrX -exprS -[_ ^+ _]mulr1; apply: lreg_neq0; last by rewrite oner_eq0.
+by apply GRing.lregX.
 Qed.
 
 Lemma pT_neq0 n: 'T_n != 0 :> {poly R}.
@@ -359,8 +386,8 @@ Lemma size_sum_pT (p: {poly R}):
 Proof.
 rewrite (@size_polybase _ (fun i => 'T_i)) => // [| n ]; first by apply size_pT.
 rewrite lead_coefE size_pT coef_pTn natrX => r eq.
-have V2n:= (unitrX n.-1 V2).
-by rewrite -[r]mulr1 -(divrr V2n) mulrA eq rm0.
+apply (@GRing.lregX R _ n.-1 r2).
+by rewrite -natrX mulr_natl -mulr_natr natrX rm0.
 Qed.
 
 Lemma pT_eq (p q : {poly R}):
@@ -376,9 +403,8 @@ rewrite (eq_bigr f) {}/f => [/eqP eq|i _]; last by rewrite coefB scalerBl.
 apply: subr0_eq; rewrite -polyP => i; rewrite coef0.
 have [ineq|ineq]:= (ltnP i (maxn (size p) (size q))).
 	apply: seqbase_coef_eq0; [exact: size_pT | | exact: eq | exact ineq].
-	move => n r eq'; have V2n:= (unitrX n.-1 V2).
-	rewrite lead_coefE size_pT coef_pTn natrX in eq'.
-	by rewrite -[r]mulr1 -(divrr V2n) mulrA eq' rm0.
+	move => n r; rewrite lead_coefE size_pT coef_pTn mulr_natr -mulr_natl => eq'.
+	by apply (@GRing.lregX R _ n.-1 r2); rewrite rm0 -natrX.
 apply/ leq_sizeP; last apply ineq.
 by rewrite -[size q]size_opp size_add.
 Qed.
@@ -387,6 +413,17 @@ Lemma pT_eq0 (p: {poly R}):
 	p = 0 <-> \sum_(i < size p) p`_i *: 'T_i = 0.
 Proof. by rewrite pT_eq size_poly0 big_ord0. Qed.
 End LINEAR_INDEPENDENCE.
+
+Section Multiplication.
+Variable (R: unitRingType).
+Variable V2 : (2%:R : R) \is a GRing.unit.
+Lemma pT_mulX n : 
+   'X * 'T_n.+1 = 2%:R ^-1 *: 'T_n + 2%:R ^-1 *: 'T_n.+2 :> {poly R}.
+Proof.
+rewrite pTSS scalerDr addrCA scalerN subrr addr0.
+by rewrite -scaler_nat -scalerAl scalerA mulVr // scale1r.
+Qed.
+End Multiplication.
 
 Section pTab.
 Variable R: fieldType.
@@ -433,8 +470,6 @@ apply /eqP => /eqP eqn; apply /neq /eqP.
 by rewrite -subr_eq0.
 Qed.
 End pTab.
-
-
 
 
 

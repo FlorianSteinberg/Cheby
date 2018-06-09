@@ -50,7 +50,7 @@ Section Base.
 Variable R : unitRingType.
 Variable F : nat -> {poly R}.
 Hypothesis F_size : forall n, size (F n) = n.+1.
-Hypothesis F_lead: forall n r, r * lead_coef (F n) = 0 -> r = 0.
+Hypothesis F_lead: forall n, GRing.rreg (lead_coef (F n)).
 
 Lemma size_seqbase n l : 
    size (\sum_(i < n) l`_ i *: F i) = \max_(i < n | l`_i != 0) i.+1.
@@ -62,7 +62,7 @@ have [/eqP Hp| /eqP Hnp /=] := boolP (l`_n == 0).
 have lp : l`_ n * (F n)`_n != 0.
 	apply /eqP => eq; apply Hnp.
 	apply (@F_lead n).
-	by rewrite lead_coefE F_size.
+	by rewrite lead_coefE F_size rm0.
 have Hs: size (l`_n *: F n) = n.+1.
 	suff/leP: (n.+1 <= size (l`_n *: F n))%nat.
 		have/leP:= @size_scale_leq _ (l`_n) (F n).
@@ -117,8 +117,7 @@ suff P j : (0 < j < n)%N -> l`_j = 0.
   rewrite [0%nat]pred_Sn.
   rewrite -(F_size 0).
   rewrite -lead_coefE => prp.
- 	have:= @F_lead 0 _ prp.
-  case: i Hi => [_ ->//|i Hi _].
+  case: i Hi => [_ |i Hi]; first by apply (@F_lead 0); rewrite rm0.
   by apply: P.
 move=> /andP[HP1 HP2].
 have /eqP := (H).

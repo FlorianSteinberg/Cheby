@@ -33,20 +33,6 @@ Lemma lpTSS n:
 	lpT n.+2 = lsub_poly ((lscal_poly (2%:R) (0%R :: lpT n.+1))) (lpT n).
 Proof. done.  Qed.
 
-Lemma induc2 (P: nat -> Prop):
-	P 0%nat -> P 1%nat -> (forall n, P n -> P (n.+1) -> P (n.+2)) -> forall n, P n.
-Proof.
-intros.
-elim: n {-2}n (leqnn n) => [n ineq | ].
-	by have /eqP ->: (n == 0)%nat by rewrite -leqn0.
-move => [ih n ineq | ].
-	by case: n ineq => //; case.
-move => n ih [] // m ineq.
-rewrite leq_eqVlt in ineq.
-case /orP: ineq => [/eqP -> | ineq ]; last by apply ih.
-by apply /H1 /ih => //; apply /ih.
-Qed.
-
 Lemma lpT_spec n:
 	Poly (lpT n) = 'T_n.
 Proof.

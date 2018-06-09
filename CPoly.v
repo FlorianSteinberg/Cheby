@@ -357,7 +357,13 @@ rewrite -polyP => i.
 by rewrite coefZ coefD -{2 3}[p`_i]mul1r -mulrDl.
 Qed.
 
-Variable r2 : GRing.lreg (2%:R : R).
+Variable lr2 : GRing.lreg (2%:R : R).
+
+Lemma rr2: GRing.rreg (2%:R :R).
+Proof.
+move => x y; rewrite mulr_natr [y*_]mulr_natr -mulr_natl -[y *+ _]mulr_natl => eq.
+by apply lr2.
+Qed.
 
 Lemma size_pT n : size ('T_ n : {poly R}) = n.+1.
 Proof.
@@ -381,13 +387,15 @@ apply/eqP => /eqP eqn.
 by rewrite -size_poly_eq0 size_pT in eqn.
 Qed.
 
+Lemma coef_pTn_reg n:
+	GRing.rreg ('T_n: {poly R})`_n.
+Proof. by rewrite coef_pTn natrX; apply /GRing.rregX /rr2. Qed.
+
 Lemma size_sum_pT (p: {poly R}):
 	size (\sum_(i < size p) p`_i *: 'T_i) = size p.
 Proof.
 rewrite (@size_polybase _ (fun i => 'T_i)) => // [| n ]; first by apply size_pT.
-rewrite lead_coefE size_pT coef_pTn natrX => r eq.
-apply (@GRing.lregX R _ n.-1 r2).
-by rewrite -natrX mulr_natl -mulr_natr natrX rm0.
+by rewrite lead_coefE size_pT; apply: coef_pTn_reg.
 Qed.
 
 Lemma pT_eq (p q : {poly R}):
@@ -403,8 +411,8 @@ rewrite (eq_bigr f) {}/f => [/eqP eq|i _]; last by rewrite coefB scalerBl.
 apply: subr0_eq; rewrite -polyP => i; rewrite coef0.
 have [ineq|ineq]:= (ltnP i (maxn (size p) (size q))).
 	apply: seqbase_coef_eq0; [exact: size_pT | | exact: eq | exact ineq].
-	move => n r; rewrite lead_coefE size_pT coef_pTn mulr_natr -mulr_natl => eq'.
-	by apply (@GRing.lregX R _ n.-1 r2); rewrite rm0 -natrX.
+	move => n; rewrite lead_coefE size_pT.
+	exact: coef_pTn_reg.
 apply/ leq_sizeP; last apply ineq.
 by rewrite -[size q]size_opp size_add.
 Qed.

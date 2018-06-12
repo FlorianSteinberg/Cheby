@@ -88,7 +88,6 @@ elim: l => /= [|a l IH].
   by rewrite size_poly0.
 have [aIl|aNIl] := boolP (_ \in _).
   by apply: leq_trans IH _.
-Search _ (size _) (_ + _) in poly.
 apply: leq_trans (size_add _ _) _.
 rewrite geq_max (leq_trans IH _) // 
                 (leq_trans (size_scale_leq _ _)) //.
@@ -296,4 +295,31 @@ have F5 : has_zeros (Derive f) n u b.
 rewrite -[n.+1]/(1 + n)%nat.
 apply: has_zeros_add F5 => //.
 by rewrite /u; lra.
+Qed.
+
+Lemma has_zeros_deriv_n f m n a b :
+ (forall x k, (k <= m)%nat -> a <= x <= b -> ex_derive_n f k x) ->
+ (forall x, a <= x <= b -> continuity_pt (Derive_n f m) x) ->
+  has_zeros f n a b -> 
+  has_zeros (Derive_n f m) (n - m) a b.
+Proof.
+case: (leqP n m).
+  rewrite -subn_eq0 => /eqP-> *.
+  by apply: has_zeros_0.
+elim: m f n a b => [|m IH] f n a b mLn Hd Hc Hz //=.
+  by rewrite subn0.
+apply: has_zeros_deriv => [x aLxLb|x aLxLb|] //.
+- by apply: (Hd x m.+1) => //; lra.
+- apply: derivable_continuous_pt.
+  apply: ex_derive_Reals_0.
+  by apply: (Hd x m.+1).
+rewrite -subSn ?(leq_trans _ mLn) // subSS.
+apply: IH => //; first by apply: leq_trans mLn.
+  move=> x k kLm aLxLb.
+  apply: Hd => //.
+  by apply: leq_trans kLm _.
+move=> x Hx.
+apply: derivable_continuous_pt.
+apply: ex_derive_Reals_0.
+by apply: (Hd x m.+1).
 Qed.

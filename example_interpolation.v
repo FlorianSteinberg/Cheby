@@ -1,6 +1,7 @@
 From mathcomp Require Import all_ssreflect.
 From mathcomp Require Import all_algebra.
 Require Import Rstruct.
+Import Rtrigo_def Rtrigo1.
 
 Set Implicit Arguments.
 Unset Strict Implicit.
@@ -26,7 +27,13 @@ Definition prodl (l : seq R) : {poly R} :=
 
 Local Notation "'W[ l ]" := (prodl l) (format "''W[' l ]").
 
-Lemma prodl_root l : root (prodl l) =i l.
+Lemma monic_prodl l : prodl l \is monic.
+Proof.
+apply: monic_prod => i _.
+apply: monicXsubC.
+Qed.
+
+Lemma root_prodl l : root (prodl l) =i l.
 Proof.
 elim: l => [i|a l IH i]; rewrite /prodl /=.
   by rewrite big_nil rootE hornerE oner_eq0.
@@ -35,7 +42,7 @@ have [aIl|aNIl] := boolP (a \in l).
 by rewrite big_cons [LHS]rootM root_XsubC inE -IH.
 Qed.
 
-Lemma prodl_size l : (size (prodl l) <= (size l).+1)%N.
+Lemma size_prodl l : (size (prodl l) <= (size l).+1)%N.
 Proof.
 elim: l => /= [|a l IH].
  by rewrite /prodl big_nil size_polyC; case: eqP.
@@ -44,6 +51,46 @@ rewrite /prodl /=; case: (boolP (_ \in _)) => H.
 rewrite big_cons.
 apply: leq_trans (size_mul_leq _ _) _.
 by rewrite size_XsubC.
+Qed.
+
+Lemma prodl_undup l :  prodl l = prodl (undup l).
+Proof.
+elim: l => //= a l IH.
+rewrite /prodl /=; case: (boolP (_ \in _)) => H //=.
+by rewrite mem_undup (negPf H) !big_cons [X in _ * X = _]IH.
+Qed.
+
+Lemma size_prodl_undup l :  size (prodl l) = (size (undup l)).+1.
+Proof.
+elim: l => //= [|a l IH].
+  by rewrite /prodl big_nil size_polyC oner_neq0.
+rewrite /prodl /=; case: (boolP (_ \in _)) => H //.
+rewrite big_cons size_Mmonic ?IH ?size_XsubC ?monic_prodl //.
+have : size ('X - a%:P) != 0%N by rewrite size_XsubC.
+by apply: contra => /eqP->; rewrite size_poly0.
+Qed.
+
+Lemma size_prodl_ulist l : uniq l -> size (prodl l) = (size l).+1.
+Proof.  by move=> H; rewrite -{2}(undup_id H) size_prodl_undup. Qed.
+
+Lemma derivn_size (Q : ringType) (p : {poly Q}) :
+  p ^`((size p).-1) = (lead_coef p *+ (size p).-1 `!)%:P.
+Proof.
+apply/polyP => [] [|i]; rewrite coef_derivn coefC /=.
+  by rewrite addn0 ffactnn.
+have/leq_sizeP->// : (size p <= (size p).-1 + i.+1)%N.
+  by case: size => // k; rewrite addnS ltnS leq_addr.
+by rewrite mul0rn.
+Qed.
+
+Lemma prodl_deriv_fact l (n := size l) :
+  uniq l -> (prodl l)^`(n) = (n `!)%:R%:P.
+Proof.
+move=> Ul.
+rewrite {1}(pred_Sn n) -(size_prodl_ulist Ul) derivn_size.
+have := monic_prodl l.
+rewrite monicE => /eqP->.
+by rewrite size_prodl_ulist.
 Qed.
 
 Fixpoint interp (l : seq R) : {poly R} :=
@@ -74,12 +121,12 @@ elim: l => //= a l IH.
 have [aIl|aNIl] := boolP (_ \in _).
   by rewrite IH (allP IH).
 rewrite !hornerE divfK; last first.
-  by rewrite -mem_root prodl_root.
+  by rewrite -mem_root root_prodl.
 rewrite addrC subrK eqxx /=.
 apply/allP=> b bIl.
 rewrite !hornerE (eqP (allP IH _ bIl)).
 rewrite (_ : _.[b] = 0) ?rm0 //.
-by apply/eqP; rewrite -mem_root prodl_root.
+by apply/eqP; rewrite -mem_root root_prodl.
 Qed.
 
 Lemma interp_size l : (size (interp l) <= size l)%N.
@@ -91,7 +138,7 @@ have [aIl|aNIl] := boolP (_ \in _).
 apply: leq_trans (size_add _ _) _.
 rewrite geq_max (leq_trans IH _) // 
                 (leq_trans (size_scale_leq _ _)) //.
-by exact: prodl_size.
+by exact: size_prodl.
 Qed.
 
 End Interp.

@@ -515,7 +515,7 @@ by rewrite subnK; last exact: (leqW ineq).
 Qed.
 
 Lemma subn_eq m n p:
-	(p> 0)%N -> (m - n = p)%N -> (m = p + n)%N.
+	(p > 0)%N -> (m - n = p)%N -> (m = p + n)%N.
 Proof.
 move => pgt E.
 case E': (n == m).
@@ -557,41 +557,23 @@ Qed.
 Lemma absn_pT n m:
 	'X *+2 * 'T_(absn m n.+1) - 'T_(absn m n) = 'T_(absn m n.+2):>{poly R}.
 Proof.
-have: (absn m n = absn m n)%nat by trivial.
-move: {2}(absn m n)%nat.
-apply: induc2 => [eq | eq | mn ih1 ih2 eq].
-		have -> := absn_eq0 eq.
-		rewrite -[n.+2]addn2 -[n.+1]addn1.
-		by rewrite !absnnD absnn pTSS.
-	rewrite /absn.
-	rewrite /absn in eq.
-	case E: (m - n)%nat.
-		rewrite !subnS E !add0n.
-		rewrite E add0n in eq.
-		rewrite eq !subSn; try (by rewrite -subn_eq0; apply /eqP); first by rewrite eq [RHS]pTSS.
-		rewrite -addn1.
-		have -> //:= @subn_eq n m 1.
-		by rewrite addn1 addnC addn1 leqW // leqW.
-	admit.
-case/orP: (leq_total m n) => [ineq | ineq].
-	rewrite /absn !subnS !subSn // ?leqW//.
-	by rewrite (@subn_leq n m) // !add0n pTSS.
-rewrite !absnif /=.
-case: ifP => ineq'.
-	rewrite eq.
-	case: ifP => ineq''; first by rewrite [RHS]pTSS.
-	rewrite /=; move: ineq'' => /leP ineq''.
-	by exfalso; apply /ineq'' /leP /leqW.
-case: ifP => ineq''.
-	have ltn: (n < m)%nat.
-		by rewrite leqNgt in ineq'; move /leP: ineq' => /leP ineq'.
-	move: ineq'' ltn => /leP ineq'' /leP ltn.
-	have fsl: n.+1 = m by lia.
-	rewrite -fsl in eq.
-	by rewrite /absn subnS subnn addn0 subSnn in eq.
-rewrite eq/=.
-by rewrite pTSS opprB addrA [_ + 'T_ _] addrC -addrA subrr addr0.
-Admitted.
+case E: (m<=n)%nat.
+	rewrite !absnif E.
+	case: ifP => [_ | ]; last by move => /eqP; rewrite subn_leq ?leqW => //.
+	by rewrite pTSS.
+have ineq: (n.+1 <= m)%nat by apply /leP; move/leP: E; lia.
+rewrite leq_eqVlt in ineq; case /orP: ineq => [/eqP eq | ineq].
+	rewrite -eq absnn absnC absnif leqnn absnn absnif leqnn absnn.
+	by rewrite pT0 pT1 mulr1 -addrA subrr addr0.
+rewrite /absn !subnS.
+have /eqP ->: (n -m == 0)%nat by rewrite subn_eq0; apply /leP; move/leP: ineq; lia.
+have /eqP ->: (n.+1 -m == 0)%nat by rewrite subn_eq0; apply /leP; move/leP: ineq; lia.
+have /eqP ->: (n.+2 -m == 0)%nat by rewrite subn_eq0; apply /leP; move/leP: ineq; lia.
+rewrite !addn0.
+rewrite {2}(@Lt.S_pred (m-n) (m-n).-2); last by move/leP: ineq; rewrite /subn/subn_rec; lia.
+rewrite {1 2}(@Lt.S_pred (m-n).-1 (m-n).-2); last by move/leP: ineq; rewrite /subn/subn_rec; lia.
+by rewrite pTSS opprD addrA subrr opprK add0r.
+Qed.
 
 Lemma mul_pT n m:
 	2%:R *: 'T_n * 'T_m = 'T_(n + m) + 'T_(absn m n) :> {poly R}.

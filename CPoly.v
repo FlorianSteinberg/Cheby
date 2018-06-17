@@ -12,7 +12,7 @@ Section Tcheby.
 Variable R : ringType.
 Implicit Types (l : seq R) (p: {poly R}) .
 
-(* Chebychev *)
+(* Chebyshev polynomials introduced via their recursion scheme *)
 
 Fixpoint pT_expanded_def (n : nat) {struct n} : {poly R} :=
   if n is n1.+1 then
@@ -558,9 +558,7 @@ Lemma absn_pT n m:
 	'X *+2 * 'T_(absn m n.+1) - 'T_(absn m n) = 'T_(absn m n.+2):>{poly R}.
 Proof.
 case E: (m<=n)%nat.
-	rewrite !absnif E.
-	case: ifP => [_ | ]; last by move => /eqP; rewrite subn_leq ?leqW => //.
-	by rewrite pTSS.
+	by rewrite !absnif E; case: ifP => [_ | /eqP ]; [rewrite pTSS | rewrite subn_leq ?leqW].
 have ineq: (n.+1 <= m)%nat by apply /leP; move/leP: E; lia.
 rewrite leq_eqVlt in ineq; case /orP: ineq => [/eqP eq | ineq].
 	rewrite -eq absnn absnC absnif leqnn absnn absnif leqnn absnn.
@@ -569,7 +567,6 @@ rewrite /absn !subnS.
 have /eqP ->: (n -m == 0)%nat by rewrite subn_eq0; apply /leP; move/leP: ineq; lia.
 have /eqP ->: (n.+1 -m == 0)%nat by rewrite subn_eq0; apply /leP; move/leP: ineq; lia.
 have /eqP ->: (n.+2 -m == 0)%nat by rewrite subn_eq0; apply /leP; move/leP: ineq; lia.
-rewrite !addn0.
 rewrite {2}(@Lt.S_pred (m-n) (m-n).-2); last by move/leP: ineq; rewrite /subn/subn_rec; lia.
 rewrite {1 2}(@Lt.S_pred (m-n).-1 (m-n).-2); last by move/leP: ineq; rewrite /subn/subn_rec; lia.
 by rewrite pTSS opprD addrA subrr opprK add0r.
@@ -587,8 +584,7 @@ case => [ | n].
 move => ih.
 rewrite pTSS scalerDr mulrDl -!scalerAl mulNr scalerN !scalerAl ih //.
 rewrite -mul2 -!scalerAl -mulrA -commr_polyX scalerAl scalerAl scalerAl ih //.
-rewrite !addSn pTSS.
-rewrite scalerDr mulrDl -scalerAl commr_polyX scalerAl mul2 -!addrA; f_equal.
+rewrite !addSn pTSS scalerDr mulrDl -scalerAl commr_polyX scalerAl mul2 -!addrA; f_equal.
 rewrite opprD addrA [_ - 'T_(n+m)]addrC -addrA; f_equal.
 rewrite -scalerAl commr_polyX scalerAl mul2.
 exact: absn_pT.

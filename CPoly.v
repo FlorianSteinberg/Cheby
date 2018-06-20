@@ -12,7 +12,7 @@ Section Tcheby.
 Variable R : ringType.
 Implicit Types (l : seq R) (p: {poly R}) .
 
-(* Chebychev *)
+(* Chebyshev polynomials introduced via their recursion scheme *)
 
 Fixpoint pT_expanded_def (n : nat) {struct n} : {poly R} :=
   if n is n1.+1 then
@@ -357,6 +357,13 @@ rewrite -polyP => i.
 by rewrite coefZ coefD -{2 3}[p`_i]mul1r -mulrDl.
 Qed.
 
+Lemma natmuln (p: {poly R}) n:
+	n%:R *: p = p *+ n.
+Proof.
+elim: n => [ | n ih]; first by rewrite !rm0.
+by rewrite -polyP => i; rewrite coefZ !mulrS mulrDl coefD -ih coefZ rm1.
+Qed.
+
 Variable lr2 : GRing.lreg (2%:R : R).
 
 Lemma rr2: GRing.rreg (2%:R :R).
@@ -406,8 +413,7 @@ split=> [->//|/eqP].
 rewrite -(@polybase_widen _ (fun i => 'T_i) _ _ (leq_maxl (size p) (size q))).
 rewrite -(@polybase_widen _ (fun i => 'T_i) _ _ (leq_maxr (size p) (size q))).
 rewrite -subr_eq0 -sumrB.
-pose f (i : 'I_(maxn (size p) (size q))) := ((p- q)`_i) *: 'T_ i.
-rewrite (eq_bigr f) {}/f => [/eqP eq|i _]; last by rewrite coefB scalerBl.
+under eq_bigr ? rewrite -scalerBl -coefB; move => /eqP eq.
 apply: subr0_eq; rewrite -polyP => i; rewrite coef0.
 have [ineq|ineq]:= (ltnP i (maxn (size p) (size q))).
 	apply: seqbase_coef_eq0; [exact: size_pT | | exact: eq | exact ineq].
@@ -422,13 +428,176 @@ Lemma pT_eq0 (p: {poly R}):
 Proof. by rewrite pT_eq size_poly0 big_ord0. Qed.
 End LINEAR_INDEPENDENCE.
 
+Lemma inducleq (P: nat -> Prop):
+	P 0%nat -> (forall m: nat, (forall n, (n <= m)%nat -> P n) -> P m.+1) -> forall n, P n.
+Proof.
+move => P0 induc n.
+elim: n {-2}n (leqnn n) => [ | n ih m ineq]; first by move => n; rewrite leqn0 => /eqP ->.
+rewrite leq_eqVlt in ineq; case /orP: ineq.
+	by move => /eqP ->; apply induc.
+by move => ineq; apply ih.
+Qed.
+
 Section Multiplication.
 Variable (R: unitRingType).
-Variable V2 : (2%:R : R) \is a GRing.unit.
-Lemma pT_mulX n : 
-   'X * 'T_n.+1 = 2%:R ^-1 *: 'T_n + 2%:R ^-1 *: 'T_n.+2 :> {poly R}.
+Definition absn m n := (m - n + (n - m))%nat.
+
+Lemma absnC:
+	commutative absn.
+Proof. by move => m n; rewrite /absn addnC. Qed.
+
+Lemma absnn n:
+	absn n n = 0%nat.
+Proof. by rewrite /absn !subnn addn0. Qed.
+
+Lemma subn_leq m n:
+	(n <= m -> n - m = 0)%nat.
 Proof.
-rewrite pTSS scalerDr addrCA scalerN subrr addr0.
+by move => ineq; apply /eqP; rewrite subn_eq0.
+Qed.
+
+Lemma ltnoreq n m:
+	(n < m \/ n = m \/ m< n)%nat.
+Proof.
+case E: (n == m); first 	by right; left; have /eqP ->: n == m by rewrite E.
+have : n != m by apply /eqP; move/eqP: E.
+by rewrite neq_ltn; case/orP; [left | right; right].
+Qed.
+
+Lemma absn_eq0 m n:
+	(absn m n = 0 -> m = n)%nat.
+Proof.
+by rewrite /absn; case /orP: (leq_total n m) => ineq;
+rewrite (subn_leq ineq) ?addn0 ?add0n => /eqP eq;
+rewrite subn_eq0 in eq; apply /eqP; rewrite eqn_leq; apply /andP.
+Qed.
+
+Lemma absnSn n m:
+	absn m.+1 n.+1 = absn m n.
+Proof. by rewrite /absn !subSS. Qed.
+
+Lemma abs0n n:
+	absn 0 n = n.
+Proof. by rewrite /absn sub0n subn0 add0n. Qed.
+
+Lemma absn0 n:
+	absn n 0 = n.
+Proof. by rewrite /absn sub0n subn0 addn0. Qed.
+
+Lemma absn1S n:
+	absn 1 n.+1 = n%nat.
+Proof.
+by rewrite /absn subn1; suff ->: (1 - n.+1 = 0)%nat by rewrite add0n.
+Qed.
+
+Lemma absnS1 n:
+	absn n.+1 1 = n%nat.
+Proof.
+by rewrite /absn subn1; suff ->: (1 - n.+1 = 0)%nat by rewrite addn0.
+Qed.
+
+Lemma absn_maxnminn m n:
+	(absn m n = maxn m n - minn m n)%nat.
+Proof.
+rewrite maxnE minnE.
+case E: (n == m).
+	have/eqP ->: n == m by rewrite E.
+	by rewrite !subnn subn0 addn0 subnn absnn.
+have: n != m by apply /eqP => /eqP eq; move: eq; rewrite E.
+rewrite /absn.
+rewrite neq_ltn => /orP or; case: or => ineq.
+	rewrite subKn; last exact: (leqW ineq).
+	have/eqP ->: (n - m == 0)%nat by rewrite subn_eq0; apply (leqW ineq).
+	by rewrite !addn0.
+have/eqP ->: (m - n == 0)%nat by rewrite subn_eq0; apply (leqW ineq).
+rewrite subn0 add0n addnC.
+by rewrite subnK; last exact: (leqW ineq).
+Qed.
+
+Lemma subn_eq m n p:
+	(p > 0)%N -> (m - n = p)%N -> (m = p + n)%N.
+Proof.
+move => pgt E.
+case E': (n == m).
+	rewrite -E;	have /eqP ->: n == m by rewrite E'.
+	by rewrite subnn add0n.
+have: n != m by apply /eqP => /eqP eq; move: eq; rewrite E'.
+rewrite neq_ltn => /orP or; case: or => ineq.
+	by rewrite -E subnK; last exact: (leqW ineq).
+exfalso.
+have /eqP zero: (m - n == 0)%nat.
+	by rewrite subn_eq0; apply: (leqW ineq).
+move: E zero => -> eq.
+by rewrite eq in pgt.
+Qed.
+
+Lemma absnnD n m:
+	absn n (n + m) = m.
+Proof.
+rewrite /absn (subn_leq); last by rewrite leq_addr.
+by rewrite add0n addnC -addnBA// subnn addn0.
+Qed.
+
+Lemma subnSn n:
+	(n - n.+1 = 0)%N.
+Proof. by elim: n. Qed.
+
+Lemma absnif n m:
+	(absn m n.+1 = if m <= n then (absn m n).+1
+		else (absn m n).-1)%nat.
+Proof.
+case: ifP => ineq; first by rewrite /absn subnS subn_leq // subSn//.
+	rewrite /absn subnS (@subn_leq m n.+1).
+	rewrite (@subn_leq m n).
+		by rewrite !addn0.
+	by rewrite -ltnS; apply leqW; rewrite leqNgt ltnS ineq.
+by rewrite leqNgt ltnS ineq.
+Qed.
+
+Lemma absn_pT n m:
+	'X *+2 * 'T_(absn m n.+1) - 'T_(absn m n) = 'T_(absn m n.+2):>{poly R}.
+Proof.
+case E: (m<=n)%nat.
+	by rewrite !absnif E; case: ifP => [_ | /eqP ]; [rewrite pTSS | rewrite subn_leq ?leqW].
+have ineq: (n.+1 <= m)%nat by apply /leP; move/leP: E; lia.
+rewrite leq_eqVlt in ineq; case /orP: ineq => [/eqP eq | ineq].
+	rewrite -eq absnn absnC absnif leqnn absnn absnif leqnn absnn.
+	by rewrite pT0 pT1 mulr1 -addrA subrr addr0.
+rewrite /absn !subnS.
+have /eqP ->: (n -m == 0)%nat by rewrite subn_eq0; apply /leP; move/leP: ineq; lia.
+have /eqP ->: (n.+1 -m == 0)%nat by rewrite subn_eq0; apply /leP; move/leP: ineq; lia.
+have /eqP ->: (n.+2 -m == 0)%nat by rewrite subn_eq0; apply /leP; move/leP: ineq; lia.
+rewrite {2}(@Lt.S_pred (m-n) (m-n).-2); last by move/leP: ineq; rewrite /subn/subn_rec; lia.
+rewrite {1 2}(@Lt.S_pred (m-n).-1 (m-n).-2); last by move/leP: ineq; rewrite /subn/subn_rec; lia.
+by rewrite pTSS opprD addrA subrr opprK add0r.
+Qed.
+
+Lemma mul_pT n m:
+	2%:R *: 'T_n * 'T_m = 'T_(n + m) + 'T_(absn m n) :> {poly R}.
+Proof.
+move: n; apply inducleq.
+	by rewrite pT0 add0n absn0 mul2 mulr2n mulrDl rm1.
+case => [ | n].
+	rewrite pT1 mul2 add1n.
+	case: m => [ih | m ih]; first by rewrite pT0 pT1 /absn rm1 mulr2n.
+	by rewrite absnS1 pTSS -addrA [-'T_m + 'T_m]addrC subrr rm0.
+move => ih.
+rewrite pTSS scalerDr mulrDl -!scalerAl mulNr scalerN !scalerAl ih //.
+rewrite -mul2 -!scalerAl -mulrA -commr_polyX scalerAl scalerAl scalerAl ih //.
+rewrite !addSn pTSS scalerDr mulrDl -scalerAl commr_polyX scalerAl mul2 -!addrA; f_equal.
+rewrite opprD addrA [_ - 'T_(n+m)]addrC -addrA; f_equal.
+rewrite -scalerAl commr_polyX scalerAl mul2.
+exact: absn_pT.
+Qed.
+
+Lemma pT_mulX_weak n : 
+  'X *+ 2 * 'T_n.+1 = 'T_n + 'T_n.+2 :> {poly R}.
+Proof. by rewrite pTSS addrCA subrr rm0. Qed.
+
+Lemma pT_mulX n : 
+  (2%:R : R) \is a GRing.unit -> 'X * 'T_n.+1 = 2%:R ^-1 *: 'T_n + 2%:R ^-1 *: 'T_n.+2 :> {poly R}.
+Proof.
+move => I2; rewrite pTSS scalerDr addrCA scalerN subrr addr0.
 by rewrite -scaler_nat -scalerAl scalerA mulVr // scale1r.
 Qed.
 End Multiplication.

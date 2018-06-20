@@ -1,7 +1,8 @@
 From mathcomp Require Import all_ssreflect.
 From mathcomp Require Import all_algebra.
-Require Import Rstruct.
-Import Rtrigo_def Rtrigo1.
+Require Import Rstruct CPoly rcheby.
+Import Rtrigo_def.
+Import Rtrigo1.
 
 Set Implicit Arguments.
 Unset Strict Implicit.
@@ -17,7 +18,7 @@ Definition rm0 :=
 
 Definition rm1 := (mulr1, mul1r, mulr1n).
 
-Section Interp.
+Section Interpolation.
 
 Variable R : fieldType.
 Variable f : R -> R.
@@ -42,7 +43,7 @@ have [aIl|aNIl] := boolP (a \in l).
 by rewrite big_cons [LHS]rootM root_XsubC inE -IH.
 Qed.
 
-Lemma size_prodl l : (size (prodl l) <= (size l).+1)%N.
+Lemma size_prodl l : (size (prodl l) <= (size l).+1)%nat.
 Proof.
 elim: l => /= [|a l IH].
  by rewrite /prodl big_nil size_polyC; case: eqP.
@@ -78,7 +79,7 @@ Lemma derivn_size (Q : ringType) (p : {poly Q}) :
 Proof.
 apply/polyP => [] [|i]; rewrite coef_derivn coefC /=.
   by rewrite addn0 ffactnn.
-have/leq_sizeP->// : (size p <= (size p).-1 + i.+1)%N.
+have/leq_sizeP->// : (size p <= (size p).-1 + i.+1)%nat.
   by case: size => // k; rewrite addnS ltnS leq_addr.
 by rewrite mul0rn.
 Qed.
@@ -93,30 +94,36 @@ rewrite monicE => /eqP->.
 by rewrite size_prodl_ulist.
 Qed.
 
-Fixpoint interp (l : seq R) : {poly R} :=
+Fixpoint interpolation (l : seq R) : {poly R} :=
   if l is a :: l1 then
-      let r := interp l1 in
+      let r := interpolation l1 in
       if a \in l1 then r else
         let q := prodl l1 in
         r + (f a - r.[a]) / q.[a] *: q
   else 0.
 
-Lemma interp_nil : interp [::] = 0.
+Local Notation "`P[ l ]" := (interpolation l) (format "`P[ l ]").
+
+Lemma interpolation_nil : interpolation [::] = 0.
 Proof. by []. Qed.
 
-Lemma interpC a : interp [:: a] = (f a)%:P.
+Lemma interpolationC a : interpolation [:: a] = (f a)%:P.
 Proof. 
 by rewrite /= [prodl _]big_nil !hornerC !rm0 divr1 alg_polyC.
 Qed.
 
-Lemma interp_cons a l :
+Lemma interpolation_cons a l :
   a \notin l -> 
-  interp (a :: l) =
-     interp l + (f a - (interp l).[a])/(prodl l).[a] *: prodl l.
+  interpolation (a :: l) =
+     interpolation l + 
+     (f a - (interpolation l).[a])/(prodl l).[a] *: prodl l.
 Proof. by move=> /= /negPf->. Qed.
 
-Lemma horner_interp l : all (fun i => (interp l).[i] == f i) l.
+Lemma horner_interpolation l i : 
+   i \in l ->  (interpolation l).[i] = f i.
 Proof.
+suff: all (fun i => (interpolation l).[i] == f i) l.
+  by move=> H Hi; apply/eqP/(allP H).
 elim: l => //= a l IH.
 have [aIl|aNIl] := boolP (_ \in _).
   by rewrite IH (allP IH).
@@ -129,7 +136,7 @@ rewrite (_ : _.[b] = 0) ?rm0 //.
 by apply/eqP; rewrite -mem_root root_prodl.
 Qed.
 
-Lemma interp_size l : (size (interp l) <= size l)%N.
+Lemma interpolation_size l : (size (interpolation l) <= size l)%nat.
 Proof.
 elim: l => /= [|a l IH].
   by rewrite size_poly0.
@@ -141,7 +148,16 @@ rewrite geq_max (leq_trans IH _) //
 by exact: size_prodl.
 Qed.
 
-End Interp.
+Lemma interpolation_derivn_eq0 l (n := size l) : (interpolation l)^`(n) = 0.
+Proof.
+apply/polyP => [] i.
+rewrite coef_derivn coefC /=.
+have/leq_sizeP->// : (size (interpolation l) <= n + i)%nat.
+  by apply: leq_trans (interpolation_size _) (leq_addr _ _).
+by rewrite if_same mul0rn.
+Qed.
+
+End Interpolation.
 
 Require Import Reals Coquelicot.Coquelicot Interval.Interval_tactic Psatz.
 Require Import Rstruct.
@@ -165,6 +181,9 @@ Qed.
 Lemma Derive_horner p x : Derive (horner p) x = (p^`()).[x].
 Proof. by apply: is_derive_unique; exact: is_derive_horner. Qed.
 
+Lemma ex_derive_horner (p : {poly R}) x : ex_derive (horner p) x.
+Proof. by exists ((p^`()).[x]); exact: is_derive_horner. Qed.
+
 Lemma is_derive_n_horner p x n :
   is_derive_n (horner p : R -> R) n x (p^`(n)).[x].
 Proof.
@@ -180,10 +199,21 @@ Qed.
 Lemma Derive_n_horner p n x : Derive_n (horner p) n x = (p^`(n)).[x].
 Proof. by apply: is_derive_n_unique; exact: is_derive_n_horner. Qed.
 
+Lemma ex_derive_n_horner (p : {poly R}) (x : R) n : ex_derive_n (horner p) n x.
+Proof.
+case: n => //= n.
+exists (p^`(n.+1)).[x] => /=.
+apply: (@is_derive_ext _ _
+                (horner (p^`(n)))
+                (Derive_n (horner p) n)) => [t|].
+  by rewrite Derive_n_horner.
+by apply: is_derive_horner.
+Qed.
+
 Definition has_zeros f n a b := 
   exists l : seq R,
    [/\  uniq l,
-        forall x,  x \in l ->  a < x < b /\ f x = 0 &
+        forall x,  x \in l ->  a <= x <= b /\ f x = 0 &
         size l = n].
 
 Import path.
@@ -219,7 +249,7 @@ Lemma has_zerosEs f n a b :
   has_zeros f n a b <->
   exists l : seq R,
    [/\  sorted Rltb l,
-        forall x,  x \in l ->  a < x < b /\ f x = 0 &
+        forall x,  x \in l ->  a <= x <= b /\ f x = 0 &
         size l = n].
 Proof.
 split=> [] [l [H1 H2 H3]].
@@ -241,8 +271,8 @@ move=> H1 H2 [l [Hl1 Hl2 Hl3]]; exists l; split => // x xIl.
 by case: (Hl2 _ xIl); lra.
 Qed.
 
-Lemma has_zeros_S_lt f n a b : 
-  has_zeros f n.+1 a b -> a < b.
+Lemma has_zeros_S_le f n a b : 
+  has_zeros f n.+1 a b -> a <= b.
 Proof.
 case; case; first by case.
 move=> c l [_ /(_ c) []//]; try lra.
@@ -253,7 +283,7 @@ Lemma has_zeros_0 f a b : has_zeros f 0 a b.
 Proof. by exists [::]; split. Qed.
 
 Lemma has_zeros_1 f a b : 
-  has_zeros f 1 a b <-> (exists x, a < x < b /\ f x = 0).
+  has_zeros f 1 a b <-> (exists x, a <= x <= b /\ f x = 0).
 Proof.
 split=> [[[|x [|y l]] //=] |]; case=> //.
   move=> _ /(_ x) []; rewrite ?inE // => H1 H2 _.
@@ -262,41 +292,41 @@ move=> x [H1 H2]; exists [::x]; split=> // y.
 by rewrite inE => /eqP->.
 Qed.
 
-Lemma has_zeros_add f m n a b c :
-   a <= b <= c ->
-   has_zeros f m a b -> has_zeros f n b c -> has_zeros f (m + n) a c.
+Lemma has_zeros_add f m n a b c d:
+   b < c -> a <= b -> c <= d ->
+   has_zeros f m a b -> has_zeros f n c d -> has_zeros f (m + n) a d.
 Proof.
-move=> H1 [l1 [H1l1 H2l1 H3l1]] [l2 [H1l2 H2l2 H3l2]].
+move=> H1 H2 H3 [l1 [H1l1 H2l1 H3l1]] [l2 [H1l2 H2l2 H3l2]].
 exists (l1 ++ l2); split.
 - rewrite cat_uniq H1l1 H1l2 andbT /=.
   apply/hasPn => x /H2l2 [HH1 _].
   apply/negP=> /H2l1 [HH2 _].
-  lra.
+  by lra.
 - by move=> x; rewrite mem_cat => /orP[/H2l1[]|/H2l2[]]; lra.
 by rewrite size_cat H3l1 H3l2.
 Qed.
 
 Lemma has_zeros_split f n a b :
-  has_zeros f n.+1 a b -> exists c,
-             [/\ a < c <= b, has_zeros f 1 a c & has_zeros f n c b].
+  has_zeros f n.+1 a b -> exists c d,
+             [/\ a <= c <= b, c < d, has_zeros f 1 a c & has_zeros f n d b].
 Proof.
 move=> HH.
-have aLb := has_zeros_S_lt HH.
+have aLb := has_zeros_S_le HH.
 move: HH.
 rewrite {1}has_zerosEs => [] [] [|x [|y k]]; case => // H1 H2 H3.
-  exists b; split; try lra.
-    exists [::x]; split=> //.
+  exists b; exists (b + 1); split; try lra.
+    by exists [::x]; split.
   by case: H3 => <-; apply: has_zeros_0.
 case: (H2 x); rewrite ?inE ?eqxx => // Hx Hfx.
 case: (H2 y); rewrite ?inE ?eqxx ?orbT => // Hy Hfy.
 have Hxy : x < y.
   by apply/RltbP; case/andP: H1.
-exists ((x + y) / 2); split; try lra.
+exists x; exists y; split; try lra.
   exists [::x]; split => // z.
   by rewrite inE => /eqP ->; lra.
 apply/has_zerosEs.
 exists [::y & k]; split => [|z Hz|] //=; first 2 last.
-- by move: H3 => /= [].
+- by move: H3 => /= [->].
 - by case/andP: H1.
 case: (H2 z) => [|H4 H5].
   by rewrite inE Hz orbT.
@@ -316,37 +346,33 @@ Lemma has_zeros_deriv f n a b :
   has_zeros (Derive f) n a b.
 Proof.
 elim: n a b => [a b _ _ _|n IH a b Hd Hc]; first by exact: has_zeros_0.
-case/has_zeros_split => c [H1c /has_zeros_1 [a1 [Ha1 Ra1]]].
-case/has_zeros_split => d [H1d /has_zeros_1 [a2 [Ha2 Ra2]]] H1.
+case/has_zeros_split => c [d [H1c H2c /has_zeros_1 [a1 [Ha1 Ra1]]]].
+case/has_zeros_split => c1 [d1 [H1d H2d /has_zeros_1 [a2 [Ha2 Ra2]]]] H1.
 have F1 x : a1 < x < a2 -> derivable_pt f x.
   move=> HH; apply: ex_derive_Reals_0.
   by apply: Hd; lra.
 have F2 x : a1 <= x <= a2 -> continuity_pt f x.
   by move=> HH; apply: Hc; lra.
 have [||x [P HP]] := Rolle f a1 a2 F1 F2; try lra.
-pose u := (x + a2) / 2.
-have F3 : has_zeros (Derive f) 1 a u.
-  rewrite /u.
+have F3 : has_zeros (Derive f) 1 a x.
   apply/has_zeros_1; exists x; split => //; try lra.
   by rewrite Derive_Reals in HP.
-have F4 : has_zeros f 1 u d.
-  rewrite /u.
+have F4 : has_zeros f 1 a2 c1.
   apply/has_zeros_1; exists a2; split => //; try lra.
-have F5 : has_zeros (Derive f) n u b.
-  rewrite /u.
+have F5 : has_zeros (Derive f) n a2 b.
   apply: IH => [y Hy|y Hy|].
   - by apply: Hd; lra.
   - by apply: Hc; lra.
-  apply: (has_zeros_add _ F4 _) => //.
-  by rewrite /u; lra.
-rewrite -[n.+1]/(1 + n)%nat.
-apply: has_zeros_add F5 => //.
-by rewrite /u; lra.
+  - case: (n) H1 => [|n1] H1.
+      by apply: has_zerosW F4; lra.
+    have F5 : d1 <= b by apply: has_zeros_S_le H1.
+    by apply: has_zeros_add F4 H1; lra.
+by apply: has_zeros_add F3 F5 => //; lra.
 Qed.
 
 Lemma has_zeros_deriv_n f m n a b :
- (forall x k, (k <= m)%nat -> a <= x <= b -> ex_derive_n f k x) ->
- (forall x, a <= x <= b -> continuity_pt (Derive_n f m) x) ->
+ (forall x k, (k <= m)%nat -> a < x < b -> ex_derive_n f k x) ->
+ (forall x k, (k <= m)%nat -> a <= x <= b -> continuity_pt (Derive_n f k) x) ->
   has_zeros f n a b -> 
   has_zeros (Derive_n f m) (n - m) a b.
 Proof.
@@ -357,16 +383,333 @@ elim: m f n a b => [|m IH] f n a b mLn Hd Hc Hz //=.
   by rewrite subn0.
 apply: has_zeros_deriv => [x aLxLb|x aLxLb|] //.
 - by apply: (Hd x m.+1) => //; lra.
-- apply: derivable_continuous_pt.
-  apply: ex_derive_Reals_0.
-  by apply: (Hd x m.+1).
+- by apply: Hc.
 rewrite -subSn ?(leq_trans _ mLn) // subSS.
 apply: IH => //; first by apply: leq_trans mLn.
   move=> x k kLm aLxLb.
   apply: Hd => //.
   by apply: leq_trans kLm _.
-move=> x Hx.
-apply: derivable_continuous_pt.
-apply: ex_derive_Reals_0.
-by apply: (Hd x m.+1).
+move=> x k kLm Hx.
+apply: Hc => //.
+by apply: leq_trans kLm _.
 Qed.
+
+Section bound.
+
+Lemma ex_derive_n_minus_inter f g n a b (h := fun z => f z - g z) :
+      (forall x k,
+        (k <= n)%nat -> a < x < b -> ex_derive_n f k x) ->
+      (forall x k,
+        (k <= n)%nat -> a < x < b -> ex_derive_n g k x) ->
+      (forall x k,
+        (k <= n)%nat -> a < x < b -> ex_derive_n h k x).
+Proof.
+move=> Hf Hg x k kLn aLxLb.
+pose d := (Rmin (x - a) (b - x)) / 2.
+have Pd : 0 < d.
+  by rewrite /d /Rmin; case: Rle_dec; lra.
+have Hd : a < x - d < x /\ x < x + d < b.
+  by rewrite /d /Rmin; case: Rle_dec; lra.
+apply: ex_derive_n_minus.
+  exists (mkposreal _ Pd) => /= y Hy k1 Hk1.
+  apply: Hf; first apply : leq_trans kLn.
+    by apply/leP.
+  rewrite /ball /= /AbsRing_ball /= /abs /= /minus /plus /opp /= in Hy.
+  split_Rabs; lra.
+exists (mkposreal _ Pd) => /= y Hy k1 Hk1.
+apply: Hg; first apply : leq_trans kLn.
+  by apply/leP.
+rewrite /ball /= /AbsRing_ball /= /abs /= /minus /plus /opp /= in Hy.
+split_Rabs; lra.
+Qed.
+
+Variable f : R -> R.
+Variable n : nat.
+Variable l : list R.
+Hypothesis size_n : n = size l.
+Hypothesis Ul : uniq l.
+Variables a b : R.
+Hypothesis range : forall x : R, x \in l -> a <= x <= b.
+Hypothesis deriv_f : 
+  forall x, a <= x <= b ->
+   locally x (fun y : R => forall k : nat, (k <= n)%nat -> ex_derive_n f k y).
+
+Hypothesis cont_f :
+ forall x k, (k <= n)%nat -> a <= x <= b ->
+   continuity_pt (Derive_n f k) x.
+
+Definition ierror x := f x - (interpolation f l).[x].
+
+Lemma ierror_val x :
+  a <= x <= b ->
+  ierror x != 0 -> exists z, 
+                      a <= z <= b /\
+                      ierror x = (1 / (n `! %:R)) * (Derive_n f n z) * (prodl l).[x].
+Proof.
+move=> Hl Hi.
+have NZWx : (prodl l).[x] != 0.
+  apply: contra Hi => H.
+  apply/eqP; rewrite /ierror.
+  have/horner_interpolation-> : x \in l by rewrite -root_prodl; exact: H.
+  lra.
+pose c := ierror x / (prodl l).[x].
+pose g y := ierror y - c * (prodl l).[y].
+have F0 x1 k : (k <= n)%nat -> a < x1 < b -> ex_derive_n g k x1.
+  apply:  ex_derive_n_minus_inter => [|y k1 k1Ln aLyLb].
+    apply:  ex_derive_n_minus_inter=> [x2 k1 k1Ln aLx2Lb|*].
+      have /deriv_f[e] : a <= x2 <= b by lra. 
+      by apply => //; apply: ball_center.
+    by apply: ex_derive_n_horner.
+  apply: ex_derive_n_scal_l.
+  by apply: ex_derive_n_horner.
+have F1 y k : (k <= n)%nat -> a <= y <= b ->
+  locally y 
+        (fun y => 
+          Derive_n f k y - Derive_n (horner (interpolation f l)) k y
+                         - Derive_n (fun y => c * (prodl l).[y]) k y = 
+          Derive_n g k y).
+  move=> kLn aLyLb.
+  have [e He] := deriv_f aLyLb.
+  exists (pos_div_2 e) => y1 Hy1.
+  rewrite /g /ierror !Derive_n_minus //.
+  - exists (pos_div_2 e) => y2 Hy2 k1 k1Ln.
+    apply: He => //.
+      rewrite (_ : e = (pos_div_2 e) + (pos_div_2 e) :> R) /=; try lra.
+      by apply: ball_triangle Hy2.
+    by apply: leq_trans kLn; apply/leP.
+  - by exists e => *; apply: ex_derive_n_horner.
+  - exists (pos_div_2 (pos_div_2 e)) => y2 Hy2 k1 k1Ln.
+    apply: ex_derive_n_minus.
+      exists (pos_div_2 (pos_div_2 e)) => y3 Hy3 k2 k2Ln.
+      apply: He => //.
+        rewrite (_ : e = (pos_div_2 e) + (pos_div_2 (pos_div_2 e))
+                                       + (pos_div_2 (pos_div_2 e)):> R) /=; try lra.
+        apply: ball_triangle Hy3.
+        by apply: ball_triangle Hy2.
+      apply: leq_trans kLn.
+      by apply: leq_trans (_ : k1 <= _)%nat; apply/leP.
+    by exists e => *; apply: ex_derive_n_horner.
+  exists e => *; apply: ex_derive_n_scal_l.
+  by apply: ex_derive_n_horner.
+have F2 y k : (k <= n)%nat -> a <= y <= b ->
+              continuity_pt (Derive_n g k) y.
+  move=> kLn aLyLb.
+  apply: continuity_pt_ext_loc (F1 _ _ kLn aLyLb) _.
+  apply: continuity_pt_minus.
+    apply: continuity_pt_minus.
+      by apply: cont_f.
+    apply: derivable_continuous_pt.
+    apply: ex_derive_Reals_0.
+    by apply: (@ex_derive_n_horner _ _ k.+1).
+  apply: derivable_continuous_pt.
+  apply: ex_derive_Reals_0.
+  apply: (@ex_derive_n_scal_l _ k.+1).
+  by apply: ex_derive_n_horner.
+have F3 : has_zeros g n.+1 a b.
+  exists (x :: l); split => [|y] //=.
+  - by rewrite Ul andbT -root_prodl.
+  - rewrite inE => /orP[/eqP->|Hy].
+      split; rewrite // /g /c.
+      by field; apply/eqP.
+    split; first by apply: range.
+    rewrite /g /ierror horner_interpolation //.
+    have := Hy; rewrite -root_prodl => /eqP->.
+    by toR; ring.
+  have [[|z [|z1 l1]]] : has_zeros (Derive_n g n) 1 a b; rewrite -?size_n //.
+  rewrite -(subSnn n).
+  apply: has_zeros_deriv_n=>  //.
+  exists (x :: l); split => [|x1|] /=.
+  - by rewrite -root_prodl Ul andbT.
+  - rewrite !inE => /orP[/eqP->|x1Il].
+      split => //.
+      rewrite /g /c /ierror /=; field.
+      by apply/eqP.
+    split; first by apply: range.
+    rewrite /g /ierror.
+    rewrite horner_interpolation //.
+    rewrite (_ : _.[x1] = 0); try ring.
+    apply/eqP.
+    by rewrite [_ == _]root_prodl.
+  by rewrite size_n.
+have F4 : has_zeros (Derive_n g n) (n.+1 - n) a b.
+  by apply: has_zeros_deriv_n.
+rewrite subSnn in F4.
+have /has_zeros_1[z [Hz]] := F4.
+have [e /(_ z (ball_center _ _))<-] := F1 _ _ (leqnn n) Hz.
+rewrite Derive_n_horner.
+rewrite {2}size_n.
+rewrite interpolation_derivn_eq0 !hornerE.
+rewrite Derive_n_scal_l.
+rewrite Derive_n_horner.
+rewrite {2}size_n.
+rewrite prodl_deriv_fact // -size_n /c !hornerE => HH.
+exists z; split=> //.
+have HH1 : Derive_n f n z = ierror x / (prodl l).[x] * n`!%:R.
+  move: HH; toR.
+  set xx := Derive_n _ _ _; set yy := _ * _.
+  lra.
+rewrite HH1; toR.
+field; split; first by apply/eqP.
+apply/eqP.
+rewrite -[_ != _]/(n`!%:R != 0%:R :> R).
+rewrite Num.Theory.eqr_nat.
+apply: lt0n_neq0.
+apply: fact_gt0.
+Qed.
+
+End bound.
+
+Definition cheby_nodes (n : nat) := [seq cos (i.*2.+1%:R * PI / n.*2%:R) | i <- seq.iota 0%nat n].
+
+Lemma size_cheby_nodes n : size (cheby_nodes n) = n.
+Proof. by rewrite size_map size_iota. Qed.
+
+Lemma cheby_nodes_bound n x :
+  x \in cheby_nodes n -> -1 <= x <= 1.
+Proof. by move=> /mapP[i _ ->]; apply: COS_bound. Qed.
+
+Lemma natr_INR n : n%:R = INR n.
+Proof.
+elim: n => // n IH.
+rewrite  S_INR [_.+1%:R](natrD _ 1) IH -[1%:R]/1.
+toR; lra.
+Qed.
+
+Lemma root_cheby_nodes n : all (root 'T_n) (cheby_nodes n).
+Proof.
+apply/allP => x /mapP [i H1i ->]; apply/eqP.
+rewrite -pT_Cheby; last by apply: COS_bound.
+rewrite mem_iota /= add0n in H1i.
+rewrite /=  [_.+1%:R](natrD _ 1) -!mul2n !natrM.
+rewrite !natr_INR /=; toR.
+have P_b := PI2_3_2.
+have P_i : 0 <= INR i by apply: pos_INR.
+have P_n : INR i + 1 <= INR n.
+  rewrite -(plus_INR _ 1).
+  by apply: le_INR; have /ltP := H1i; lia.
+rewrite Cheby_cos; last first.
+  split; first by apply: Rdiv_le_0_compat; nra.
+  apply: Interval_generic_proof.Rdiv_ge_mult_pos; nra.
+apply: cos_eq_0_1; exists (Z.of_nat i).
+rewrite -INR_IZR_INZ.
+field; lra.
+Qed.
+
+Lemma uniq_cheby_nodes n : uniq (cheby_nodes n).
+Proof.
+apply/(uniqP 0) => x y /=.
+rewrite !inE size_cheby_nodes => Hx Hy.
+rewrite !(nth_map 0%nat) ?size_iota // !nth_iota //.
+rewrite !add0n.
+rewrite /=  ![_.*2.+1%:R](natrD _ 1) -!mul2n !natrM.
+rewrite !natr_INR -[INR 1]/1 -[INR 2]/2 => H.
+apply: INR_eq.
+have P_x : 0 <= INR x by apply: pos_INR.
+have P_y : 0 <= INR y by apply: pos_INR.
+have P_xn : INR x + 1 <= INR n.
+  rewrite -(plus_INR _ 1).
+  by apply: le_INR; have /ltP := Hx; lia.
+have P_yn : INR y + 1 <= INR n.
+  rewrite -(plus_INR _ 1).
+  by apply: le_INR; have /ltP := Hy; lia.
+have P_b := PI2_3_2.
+have F : ((1 + 2 * INR x)%R * PI /
+       (2 * INR n)%R) =
+      ((1 + 2 * INR y)%R * PI /
+       (2 * INR n)%R).
+  apply: cos_is_inj => //.
+    split.
+      by apply: Rdiv_le_0_compat; nra.
+    by apply: Interval_generic_proof.Rdiv_ge_mult_pos; nra.
+  split.
+    by apply: Rdiv_le_0_compat; nra.
+  by apply: Interval_generic_proof.Rdiv_ge_mult_pos; nra.
+suff : (1 + 2 * INR x) * PI = (1 + 2 * INR y) * PI.
+  by nra.
+have F1 x1 : x1 / (2 * INR n) * (2 * INR n) = x1.
+  field; lra.
+by rewrite -[_ * PI]F1 F F1.
+Qed.
+
+Lemma cheby_prodl n : 
+   'T_ n = (expn 2 n.-1)%nat%:R *:  \prod_(z <- cheby_nodes n) ('X - z%:P).
+Proof.
+set p := 'T_n.
+have F1 : size p = n.+1.
+  apply: size_pT.
+  move=> x y; rewrite -[_%:R]/2; toR; lra. 
+rewrite -coef_pTn {2}[n]pred_Sn -F1.
+apply: all_roots_prod_XsubC.
+- by rewrite F1 size_cheby_nodes.
+- by apply: root_cheby_nodes.
+rewrite uniq_rootsE.
+apply: uniq_cheby_nodes.
+Qed.
+
+Section ChebyBound.
+
+Variable f : R -> R.
+Variable n : nat.
+Hypothesis deriv_f : 
+  forall x, -1 <= x <= 1 ->
+   locally x (fun y : R => forall k : nat, (k <= n)%nat -> ex_derive_n f k y).
+
+Hypothesis cont_f :
+ forall x k, (k <= n)%nat -> -1 <= x <= 1 ->
+   continuity_pt (Derive_n f k) x.
+
+Lemma ierror_cheby x z :
+  -1 <= x <= 1 ->
+  (forall y,   -1 <= y <= 1 -> Rabs (Derive_n f n y) <= z) ->
+  Rabs (ierror f (cheby_nodes n) x) <= (1 / ((expn 2 n.-1 * n `!) %:R)) * z.
+Proof.
+move=> Hx Hy.
+have Hz : 0 <= z.
+  suff: Rabs (Derive_n f n 0) <= z by split_Rabs; lra.
+  by apply: Hy; lra.
+have F1 : 0 < n`!%:R.
+  rewrite natr_INR.
+  by apply/lt_0_INR/ltP/fact_gt0.
+have F2 : 0 < (expn 2 n.-1)%:R.
+  rewrite natr_INR.
+  by apply/lt_0_INR/ltP/expn_gt0.
+have F3 : 0 < / (expn 2 n.-1)%:R.
+  by apply: Rinv_0_lt_compat; lra.
+have F4 : 0 < / n`!%:R.
+  by apply: Rinv_0_lt_compat; lra.
+have [/eqP-> | Hc] := boolP (ierror f (cheby_nodes n) x == 0).
+  rewrite Rabs_R0.
+  apply: Rmult_le_pos => //.
+  apply: Interval_missing.Rdiv_pos_compat; try lra.
+  rewrite natr_INR.
+  apply/lt_0_INR/leP/neq0_lt0n/eqP/eqP.
+  by rewrite muln_eq0 negb_or -!lt0n expn_gt0 fact_gt0.
+have [z1 [H1z1 ->]] := ierror_val (sym_equal (size_cheby_nodes n))
+         (uniq_cheby_nodes n) (@cheby_nodes_bound n)
+         deriv_f cont_f Hx Hc.
+rewrite !Rabs_mult Rabs_R1 Rabs_Rinv; try lra.
+rewrite Rabs_pos_eq; try lra.
+rewrite natrM.
+rewrite Rmult_comm/Rdiv Rinv_mult_distr; try lra.
+rewrite -!Rmult_assoc.
+apply: Rmult_le_compat; last by apply: Hy; lra.
+- apply: Interval_missing.Rmult_le_pos_pos => //.
+    rewrite Rmult_1_r.
+    by apply: Rabs_pos.
+- by lra.
+- by apply: Rabs_pos.
+- apply: Rmult_le_compat_r; try lra.
+rewrite Rmult_1_r Rmult_1_l.
+have -> : (prodl (cheby_nodes n)).[x] = / (expn 2 n.-1)%:R * ((pT _ n).[x]).  rewrite cheby_prodl /prodl undup_id ?uniq_cheby_nodes //.
+  rewrite hornerE.
+  set xx : R := _.[x]; set yy : R :=  _%:R.
+  by toR; field; rewrite /yy; lra.
+rewrite Rabs_mult Rabs_pos_eq; try lra.
+rewrite -[X in _ <= X]Rmult_1_r.
+apply: Rmult_le_compat_l; try lra.
+rewrite -pT_Cheby // /Cheby.
+have := COS_bound (INR n * acos x).
+by split_Rabs; lra.
+Qed.
+
+End ChebyBound.

@@ -423,3 +423,6 @@ Lemma cos_add x y :
 Proof. by rewrite cos_plus. Qed. 
 
 End ssreal_struct.
+
+Ltac toR := rewrite /GRing.add /GRing.opp /GRing.zero /GRing.mul /GRing.inv
+  /GRing.one //=.

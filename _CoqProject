@@ -13,6 +13,6 @@ filter_Rlt.v
 atan_derivative_improper_integral.v
 asin.v
 arcsinh.v
-rtcheby.v
+rcheby.v
 example_interpolation.v
 

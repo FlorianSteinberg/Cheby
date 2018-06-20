@@ -2,8 +2,6 @@ From mathcomp Require Import all_ssreflect all_algebra.
 Require Import Reals Coquelicot.Coquelicot Psatz CPoly Rstruct.
 Import GRing.Theory.
 
-Ltac toR := rewrite /GRing.add /GRing.opp /GRing.zero /GRing.mul /GRing.inv
-  /GRing.one //=.
 Set Bullet Behavior "None". 
 
 Open Scope R_scope.
@@ -205,8 +203,8 @@ by rewrite acos_right_inv.
 Qed.
 Local Open Scope ring_scope.
 
-Lemma pT_Tcheby n (x: R):
-	(Rle (-R1) x) /\ (Rle x R1) -> Cheby n x = ('T_n).[x].
+Lemma pT_Cheby n (x: R):
+	(Rle (IZR (-1)) x) /\ (Rle x (IZR 1)) -> Cheby n x = ('T_n).[x].
 Proof.
 move => ineq.
 elim: n {-2}(n) (leqnn n) => [n ass | n ih k ineqk].

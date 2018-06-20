@@ -5,8 +5,8 @@ Rstruct.v
 Poly_complements.v
 seq_base.v
 CPoly.v
-acos.v
 CPoly_trigo.v
+CPoly_interpolation.v
 Poly_exec.v
 CPoly_exec.v
 Interval_exec.v
@@ -15,6 +15,4 @@ filter_Rlt.v
 atan_derivative_improper_integral.v
 asin.v
 arcsinh.v
-rcheby.v
-example_interpolation.v
 

@@ -1,6 +1,6 @@
 From mathcomp Require Import all_ssreflect.
 From mathcomp Require Import all_algebra.
-Require Import Rstruct CPoly rcheby.
+Require Import Rstruct CPoly CPoly_trigo.
 Import Rtrigo_def.
 Import Rtrigo1.
 

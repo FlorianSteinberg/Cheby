@@ -713,3 +713,170 @@ by split_Rabs; lra.
 Qed.
 
 End ChebyBound.
+
+Section ScaleBound.
+
+Variable a b : R.
+Hypothesis aLb : a < b.
+
+Definition scheby_nodes (n : nat) := [seq ((b - a) * i + a + b) / 2 | i <- cheby_nodes n].
+
+Lemma size_scheby_nodes n : size (scheby_nodes n) = n.
+Proof. by rewrite size_map size_cheby_nodes. Qed.
+
+Lemma scheby_nodes_bound n x :
+  x \in scheby_nodes n -> a <= x <= b.
+Proof.
+move=> /mapP[i /cheby_nodes_bound] [H1 H2] ->.
+nra.
+Qed.
+
+Lemma root_scheby_nodes n : all (root ('T^(a,b)_n)) (scheby_nodes n).
+Proof.
+apply/allP => /= x /mapP[y /(allP (root_cheby_nodes n))] H ->.
+rewrite root_comp !hornerE /=.
+have D :  b + - a != 0 by apply/eqP; lra.
+toR; rewrite /Rinvx D; set z := (_ + _).
+rewrite (_ : z = y) // /z.
+by field; apply/eqP.
+Qed.
+
+Lemma uniq_scheby_nodes n : uniq (scheby_nodes n).
+Proof.
+rewrite map_inj_uniq; first by exact: uniq_cheby_nodes.
+move=> i j; nra.
+Qed.
+
+Lemma scheby_prodl n : 
+   'T^(a,b)_n = ((expn 2 (n.*2.-1))%:R / (b - a)^+n) *:  \prod_(z <- scheby_nodes n) ('X - z%:P).
+Proof.
+set p := 'T^(a,b)_n.
+have D :  b + - a != 0 by apply/eqP; lra.
+have E : GRing.lreg ((1 + 1) / (b - a)).
+  move=> /= x y; toR; rewrite /Rinvx D => H.
+  have H1 :  / (b + - a) * x = / (b + - a) * y by lra.
+  rewrite (_ : x = (b + - a) * / (b + - a) * x); last first.
+    by field; apply/eqP.
+  by rewrite Rmult_assoc H1; field; apply/eqP.
+have F1 : size p = n.+1.
+  rewrite size_comp_poly2 ?size_pT //. 
+    by move=> /= x /= y; rewrite -[2%:R]/2; toR; lra.
+  rewrite /Tab size_addl lreg_size ?size_polyX //.
+  by rewrite size_polyC; case: (_ == _).
+rewrite -coef_pTab; last first.
+  apply/eqP; rewrite -[_%:R]/2; toR; lra.
+rewrite {2}[n]pred_Sn -F1.
+apply: all_roots_prod_XsubC.
+- by rewrite F1 size_scheby_nodes.
+- by apply: root_scheby_nodes.
+rewrite uniq_rootsE.
+apply: uniq_scheby_nodes.
+Qed.
+
+End ScaleBound.
+
+Section SChebyBound.
+
+Variable a b : R.
+Hypothesis aLb : a < b.
+Variable f : R -> R.
+Variable n : nat.
+Hypothesis deriv_f : 
+  forall x, a <= x <= b ->
+   locally x (fun y : R => forall k : nat, (k <= n)%nat -> ex_derive_n f k y).
+
+Hypothesis cont_f :
+ forall x k, (k <= n)%nat -> a <= x <= b ->
+   continuity_pt (Derive_n f k) x.
+
+Lemma Tab_bound x : a <= x <= b -> -1 <= (Tab a b).[x] <= 1.
+Proof.
+move=> [H1 H2].
+have D :  b + - a != 0 by apply/eqP; lra.
+have <-: (Tab a b).[a] = -1.
+  rewrite /Tab !hornerE /=; toR; rewrite /Rinvx D.
+  by field; apply/eqP.
+have <-: (Tab a b).[b] = 1.
+  rewrite /Tab !hornerE /=; toR; rewrite /Rinvx D.
+  by field; apply/eqP.
+have F : 0 <= ((1 + 1) / (b - a))%R.
+  by apply: Rdiv_le_0_compat; lra.
+rewrite /Tab !hornerE; split; apply: Rplus_le_compat_r.
+- by apply: Rmult_le_compat_l; toR; rewrite /Rinvx D.
+- by apply: Rmult_le_compat_l; toR; rewrite /Rinvx D.
+Qed.
+
+Lemma ierror_scheby x z :
+  a <= x <= b ->
+  (forall y,   a <= y <= b -> Rabs (Derive_n f n y) <= z) ->
+  Rabs (ierror f (scheby_nodes a b n) x) <= ((b - a)^+n / ((expn 2 n.*2.-1 * n `!) %:R)) * z.
+Proof.
+move=> Hx Hy.
+have Hz : 0 <= z.
+  suff: Rabs (Derive_n f n a) <= z by split_Rabs; lra.
+  by apply: Hy; lra.
+have F1 : 0 < n`!%:R.
+  rewrite natr_INR.
+  by apply/lt_0_INR/ltP/fact_gt0.
+have F2 : 0 < (expn 2 n.*2.-1)%:R.
+  rewrite natr_INR.
+  by apply/lt_0_INR/ltP/expn_gt0.
+have F3 : 0 < / (expn 2 n.*2.-1)%:R.
+  by apply: Rinv_0_lt_compat; lra.
+have F4 : 0 < / n`!%:R.
+  by apply: Rinv_0_lt_compat; lra.
+have F5 : 0 < (b - a) ^+ n.
+  elim: n => [|n1 IH].
+    by rewrite expr0; toR; lra.
+  rewrite exprS; apply: Rmult_lt_0_compat => //.
+  by toR; lra.
+have [/eqP-> | Hc] := boolP (ierror f (scheby_nodes a b n) x == 0).
+  rewrite Rabs_R0.
+  apply: Rmult_le_pos => //.
+  apply: Interval_missing.Rdiv_pos_compat; try lra.
+  rewrite natr_INR.
+  apply/lt_0_INR/leP/neq0_lt0n/eqP/eqP.
+  by rewrite muln_eq0 negb_or -!lt0n expn_gt0 fact_gt0.
+have [z1 [H1z1 ->]] := ierror_val (sym_equal (size_scheby_nodes a b n))
+         (@uniq_scheby_nodes a b aLb n) (@scheby_nodes_bound a b aLb n)
+         deriv_f cont_f Hx Hc.
+rewrite !Rabs_mult Rabs_R1 Rabs_Rinv; try lra.
+rewrite Rabs_pos_eq; try lra.
+rewrite natrM.
+rewrite Rmult_comm/Rdiv Rinv_mult_distr; try lra.
+rewrite -!Rmult_assoc.
+apply: Rmult_le_compat; last by apply: Hy; lra.
+- apply: Interval_missing.Rmult_le_pos_pos => //.
+    rewrite Rmult_1_r.
+    by apply: Rabs_pos.
+  by lra.
+- by apply: Rabs_pos.
+apply: Rmult_le_compat_r; try lra.
+rewrite Rmult_1_r.
+have F : (b - a) ^+ n != 0.
+  elim: n => [|n1 IH1].
+    by rewrite expr0; apply/eqP; toR; lra.
+  rewrite exprS mulf_eq0 negb_or IH1 andbT.
+  by apply/eqP; toR; lra.
+have -> : (prodl (scheby_nodes a b n)).[x] = 
+           (b - a)^+n / (expn 2 n.*2.-1)%:R * ((pTab a b n).[x]).
+  rewrite scheby_prodl // /prodl undup_id ?uniq_scheby_nodes //.
+  rewrite hornerE.
+  set xx : R := _.[x]; set yy : R :=  _%:R.
+  toR; rewrite /Rinvx F; field; split.
+    by apply/eqP.
+  by rewrite /yy; lra.
+rewrite Rabs_mult Rabs_pos_eq; try lra.
+  rewrite -[X in _ <= X]Rmult_1_r.
+  apply: Rmult_le_compat_l; try lra.
+    by apply: Rmult_le_pos; apply: Rlt_le.
+  rewrite /pTab horner_comp -pT_Cheby.
+    rewrite /Cheby.
+    have := COS_bound (INR n * acos (Tab a b).[x]).
+    set xx := cos _.
+    split_Rabs; lra.
+  by have := Tab_bound Hx; split_Rabs.
+by apply: Rmult_le_pos; apply: Rlt_le.
+Qed.
+
+End SChebyBound.

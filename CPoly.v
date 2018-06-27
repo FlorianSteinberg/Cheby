@@ -411,10 +411,8 @@ Lemma inducleq (P: nat -> Prop):
 	P 0%nat -> (forall m: nat, (forall n, (n <= m)%nat -> P n) -> P m.+1) -> forall n, P n.
 Proof.
 move => P0 induc n.
-elim: n {-2}n (leqnn n) => [ | n ih m ineq]; first by move => n; rewrite leqn0 => /eqP ->.
-rewrite leq_eqVlt in ineq; case /orP: ineq.
-	by move => /eqP ->; apply induc.
-by move => ineq; apply ih.
+elim: {n}n.+1 {-2}n (ltnSn n) => [[]//| n ih [|m] // ineq].
+by apply/induc => n1 Hn1; apply/ih/(leq_ltn_trans Hn1).
 Qed.
 
 Section Multiplication.
@@ -544,6 +542,57 @@ Definition pTab a b n := 'T_n \Po (Tab a b).
 Notation "''T^(' a ',' b ')_' n" := (pTab a b n)
   (at level 3, n at level 2, format "''T^(' a ',' b ')_' n").
 
+Lemma size_pTab n a b :  
+   2%:R != 0 :> R -> a != b -> size ('T^(a,b)_n) = n.+1.
+Proof.
+move=> H aDb.
+have D :  b + - a != 0 by rewrite subr_eq0 eq_sym.
+have E : GRing.lreg ((1 + 1) / (b - a)).
+  by apply/GRing.lregM; apply/lregP => //; apply: invr_neq0.
+rewrite size_comp_poly2 ?size_pT //; first by apply/lregP. 
+rewrite /Tab size_addl lreg_size ?size_polyX //.
+by rewrite size_polyC; case: (_ == _).
+Qed.
+
+(* The condition GRing.lreg (2%:R : R) is unnecessary but makes live easier *)
+Lemma coef_pTab n a b : 
+  2%:R != 0 :> R -> 'T^(a, b)_n`_n = (2^n.*2.-1)%:R /(b - a)^+n.
+Proof.
+move=> H.
+rewrite ['T^(a, b)_n]comp_polyE coef_sum.
+have rTA k : k%:R = (k%:R)%:A :> {poly R}.
+    elim: k => /= [|k IH]; first by rewrite !rm0.
+    by rewrite -addn1 !natrD IH scalerDl !rm1 /= scale1r.
+have F : (n < size ('T_n : {poly R}))%nat by rewrite size_pT //; apply/lregP.
+rewrite (bigD1 (Ordinal F)) //= big1 => [|i /eqP/val_eqP /= H1]; last first.
+  rewrite coefZ exprDn coef_sum big1 => [|j _]; first by rewrite rm0.
+  rewrite -mulr_natl -polyC_exp mulrCA mulrC.
+  rewrite rTA alg_polyC -polyC_mul coefCM exprZn coefZ.
+  rewrite coefXn.
+  have : (i < n.+1)%nat.
+    by rewrite -[n.+1](@size_pT R) //; apply/lregP.
+  rewrite ltnS leq_eqVlt (negPf H1) /= => HH.
+  have : (i - j < n)%nat.
+    by apply: leq_ltn_trans (leq_subr _ _) HH.
+  rewrite ltn_neqAle eq_sym => /andP[/negPf-> _].
+  by rewrite !rm0.
+rewrite coefZ addr0 exprDn coef_sum.
+rewrite big_ord_recl /= big1 => [|i _].
+  rewrite !rm0 expr0 bin0 !rm1 subn0 exprZn coef_pTn.
+  rewrite coefZ coefXn eqxx rm1 -[1 + 1]/(2%:R).
+  rewrite expr_div_n mulrA -natrX -natrM -expnD.
+  by congr ((_ ^ _)%:R / _); rewrite -addnn; case: (n).
+rewrite [bump _ _]add1n.
+rewrite -mulr_natl -polyC_exp mulrCA mulrC.
+rewrite rTA alg_polyC -polyC_mul coefCM exprZn coefZ coefXn.
+case: i => ii /= _; case: (n) => [|nn].
+  by rewrite bin0n !rm0.
+have : (nn.+1 - ii.+1 < nn.+1)%nat.
+  by apply: leq_ltn_trans (leq_subr _ _) (ltnSn _).
+rewrite ltn_neqAle eq_sym => /andP[/negPf-> _].
+by rewrite !rm0.
+Qed.
+
 Lemma horner_pTab a b n (x: R) :
   ('T^(a,b)_n).[x] = ('T_n).[(x*+2 - a - b) / (b - a)].
 Proof.
@@ -580,6 +629,8 @@ by rewrite -subr_eq0.
 Qed.
 End pTab.
 
+Notation "''T^(' a ',' b ')_' n" := (pTab a b n)
+  (at level 3, n at level 2, format "''T^(' a ',' b ')_' n").
 
 
 

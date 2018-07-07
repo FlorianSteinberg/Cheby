@@ -6,10 +6,15 @@ Require Import filter_Rlt generalities.
 
 Open Scope R_scope.
 
-Lemma RInt_cos_0_PI (m : nat) : 
-  m <> 0%nat ->
-   is_RInt (fun y : R => cos (INR m * y)) 0 PI 0.
+Lemma is_RInt_cos_0_PI (m : nat) : 
+   is_RInt (fun y : R => cos (INR m * y)) 0 PI 
+     (if m =? 0 then PI else 0).
 Proof.
+case: Nat.eqb_spec=> [->|/= nDm].
+  apply: (is_RInt_ext (fun y => 1)) => [x _|].
+    by rewrite !Rmult_0_l cos_0; lra.
+  rewrite {2}(_ : PI = ((PI - 0) * 1)); try lra.
+  by apply: is_RInt_const.
 move=> mNZ.
 apply: (is_RInt_ext  (fun y : R => /(INR m) * (INR m * cos (INR m * y + 0)))) => [x _|].
   by rewrite Rplus_0_r /=; field; apply: not_0_INR.
@@ -30,55 +35,41 @@ exists (- sin x).
 by apply/derivable_pt_lim_cos.
 Qed.
 
+Lemma RInt_cos_0_PI (m : nat) : 
+   RInt (fun y : R => cos (INR m * y)) 0 PI =
+     if m =? 0 then PI else 0.
+Proof.
+by apply: is_RInt_unique; apply: is_RInt_cos_0_PI.
+Qed.
+
 Lemma RInt_cos_cos_0_PI (n m : nat) :
   RInt (fun y => cos (INR n * y) * cos (INR m * y)) 0 PI = 
            if n =? m then if n =? 0 then PI else PI/2 else 0.
 Proof.
 apply: is_RInt_unique.
-case: Nat.eqb_spec=> [->|/= nDm].
-  case: Nat.eqb_spec => [->|/= mZ].
-    apply: (is_RInt_ext (fun y => 1)) => [x _|].
-      by rewrite !Rmult_0_l cos_0; lra.
-    rewrite {2}(_ : PI = ((PI - 0) * 1)); try lra.
-    by apply: is_RInt_const.
-  pose f y := (/2) * (cos (INR (m + m) * y) + cos (INR (m - m) * y)).
-  apply: (is_RInt_ext f) => [x _|].
-    rewrite /f form1 -Rmult_minus_distr_r -minus_INR; last by lia.
-    rewrite -Rmult_plus_distr_r -plus_INR.
-    rewrite (_ : (m + m - (m - m) = 2 * m)%nat); last by lia.
-    rewrite (_ : (m + m + (m - m) = 2 * m)%nat); last by lia.
-    rewrite !mult_INR (_ : INR 2 = 2); last by rewrite /=; lra.
-    rewrite  [_ * _ * x]Rmult_assoc [_/2]Rinv_r_simpl_m /=; last by lra.
-    by field.
-  rewrite (_ : PI/2 = /2 * PI); try lra.
-  apply: is_RInt_scal.
-  rewrite {2}(_ : PI = 0 + PI); try lra.
-  apply: is_RInt_plus.
-    by apply: RInt_cos_0_PI; lia.
-  apply: (is_RInt_ext (fun y => 1)) => [x _|].
-    by rewrite Nat.sub_diag Rmult_0_l cos_0.
-  rewrite {2}(_ : PI = (PI - 0) * 1); try lra.
-  by apply: is_RInt_const.
-wlog nLm : m n nDm / (n <= m)%nat => H.
-case: (Nat.leb_spec n m) => [/H//|H1]; first by apply.
-  have /(H _) H2 : (m <= n)%nat by lia.
-  apply: (is_RInt_ext (fun y =>  cos (INR m * y) * cos (INR n * y))) => [x _|].
-    by lra.
-  by apply: H2; lia.
+wlog nLm : m n / (n <= m)%nat => [H|].
+  case: (Nat.leb_spec n m) => [/H//|H1]. 
+  have /(H _) : (m <= n)%nat by lia.
+  have ->/= : m =? n = false by case: Nat.eqb_spec => //; lia.
+  have ->/= : n =? m = false by case: Nat.eqb_spec => //; lia.
+  by apply: is_RInt_ext => x _; lra.
 pose f y := (/2) * (cos (INR (m + n) * y) + cos (INR (m - n) * y)).
-apply: (is_RInt_ext f) => [x Hx|].
+apply: (is_RInt_ext f) => [x _|].
   rewrite /f form1 -Rmult_minus_distr_r -minus_INR; last by lia.
-  rewrite (_ : (m + n - (m - n) = 2 * n)%nat); last by lia.
   rewrite -Rmult_plus_distr_r -plus_INR.
+  rewrite (_ : (m + n - (m - n) = 2 * n)%nat); last by lia.
   rewrite (_ : (m + n + (m - n) = 2 * m)%nat); last by lia.
   rewrite !mult_INR (_ : INR 2 = 2); last by rewrite /=; lra.
-  rewrite  [_ * _ * x]Rmult_assoc [_/2]Rinv_r_simpl_m; last by lra.
-  rewrite  [_ * _ * x]Rmult_assoc [_/2]Rinv_r_simpl_m /=; last by lra.
-  by field.
-rewrite {2}(_ : 0 = /2 * 0); try lra.
-apply: is_RInt_scal.
-rewrite {2}(_ : 0 = 0 + 0); try lra.
-by apply: is_RInt_plus; apply: RInt_cos_0_PI; lia.
+  by rewrite  ![_ * _ * x]Rmult_assoc ![_/2]Rinv_r_simpl_m //=; lra.
+pose vk k := (if k =? 0 then PI else 0).
+rewrite [if _ then _ else _](_ : _ =  / 2 * (vk (m + n)%nat + vk (m - n)%nat)).
+  apply: is_RInt_scal.
+  apply: is_RInt_plus; apply: is_RInt_cos_0_PI; lia.
+rewrite /vk /=.
+do 3 case: Nat.eqb_spec=> /=; try lia.
+- move=> _ H1 H2; rewrite -H2 H1 /=; lra.
+- move=> _ _ ->; rewrite Nat.sub_diag /=; lra.
+by move=> - _ _; lra.
 Qed.
 
 Lemma RInt_cosm_cosn_diff (m n : nat) : n <> m ->
@@ -315,7 +306,7 @@ by move: cy; rewrite ball_Rabs Rabs_right; lra.
 Qed.
 
 Lemma ortho1 (n m : nat) l :
-  is_RInt_gen (fun x => cos (INR n * x) *cos (INR m * x))
+  is_RInt_gen (fun x => cos (INR n * x) * cos (INR m * x))
        (at_right 0) (at_left PI) l ->
   is_RInt_gen (fun y => -cos (INR n * acos y) * cos (INR m * acos y) /
                    (sqrt (1 - y ^ 2)))

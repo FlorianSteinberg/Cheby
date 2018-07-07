@@ -880,3 +880,140 @@ by apply: Rmult_le_pos; apply: Rlt_le.
 Qed.
 
 End SChebyBound.
+
+Definition sum_cheby n x : R :=
+   \sum_(i < n.+1) cos (INR (i.*2.+1) * x / 2).
+
+Lemma sum_cheby_0r n : sum_cheby n 0 = INR n.+1.
+Proof.
+rewrite [LHS](eq_bigr (fun i : 'I_n.+1 => 1)) => [|i _]; last first.
+  by rewrite -cos_0; congr cos; toR; lra.
+rewrite big_const cardT size_enum_ord.
+elim: n.+1 => //= k ->; case: k => [|k]; first by rewrite /=; toR; lra.
+by toR; lra.
+Qed.
+
+Lemma sum_cheby_2PIr n : sum_cheby n (2 * PI) = - INR n.+1.
+Proof.
+rewrite [LHS](eq_bigr (fun i : 'I_n.+1 => -1)) => [|i _]; last first.
+  rewrite (_ : _ /2 =  PI + 2 * INR i * PI).
+    by rewrite cos_period cos_PI.
+  by rewrite S_INR -addnn plus_INR; toR; lra.
+rewrite big_const cardT size_enum_ord.
+elim: n.+1 => [|k /= ->]; first by rewrite /=; toR; lra.
+case: k => [|k]; first by rewrite /=; toR; lra.
+by toR; lra.
+Qed.
+
+Lemma close_sum_cheby n x :
+  sin (x / 2) != 0 -> 
+  sum_cheby n x = sin (INR (n.*2.+1) * x / 2 + x / 2) / (2 * sin (x /2)).
+Proof.
+move=> sinNz.
+pose u := x / 2.
+pose v i := INR i.*2.+1 * x / 2.
+suff <-: 2 * sin u * sum_cheby n x = sin (v n  + u).
+  by rewrite /u; field; apply/eqP.
+rewrite Rmult_assoc [sin _ * _](@mulr_sumr [ringType of R]).
+rewrite [_ * _](@mulr_sumr [ringType of R]).
+pose f (i : 'I_n.+1) := sin (v i + u) - sin (v i - u).
+rewrite (eq_bigr f)=> [|i _]; last first.
+  by rewrite /f -[_/2]/(v i) sin_minus sin_plus; toR; ring.
+rewrite sumrB big_ord_recr /=.
+set s1 := \sum_(_ < _) _.
+rewrite big_ord_recl /=.
+set s2 := \sum_(_ < _) _.
+rewrite (_ : s1 = s2); last first.
+  apply: eq_bigr => i _; congr sin.
+  rewrite /bump /= /v /u -!addnn !S_INR !plus_INR.
+  by toR; lra.
+rewrite (_ : _ - u = 0); last first.
+  by rewrite /v /u /=; toR; lra.
+rewrite sin_0; toR; lra.
+Qed.
+
+Lemma sum_cheby_Pin n r :
+  (0 < r < n.+1.*2)%nat -> sum_cheby n (INR r * PI / INR (n + 1)) = 0.
+Proof.
+move=> /andP[rP rL].
+have F : INR (n + 1) * 2 = INR (n.+1.*2) :> R.
+  by rewrite addn1 -addnn plus_INR; lra.
+have F1 (k : R) : k / INR (n + 1) / 2 = k / INR (n.+1.*2).
+  rewrite /Rdiv Rmult_assoc -Rinv_mult_distr ?F //.
+  by rewrite addn1; apply/(not_INR _ 0)/eqP.
+have F2 : 0 < INR (n.+1).*2 by apply: (lt_INR 0) => //; apply/leP.
+have F3 : 0 < PI by have := PI2_3_2; lra.
+have F4 : sin (INR r * PI / INR (n + 1) / 2) != 0.
+  rewrite F1.
+  apply/eqP.
+  suff : 0 < sin (INR r * PI / INR (n.+1).*2) by lra.
+  apply: sin_gt_0.
+    suff H : 0 < INR r.
+      repeat apply: Rmult_lt_0_compat => //.
+      by apply: Rinv_0_lt_compat.
+    by apply: (lt_INR 0) => //; apply/leP.
+  apply Rlt_div_l; try lra.
+  rewrite Rmult_comm.
+  apply : Rmult_lt_compat_l => //.
+  by apply/lt_INR/leP.
+rewrite close_sum_cheby //.
+rewrite [_ / 2]Rmult_assoc.
+rewrite F1 [_ * / 2]F1 -{2}[_ / INR _]Rmult_1_l.
+rewrite -Rmult_plus_distr_r -S_INR.
+rewrite -[_.+2]/(n.+1).*2.
+have -> : INR n.+1.*2 * (INR r * PI / INR (n.+1).*2) =
+          INR r * PI.
+  by field; lra.
+suff ->: sin (INR r * PI) = 0 by lra.
+elim: (r) => [|k HK].
+  by rewrite Rmult_0_l sin_0.
+rewrite S_INR Rmult_plus_distr_r Rmult_1_l neg_sin.
+by lra.
+Qed.
+
+
+Definition dsprod_cheby n (f g : {poly R}) : R := 
+   \sum_(i <- cheby_nodes n) f.[i] * g.[i].
+
+Notation "'<< f , g >>_ n" := (dsprod_cheby n f g) 
+  (at level 10, format "''<<' f ,   g >>_ n").
+
+Lemma dsprod_chebyC n f g : '<<f, g>>_n = '<<g, f >>_n.
+Proof. by apply: eq_bigr => i _; rewrite mulrC. Qed.
+
+Lemma dsprod_chebyZ n k f g : '<<k *: f, g>>_n = k * '<<f, g>>_ n.
+Proof.
+rewrite [_ * _](@mulr_sumr [ringType of R]).
+by apply: eq_bigr => i _; rewrite hornerE mulrA.
+Qed.
+
+Lemma dsprod_cheby0 n g : '<<0, g>>_n = 0.
+Proof.
+rewrite -(@scale0r _ [lmodType R of {poly R}] 0) dsprod_chebyZ.
+by rewrite [0 * _](@mul0r [ringType of R]).
+Qed.
+
+Lemma dsprod_chebyN n f g : '<<-f, g>>_n = - '<<f, g >>_ n.
+Proof.
+rewrite -scaleN1r dsprod_chebyZ /=; exact: mulN1r.
+Qed.
+
+Lemma dsprod_chebyD n f1 f2 g : 
+  '<<f1 + f2, g>>_n = '<<f1, g>>_n + '<<f2, g>>_n.
+Proof.
+rewrite -[_ + _](@big_split [ringType of R]) /=.
+by apply: eq_bigr => i _; rewrite !hornerE mulrDl.
+Qed.
+
+Lemma dsprod_chebyB n f1 f2 g : 
+  '<<f1 - f2, g>>_n = '<<f1, g>>_n - '<<f2, g>>_n.
+Proof. by rewrite dsprod_chebyD dsprod_chebyN. Qed.
+
+Lemma dsprod_cheby_sum n I r P (F : I -> _) g :
+  '<<(\sum_(i <- r | P i) F i), g>>_n = 
+   \sum_(i <- r | P i) '<<F i, g>>_n.
+Proof.
+elim: r => /= [|a r IH]; first by rewrite !big_nil dsprod_cheby0.
+rewrite !big_cons; case: (P a) => //.
+by rewrite dsprod_chebyD IH.
+Qed.

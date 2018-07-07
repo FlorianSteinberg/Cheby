@@ -933,17 +933,17 @@ rewrite sin_0; toR; lra.
 Qed.
 
 Lemma sum_cheby_Pin n r :
-  (0 < r < n.+1.*2)%nat -> sum_cheby n (INR r * PI / INR (n + 1)) = 0.
+  (0 < r < n.+1.*2)%nat -> sum_cheby n (INR r * PI / INR (n.+1)) = 0.
 Proof.
 move=> /andP[rP rL].
-have F : INR (n + 1) * 2 = INR (n.+1.*2) :> R.
-  by rewrite addn1 -addnn plus_INR; lra.
-have F1 (k : R) : k / INR (n + 1) / 2 = k / INR (n.+1.*2).
+have F : INR (n.+1) * 2 = INR (n.+1.*2) :> R.
+  by rewrite -addnn plus_INR; lra.
+have F1 (k : R) : k / INR (n.+1) / 2 = k / INR (n.+1.*2).
   rewrite /Rdiv Rmult_assoc -Rinv_mult_distr ?F //.
-  by rewrite addn1; apply/(not_INR _ 0)/eqP.
+  by apply/(not_INR _ 0)/eqP.
 have F2 : 0 < INR (n.+1).*2 by apply: (lt_INR 0) => //; apply/leP.
 have F3 : 0 < PI by have := PI2_3_2; lra.
-have F4 : sin (INR r * PI / INR (n + 1) / 2) != 0.
+have F4 : sin (INR r * PI / INR (n.+1) / 2) != 0.
   rewrite F1.
   apply/eqP.
   suff : 0 < sin (INR r * PI / INR (n.+1).*2) by lra.
@@ -1017,3 +1017,81 @@ elim: r => /= [|a r IH]; first by rewrite !big_nil dsprod_cheby0.
 rewrite !big_cons; case: (P a) => //.
 by rewrite dsprod_chebyD IH.
 Qed.
+
+Lemma dsprod_sum_cheby n i j :
+   (j <= i <= n)%nat ->
+  '<<'T_i, 'T_j>>_n.+1 = /2 * (sum_cheby n (INR (i + j) * PI / INR n.+1) +
+                               sum_cheby n (INR (i - j) * PI / INR n.+1)).
+Proof.
+move=> /andP[jLi iLn].
+have F : INR (n.+1) * 2 = INR (n.+1.*2) :> R.
+  by rewrite -addnn plus_INR; lra.
+have F1 (k : R) : k / INR (n.+1) / 2 = k / INR (n.+1.*2).
+  rewrite /Rdiv Rmult_assoc -Rinv_mult_distr ?F //.
+  by apply/(not_INR _ 0)/eqP.
+have PIpos : 0 < PI by have := PI2_3_2; lra.
+rewrite /dsprod_cheby big_map.
+pose g i1 := (i1.*2.+1%:R * PI / n.+1.*2%:R).
+rewrite -val_enum_ord big_map [LHS]/=.
+rewrite (eq_bigr (fun k : 'I_n.+1 => cos (INR i * g k) * cos (INR j * g k)))
+    => [|k _]; last first.
+  rewrite -!pT_Cheby; try by apply: COS_bound.
+  rewrite /Cheby acos_left_inv //.
+  have F2 : 0 < n.+1.*2%:R.
+   rewrite natr_INR; apply/(lt_INR 0)/leP.
+   apply: leq_ltn_trans (_ : i.*2 < _)%nat => //.
+   by rewrite ltn_double.
+  split.
+    apply: Rmult_le_pos; last first.
+      by apply/Rlt_le/Rinv_0_lt_compat.
+    apply: Rmult_le_pos; last by lra.
+    by rewrite natr_INR; apply/(le_INR 0)/leP.
+  apply Rle_div_l; try lra.
+  rewrite Rmult_comm.
+  apply: Rmult_le_compat_l; try lra.
+  rewrite !natr_INR; apply/le_INR/leP.
+  by rewrite ltn_double.
+rewrite (eq_bigr (fun k : 'I_n.+1 => 
+   / 2 * (cos (INR (i + j) * g k) + cos (INR (i - j) * g k))))
+    => [|k _]; last first.
+  rewrite /g plus_INR minus_INR; try by apply/leP.
+  rewrite Rmult_minus_distr_r Rmult_plus_distr_r.
+  set x := INR _ * _; set y := INR _ * _.
+  by rewrite cos_minus cos_plus; lra.
+rewrite -mulr_sumr /sum_cheby.
+have <- : index_enum (ordinal_finType n.+1) = enum 'I_n.+1.
+  by apply/sym_equal/all_filterP/allP.
+by rewrite big_split; congr (_ * (_ + _)); 
+   apply: eq_bigr => k _; congr cos;
+   rewrite /g !natr_INR -!Rmult_assoc F1; lra.
+Qed.
+
+Lemma dsprod_cheby_ortho n i j :
+   (j <= n)%nat -> (i <= n)%nat ->
+  '<<'T_i, 'T_j>>_n.+1 = if i == j then
+                           if i == 0%nat then INR n.+1 
+                           else (INR n.+1)/2
+                         else 0.
+Proof.
+wlog : i j / (j <= i)%nat => [H|jLi jLn iLn].
+  case: (leqP j i) => [] H1 H2 H3; first by apply: H.
+  rewrite dsprod_chebyC H //; last by apply: ltnW.
+  by rewrite eq_sym; case: eqP => // ->.
+rewrite dsprod_sum_cheby ?jLi //.
+case: eqP => [<-|/eqP iDj].
+  case: eqP => [->|/eqP iNZ].
+  rewrite Rmult_0_l [_ / _]Rmult_0_l sum_cheby_0r; lra.
+  rewrite subnn Rmult_0_l [0 / _]Rmult_0_l sum_cheby_0r.
+  rewrite sum_cheby_Pin; try lra.
+  by rewrite addn_gt0 lt0n iNZ /= addnn ltn_double ltnS.
+rewrite !sum_cheby_Pin; try lra.
+- rewrite subn_gt0 ltn_neqAle eq_sym iDj jLi /=.
+  apply: leq_ltn_trans (leq_subr _ _) _.
+  apply: leq_trans (_ : n.+1 <= _)%nat; first by rewrite ltnS.
+  by rewrite -addnn leq_addr.
+apply/andP; split; first by  case: (i) iDj => //; case: (j).
+rewrite -addnn -addSn leq_add ?ltnS //.
+apply: leq_trans jLi _.
+by apply: leq_trans iLn _.
+Qed.
+

@@ -11,6 +11,23 @@ Import Prenex Implicits.
 Import GRing.Theory.
 Open Scope ring_scope.
 
+(******************************************************************************)
+(* The interpotation with the Chebyshev flavor                                *)
+(*                      prod l == compute the polynomial of lowest degree     *)
+(*                                whose roots are exactly those of l          *)
+(*           interpolation f l == compute the polynomial of lowest degree     *)
+(*                                that evaluates in (f i) for all i in l      *)
+(*           has_zeros f n a b == f has n zeros between a and b included      *)
+(*           ierror f l x      == compute the error on x of the interpolation *)
+(*                                the difference between                      *)
+(*                                f x and (interpolation f l).[x]             *)
+(*           cheby_nodes n     == list of the Chebyshev nodes of rank n       *)
+(*          scheby_nodes a b n == list of the Chebyshev nodes of rank n for   *)
+(*                                the interval [a, b]                         *)
+(*           sum_cheby n x     == sum of the cos (i * x + x/2) for i <= n     *)
+(*          dsprod_cheby n p q == discrete scalar product between polynomials *)
+(*                                p and q at Chebyshev nodes of rank n        *)
+(******************************************************************************)
 
 Definition rm0 :=
  (mulr0, mul0r, subr0, sub0r, add0r, addr0, mul0rn, mulr0n, oppr0,
@@ -881,6 +898,8 @@ Qed.
 
 End SChebyBound.
 
+Section ChebyCoef.
+
 Definition sum_cheby n x : R :=
    \sum_(i < n.+1) cos (INR (i.*2.+1) * x / 2).
 
@@ -1095,3 +1114,4 @@ apply: leq_trans jLi _.
 by apply: leq_trans iLn _.
 Qed.
 
+End ChebyCoef.

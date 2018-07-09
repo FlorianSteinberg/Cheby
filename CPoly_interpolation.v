@@ -429,12 +429,12 @@ have Hd : a < x - d < x /\ x < x + d < b.
   by rewrite /d /Rmin; case: Rle_dec; lra.
 apply: ex_derive_n_minus.
   exists (mkposreal _ Pd) => /= y Hy k1 Hk1.
-  apply: Hf; first apply : leq_trans kLn.
+  apply: Hf; first apply: leq_trans kLn.
     by apply/leP.
   rewrite /ball /= /AbsRing_ball /= /abs /= /minus /plus /opp /= in Hy.
   split_Rabs; lra.
 exists (mkposreal _ Pd) => /= y Hy k1 Hk1.
-apply: Hg; first apply : leq_trans kLn.
+apply: Hg; first apply: leq_trans kLn.
   by apply/leP.
 rewrite /ball /= /AbsRing_ball /= /abs /= /minus /plus /opp /= in Hy.
 split_Rabs; lra.
@@ -971,9 +971,9 @@ have F4 : sin (INR r * PI / INR (n.+1) / 2) != 0.
       repeat apply: Rmult_lt_0_compat => //.
       by apply: Rinv_0_lt_compat.
     by apply: (lt_INR 0) => //; apply/leP.
-  apply Rlt_div_l; try lra.
+  apply/Rlt_div_l; try lra.
   rewrite Rmult_comm.
-  apply : Rmult_lt_compat_l => //.
+  apply: Rmult_lt_compat_l => //.
   by apply/lt_INR/leP.
 rewrite close_sum_cheby //.
 rewrite [_ / 2]Rmult_assoc.
@@ -1065,7 +1065,7 @@ rewrite (eq_bigr (fun k : 'I_n.+1 => cos (INR i * g k) * cos (INR j * g k)))
       by apply/Rlt_le/Rinv_0_lt_compat.
     apply: Rmult_le_pos; last by lra.
     by rewrite natr_INR; apply/(le_INR 0)/leP.
-  apply Rle_div_l; try lra.
+  apply/Rle_div_l; try lra.
   rewrite Rmult_comm.
   apply: Rmult_le_compat_l; try lra.
   rewrite !natr_INR; apply/le_INR/leP.
@@ -1112,6 +1112,71 @@ apply/andP; split; first by  case: (i) iDj => //; case: (j).
 rewrite -addnn -addSn leq_add ?ltnS //.
 apply: leq_trans jLi _.
 by apply: leq_trans iLn _.
+Qed.
+
+Definition dsprod_coef p n i := 
+  (if i == 0%nat then 1 else 2) / INR (n.+1) *
+  '<<p, 'T_i>>_n.+1.
+
+Lemma dsprod_coefD p q n i :
+  dsprod_coef p n i + dsprod_coef q n i = dsprod_coef (p + q) n i.
+Proof.
+by rewrite /dsprod_coef -Rmult_plus_distr_l dsprod_chebyD.
+Qed.
+
+Lemma dsprod_cheby_eq n (p : {poly R}) :
+   (size p <= n)%nat ->
+   p = \sum_(i < n.+1) (dsprod_coef p n i) *: 'T_i.
+Proof.
+rewrite -ltnS.
+elim: {p}size {-2 3}p (leqnn (size p)) => // [p|k IH p pLk kLn].
+  rewrite size_poly_leq0 => /eqP-> _.
+  apply: sym_equal; apply: big1 => i _.
+  by rewrite /dsprod_coef dsprod_cheby0 Rmult_0_r scale0r.
+pose p1 := (GRing.add p (-((p`_k / lead_coef 'T_k) *: 'T_k))).
+have Hreg : GRing.lreg (2%:R : R).
+  by apply /GRing.lregP/eqP; rewrite natr_INR /=; toR; lra.
+have p1Lk : (size p1 <= k)%nat.
+  apply/leq_sizeP => j.
+  rewrite leq_eqVlt => /orP[/eqP<-|H].
+    rewrite coefB coefZ /lead_coef size_pT //.
+    rewrite divfK ?subrr //=.
+    rewrite {2}[k]pred_Sn -[k.+1](@size_pT [unitRingType of R]) //.
+    by rewrite lead_coef_eq0 pT_neq0.
+  rewrite coefB coefZ.
+  have /leq_sizeP->// := pLk.
+  have  /(leq_trans)/(_ H)/leq_sizeP-> // := size_pT_leq [ringType of R] k.
+  by rewrite !rm0.
+rewrite -{1}[p](subrK ((p`_k / lead_coef 'T_k) *: 'T_k)).
+rewrite -/p1 (IH _ p1Lk); last by apply: leq_trans kLn.
+set u := _ *: _.
+suff -> : u = \sum_(i < n.+1) (dsprod_coef u n i) *: 'T_i.
+  rewrite -big_split /=.
+  apply: eq_bigr => i _.
+  by rewrite -scalerDl [(GRing.add _ _)%R]dsprod_coefD subrK.
+have kLn1 : (k < n.+1)%nat by apply: leq_trans kLn.
+rewrite (bigD1 (Ordinal kLn1)) // big1 /= => [|i /eqP/val_eqP/= Hi]; last first.
+  rewrite /u /dsprod_coef dsprod_chebyZ.
+  rewrite dsprod_cheby_ortho //.
+    by rewrite [k == _]eq_sym (negPf Hi) !Rmult_0_r rm0.
+  by rewrite -ltnS.
+rewrite addr0 /u /dsprod_coef dsprod_chebyZ dsprod_cheby_ortho //.
+congr (_ *: _).
+set x : R := (GRing.mul _ _); set y : R := INR _.
+rewrite eqxx.
+by case: eqP => _ /=; field; apply: (not_INR _ 0).
+Qed.
+
+Lemma dsprod_coef_interpolation f n i :
+  dsprod_coef (interpolation f (cheby_nodes n.+1)) n i 
+  =
+  (if i == 0%nat then 1 else 2) / INR (n.+1) *
+   \sum_(j <- cheby_nodes n.+1) f j * ('T_i).[j].
+Proof.
+congr (_ * _).
+rewrite [LHS]big_seq_cond [RHS]big_seq_cond.
+apply: eq_bigr => k /andP[Hk _].
+by rewrite horner_interpolation.
 Qed.
 
 End ChebyCoef.

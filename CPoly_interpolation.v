@@ -27,6 +27,9 @@ Open Scope ring_scope.
 (*           sum_cheby n x     == sum of the cos (i * x + x/2) for i <= n     *)
 (*          dsprod_cheby n p q == discrete scalar product between polynomials *)
 (*                                p and q at Chebyshev nodes of rank n        *)
+(*     sdsprod_cheby a b n p q == discrete scalar product between polynomials *)
+(*                                p and q at Chebyshev nodes of rank n for    *)
+(*                                the interval [a, b]                         *)
 (******************************************************************************)
 
 Definition rm0 :=
@@ -1172,6 +1175,135 @@ Lemma dsprod_coef_interpolation f n i :
   =
   (if i == 0%nat then 1 else 2) / INR (n.+1) *
    \sum_(j <- cheby_nodes n.+1) f j * ('T_i).[j].
+Proof.
+congr (_ * _).
+rewrite [LHS]big_seq_cond [RHS]big_seq_cond.
+apply: eq_bigr => k /andP[Hk _].
+by rewrite horner_interpolation.
+Qed.
+
+Definition sdsprod_cheby a b n (f g : {poly R}) : R := 
+   \sum_(i <- scheby_nodes a b n) f.[i] * g.[i].
+
+Notation "'<< f , g >>[ a , b ]_ n" := (sdsprod_cheby a b n f g) 
+  (at level 10, format "''<<' f ,   g >>[ a ,  b ]_ n").
+
+Lemma sdsprod_chebyC a b n f g : '<<f, g>>[a, b]_n = '<<g, f >>[a, b]_n.
+Proof. by apply: eq_bigr => i _; rewrite mulrC. Qed.
+
+Lemma sdsprod_chebyZ a b n k f g : 
+  '<<k *: f, g>>[a, b]_n = k * '<<f, g>>[a, b]_ n.
+Proof.
+rewrite [_ * _](@mulr_sumr [ringType of R]).
+by apply: eq_bigr => i _; rewrite hornerE mulrA.
+Qed.
+
+Lemma sdsprod_cheby0 a b n g : '<<0, g>>[a, b]_n = 0.
+Proof.
+rewrite -(@scale0r _ [lmodType R of {poly R}] 0) sdsprod_chebyZ.
+by rewrite [0 * _](@mul0r [ringType of R]).
+Qed.
+
+Lemma sdsprod_chebyN a b n f g : '<<-f, g>>[a, b]_n = - '<<f, g >>[a, b]_ n.
+Proof. by rewrite -scaleN1r sdsprod_chebyZ /=; exact: mulN1r. Qed.
+
+Lemma sdsprod_chebyD a b n f1 f2 g : 
+  '<<f1 + f2, g>>[a, b]_n = '<<f1, g>>[a, b]_n + '<<f2, g>>[a, b]_n.
+Proof.
+rewrite -[_ + _](@big_split [ringType of R]) /=.
+by apply: eq_bigr => i _; rewrite !hornerE mulrDl.
+Qed.
+
+Lemma sdsprod_chebyB a b n f1 f2 g : 
+  '<<f1 - f2, g>>[a, b]_n = '<<f1, g>>[a, b]_n - '<<f2, g>>[a, b]_n.
+Proof. by rewrite sdsprod_chebyD sdsprod_chebyN. Qed.
+
+Lemma sdsprod_cheby_sum a b n I r P (F : I -> _) g :
+  '<<(\sum_(i <- r | P i) F i), g>>[a, b]_n = 
+   \sum_(i <- r | P i) '<<F i, g>>[a, b]_n.
+Proof.
+elim: r => /= [|c r IH]; first by rewrite !big_nil sdsprod_cheby0.
+rewrite !big_cons; case: (P c) => //.
+by rewrite sdsprod_chebyD IH.
+Qed.
+
+Lemma sdsprod_cheby_ortho a b n i j :
+  a != b -> (j <= n)%nat -> (i <= n)%nat ->
+  '<< 'T^(a, b)_i, 'T^(a, b)_j>>[a, b]_n.+1 = 
+                         if i == j then
+                           if i == 0%nat then INR n.+1 
+                           else (INR n.+1)/2
+                         else 0.
+Proof.
+move=> aDb jLn iLn.
+have F : b + - a != 0  by apply/eqP; move/eqP: aDb;lra.
+rewrite [LHS]big_map -dsprod_cheby_ortho //.
+apply: eq_bigr => k _.
+rewrite !horner_comp !hornerE /=.
+by congr (_.[_] * _.[_]); toR; rewrite /Rinvx F; field; apply/eqP.
+Qed.
+
+Definition sdsprod_coef a b p n i := 
+  (if i == 0%nat then 1 else 2) / INR (n.+1) *
+  '<<p, 'T^(a, b)_i>>[a, b]_n.+1.
+
+Lemma sdsprod_coefD a b p q n i :
+  sdsprod_coef a b p n i + sdsprod_coef a b q n i = 
+  sdsprod_coef a b (p + q) n i.
+Proof.
+by rewrite /sdsprod_coef -Rmult_plus_distr_l sdsprod_chebyD.
+Qed.
+
+Lemma sdsprod_cheby_eq a b n (p : {poly R}) :
+   a != b -> (size p <= n)%nat ->
+   p = \sum_(i < n.+1) (sdsprod_coef a b p n i) *: 'T^(a, b)_i.
+Proof.
+move=> aDb.
+rewrite -ltnS.
+elim: {p}size {-2 3}p (leqnn (size p)) => // [p|k IH p pLk kLn].
+  rewrite size_poly_leq0 => /eqP-> _.
+  apply: sym_equal; apply: big1 => i _.
+  by rewrite /sdsprod_coef sdsprod_cheby0 Rmult_0_r scale0r.
+pose p1 := (GRing.add p (-((p`_k / lead_coef 'T^(a, b)_k) *: 'T^(a, b)_k))).
+have t2Z : 2%:R != 0 :> R.
+  by apply /eqP; rewrite natr_INR /=; toR; lra.
+have Hreg : GRing.lreg (2%:R : R) by apply /GRing.lregP.
+have p1Lk : (size p1 <= k)%nat.
+  apply/leq_sizeP => j.
+  rewrite leq_eqVlt => /orP[/eqP<-|H].
+    rewrite coefB coefZ /lead_coef size_pTab //.
+    rewrite divfK ?subrr //=.
+    rewrite {2}[k]pred_Sn -[k.+1](size_pTab _ t2Z aDb).
+    by rewrite lead_coef_eq0 -size_poly_eq0 size_pTab.
+  rewrite coefB coefZ.
+  have /leq_sizeP->// := pLk.
+  have /leq_sizeP-> // : (size ('T^(a,b)_k) <= j)%nat by rewrite size_pTab.
+  by rewrite !rm0.
+rewrite -{1}[p](subrK ((p`_k / lead_coef 'T^(a, b)_k) *: 'T^(a, b)_k)).
+rewrite -/p1 (IH _ p1Lk); last by apply: leq_trans kLn.
+set u := _ *: _.
+suff -> : u = \sum_(i < n.+1) (sdsprod_coef a b u n i) *: 'T^(a, b)_i.
+  rewrite -big_split /=.
+  apply: eq_bigr => i _.
+  by rewrite -scalerDl [(GRing.add _ _)%R]sdsprod_coefD subrK.
+have kLn1 : (k < n.+1)%nat by apply: leq_trans kLn.
+rewrite (bigD1 (Ordinal kLn1)) // big1 /= => [|i /eqP/val_eqP/= Hi]; last first.
+  rewrite /u /sdsprod_coef sdsprod_chebyZ.
+  rewrite sdsprod_cheby_ortho //.
+    by rewrite [k == _]eq_sym (negPf Hi) !Rmult_0_r rm0.
+  by rewrite -ltnS.
+rewrite addr0 /u /sdsprod_coef sdsprod_chebyZ sdsprod_cheby_ortho //.
+congr (_ *: _).
+set x : R := (GRing.mul _ _); set y : R := INR _.
+rewrite eqxx.
+by case: eqP => _ /=; field; apply: (not_INR _ 0).
+Qed.
+
+Lemma sdsprod_coef_interpolation f a b n i :
+  sdsprod_coef a b (interpolation f (scheby_nodes a b n.+1)) n i 
+  =
+  (if i == 0%nat then 1 else 2) / INR (n.+1) *
+   \sum_(j <- scheby_nodes a b n.+1) f j * ('T^(a, b)_i).[j].
 Proof.
 congr (_ * _).
 rewrite [LHS]big_seq_cond [RHS]big_seq_cond.

@@ -1311,4 +1311,26 @@ apply: eq_bigr => k /andP[Hk _].
 by rewrite horner_interpolation.
 Qed.
 
+Lemma sdsprod_coef_interpolation_pT f a b n i 
+      (cn := cheby_nodes n.+1) :
+  a != b ->
+  sdsprod_coef a b (interpolation f (scheby_nodes a b n.+1)) n i 
+  =
+  (if i == 0%nat then 1 else 2) / INR (n.+1) *
+   \sum_(j < n.+1) f (((b - a) * (cn`_j) + a + b) / 2)%R * ('T_i).[cn`_j].
+Proof.
+move=> aDb.
+have aDb1 : b + - a != 0.
+  by apply: contra aDb => /eqP H; apply/eqP; lra.
+rewrite sdsprod_coef_interpolation. 
+congr (_ * _).
+rewrite -[in RHS](size_scheby_nodes a b n.+1) big_tnth.
+apply: eq_bigr => k _; rewrite (tnth_nth 0) /= !(nth_map 0); last first.
+  by rewrite size_cheby_nodes -{2}(size_scheby_nodes a b n.+1).
+congr (_ * _).
+rewrite horner_comp !hornerE /=.
+congr (_.[_]); set x := _ `_ _.
+by toR; rewrite /Rinvx aDb1; field; apply/eqP.
+Qed.
+
 End ChebyCoef.

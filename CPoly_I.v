@@ -97,7 +97,7 @@ Lemma scl2_correct_R x I:
 	x \contained_in I -> (x *+ 2) \contained_in (scl2 I).
 Proof.
 intros.
-replace (Xreal (x *+ 2)) with (Xmul (Xreal x) (Xreal (bpow radix2 1))).
+suff -> :(Xreal (x *+ 2)) = (Xmul (Xreal x) (Xreal (bpow radix2 1))).
 	by apply I.scale2_correct.
 congr Xreal.
 by have ->: (x*2 = x + x)%R by lra.
@@ -210,6 +210,9 @@ Qed.
 
 Definition mu_ i n:= cos (m_ i n * PI).
 
+Lemma IZR_Zof_nat n : IZR (Z.of_nat n) = n%:R.
+Proof. by rewrite -INR_IZR_INZ natr_INR. Qed.
+
 Lemma mu_cheby_nodes i n: (i < n)%nat -> mu_ i n = (cheby_nodes n)`_i.
 Proof.
 case: n => // n ineq.
@@ -219,11 +222,11 @@ rewrite (nth_map 0%nat); last by rewrite size_iota.
 f_equal; rewrite nth_iota => //.
 rewrite add0n /Rdiv.
 have -> : IZR (Z.of_nat (2 * i + 1)) = i.*2.+1%:R.
-	admit.
+	by rewrite IZR_Zof_nat addn1 mul2n.
 have -> : IZR (Z.of_nat (2 * n.+1)) = (n.+1).*2%:R.
-	admit.
+	by rewrite IZR_Zof_nat mul2n.
 lra.
-Admitted.
+Qed.
 
 Definition piI := I.pi prec.
 Definition muI_ i n:= I.cos prec (mul (mI_ i n) piI).
@@ -243,104 +246,83 @@ Qed.
 
 Definition Icheby_nodes (n : nat) := [seq muI_ i n | i <- seq.iota 0%nat n].
 
-Lemma Icheby_nodes_correct n:
-	forall i, (cheby_nodes n)`_ i \contained_in nth I0 (Icheby_nodes n) i.
+Lemma size_Icheby_nodes n: size (Icheby_nodes n) = n.
+Proof. by rewrite size_map size_iota. Qed.
+
+Lemma Icheby_nodes_correct n i:
+	(cheby_nodes n)`_ i \contained_in nth I0 (Icheby_nodes n) i.
 Proof.
-move => i.
 case E: (i < n)%nat; last first.
 	rewrite !nth_default; first exact: I00.
 		by rewrite size_cheby_nodes leqNgt E.
-	by rewrite /Icheby_nodes size_map size_iota leqNgt E.
+	by rewrite size_Icheby_nodes leqNgt E.
 rewrite (nth_map 0%nat); last by rewrite size_iota.
 rewrite nth_iota => //; rewrite add0n.
 rewrite -mu_cheby_nodes => //.
 apply muI_correct.
 Qed.
 
+Definition FtoI (a: D) := (Interval.Interval_interval_float.Ibnd a a).
+
+Lemma FtoI_correct a: (D2R a) \contained_in (FtoI a).
+Proof. by rewrite /= /D2R; split; case E: (F.toX a) => //=; lra. Qed.
+
+Definition Ischeby_nodes (a b : D) (n : nat) :=
+	map (fun I => I.scale2 (add (add (mul (sub (FtoI b) (FtoI a)) I) (FtoI a)) (FtoI b)) (F.ZtoS (-1))) (Icheby_nodes n).
+
+Lemma size_Ischeby_nodes a b n : size (Ischeby_nodes a b n) = n.
+Proof. by rewrite size_map size_Icheby_nodes. Qed.
+
+Lemma Ischeby_nodes_correct a b n i:
+	(scheby_nodes (D2R a) (D2R b) n)`_ i \contained_in nth I0 (Ischeby_nodes a b n) i.
+Proof.
+case E: (i < n)%nat; last first.
+	rewrite !nth_default; first exact: I00.
+		by rewrite size_scheby_nodes leqNgt E.
+	by rewrite /Ischeby_nodes size_map /Icheby_nodes size_map size_iota leqNgt E.
+rewrite (nth_map I0); last by rewrite size_map size_iota.
+rewrite (nth_map 0%R) /Rdiv; last by rewrite size_cheby_nodes.
+have ->: (/ 2 = powerRZ 2 (-1)) %R by rewrite /powerRZ Pos2Nat.inj_1 pow_1.
+apply scale2_correct_R.
+apply add_correct_R; last exact: FtoI_correct.
+apply add_correct_R; last exact: FtoI_correct.
+apply mul_correct_R; last exact: Icheby_nodes_correct.
+by apply sub_correct_R; apply: FtoI_correct.
+Qed.
+
+Section CMSin.
+Context (a b : D).
+Notation I := (Interval.Interval_interval_float.Ibnd a b).
+
 Lemma sin_correct_R x I:
 	x \contained_in I -> (sin x) \contained_in (I.sin prec I).
 Proof. by move => xcI; have /=:= I.sin_correct prec I (Xreal x) xcI. Qed.
 
-Section CMSin.
-Context (I : ID).
-Notation aD := (I.lower I).
-Notation bD := (I.upper I).
-Notation aI := (Interval.Interval_interval_float.Ibnd aD aD).
-Notation bI := (Interval.Interval_interval_float.Ibnd bD bD).
-Notation a := (D2R aD).
-Notation b := (D2R bD).
+Definition value_list n:= map sin (scheby_nodes (D2R a) (D2R b) n).
 
-Lemma aI_correct:
-	a \contained_in aI.
+Definition Ivalue_list n := map (I.sin prec) (Ischeby_nodes a b n).
+
+Lemma Ivalue_list_correct n i: (value_list n)`_i \contained_in nth I0 (Ivalue_list n) i.
 Proof.
-by rewrite /= /D2R; split; case E: (F.toX aD) => //=; lra.
+case E: (i < n)%nat; last first.
+	rewrite !nth_default; first exact: I00.
+		by rewrite size_map size_scheby_nodes leqNgt E.
+	by rewrite size_map size_Ischeby_nodes leqNgt E.
+rewrite (nth_map I0); last by rewrite size_Ischeby_nodes.
+rewrite (nth_map 0%R); last by rewrite size_scheby_nodes.
+exact/sin_correct_R /Ischeby_nodes_correct.
 Qed.
 
-Lemma bI_correct:
-	b \contained_in bI.
-Proof.
-by rewrite /= /D2R; split; case E: (F.toX bD) => //=; lra.
-Qed.
-
-Definition f_ i n := sin ((a + b) / 2  + (b - a)/2 * (mu_ i n))%R.
-
-Definition fI_ i n := I.sin prec (I.add prec (I.scale2 (I.add prec aI bI) (F.ZtoS (-1))) (I.mul prec (I.scale2 (I.sub prec bI aI) (F.ZtoS (-1))) (muI_ i n))).
-
-Lemma fI_correct i n: f_ i n \contained_in fI_ i n.
-Proof.
-apply sin_correct_R.
-apply add_correct_R.
-	suff -> : ((a + b) / 2)%R = ((a + b) * powerRZ 2 (-1)).
-	apply scale2_correct_R.
-		by apply add_correct_R; [apply: aI_correct | apply: bI_correct].
-	have ->: (Zneg 1) = (Z.opp 1) by trivial.
-	rewrite powerRZ_neg; try lra.
-	by rewrite powerRZ_1.
-apply mul_correct_R; last exact: muI_correct.
-suff ->: ((b - a) / 2)%R = ((b - a) * powerRZ 2 (-1)).
-	apply scale2_correct_R.
-	by apply sub_correct_R; [apply: bI_correct | apply: aI_correct].
-have ->: (Zneg 1) = (Z.opp 1) by trivial.
-rewrite powerRZ_neg; try lra.
-by rewrite powerRZ_1.
-Qed.
-
-Definition fL n := map (fun i => f_ i n) (iota 0 n).
-
-Lemma size_fL n:
-	size (fL n) = n.
-Proof. by rewrite /fL !size_map size_iota. Qed.
-
-Definition fLI n := map (fun i => fI_ i n) (iota 0 n).
-
-Lemma size_fLI n:
-	size (fLI n) = n.
-Proof. by rewrite /fLI !size_map size_iota. Qed.
-
-Lemma fLI_correct i n:
-	(fL n)`_i \contained_in nth I0 (fLI n) i.
-Proof.
-case E: (n <= i)%nat.
-	rewrite !nth_default.
-			exact I00.
-		by rewrite size_fL.
-	by rewrite size_fLI.
-rewrite /fL.
-rewrite !(nth_map 0%nat); try by rewrite size_iota leqNgt ltnS E.
-rewrite nth_iota; last by rewrite leqNgt ltnS E.
-apply / fI_correct.
-Qed.
-
-Definition c_ k n := Cshaw (fL n) (mu_ k n).
-Definition cI_ k n := CshawIA (fLI n) (muI_ k n).
+Definition c_ k n := Cshaw (value_list n) (mu_ k n).
+Definition cI_ k n := CshawIA (Ivalue_list n) (muI_ k n).
 
 Lemma cI_correct k n:
 	c_ k n \contained_in cI_ k n.
 Proof.
 rewrite /c_ /cI_.
-apply CshawIA_correct; first by move => i; apply fLI_correct.
+apply CshawIA_correct; first by move => i; apply Ivalue_list_correct.
 	exact: muI_correct.
-by rewrite size_fL size_fLI.
+by rewrite size_map size_scheby_nodes size_map size_Ischeby_nodes.
 Qed.
 
 Fixpoint fact p := match p with
@@ -378,17 +360,17 @@ elim: n {-2}n (leqnn n) => [[]// | n Hn[|[|[|[|m]]]]// Hm].
 by apply /X3 /Hn /leP; move/leP: Hm; lia.
 Qed.
 
-Lemma Derive_n_sin n x: 	sin^(n +2) x = gamma n x.
+Lemma Derive_n_sin n x: 	sin^(n + 2) x = gamma n x.
 Proof.
 apply is_derive_n_unique.
 suff ->: gamma n x = (if odd (n + 2) then (-1) ^ (n +2)./2 * cos x else (-1) ^ (n + 2)./2 * sin x) by apply coquelicot_compl.is_derive_n_sin.
 move: n; apply induc => /=; try toR; try lra.
 move => n; case: (odd (n+2)) => /= ->; toR.
 	rewrite -!Rmult_assoc.
-	replace (-1 * -1) with 1 by lra.
+	have ->: (-1 * -1) = 1 by lra.
 	by rewrite Rmult_1_l.
 rewrite -!Rmult_assoc.
-replace (-1 * -1) with 1 by lra.
+have ->: (-1 * -1) = 1 by lra.
 by rewrite Rmult_1_l.
 Qed.
 

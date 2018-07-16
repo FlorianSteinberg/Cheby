@@ -1,5 +1,5 @@
 From mathcomp Require Import all_ssreflect all_algebra.
-Require Import Rstruct Reals Psatz Poly_complements CPoly CPoly_exec.
+Require Import Rstruct Reals Psatz Poly_complements CPoly CPoly_exec CPoly_interpolation.
 Set Implicit Arguments.
 Unset Strict Implicit.
 Import Prenex Implicits.
@@ -187,75 +187,79 @@ apply sub_correct_R; first by apply CbIA_crct.
 by apply mul_correct_R; first by apply CbIA_crct.
 Qed.
 
-(* The schaebischaef nodes: *)
-Definition m_ (i n: positive) := ((IPR i + 1/2) / (IPR n +1))%R.
+Definition m_ i n := match n with
+	| 0 => 0
+	| S n' => (IZR (Z.of_nat (2 * i + 1)) / IZR (Z.of_nat (2 * n)))%R
+end.
 
-Definition mI_ (i n: positive) :=
-	div (I.fromZ (2* (Z.pos i) + 1)) (I.fromZ (2 * ((Z.pos n) +1 ))).
+Definition mI_ i n := match n with
+	| 0 => I0
+	| S n' =>	div (I.fromZ (Z.of_nat (2* i + 1))) (I.fromZ (Z.of_nat (2 * n)))
+end.
 
-Lemma IPR0 n:
-	(IPR n + 1)%R <> 0%R.
+Lemma Zofnat_pos n: (0 < n)%nat -> (0 < Z.of_nat n)%Z.
+Proof. by case: n. Qed.
+
+Lemma mI_correct i n: m_ i n \contained_in mI_ i n.
 Proof.
-rewrite -INR_IPR.
-replace (INR (Pos.to_nat n) +1)%R with (INR (Pos.to_nat n).+1)%R.
-apply Rlt_neq_sym.
-replace 0%R with (INR 0) by trivial.
-apply lt_INR.
-have:= pos_INR (nat_of_pos n); lia.
-by case: (Pos.to_nat n) => //=; rewrite Rplus_0_l.
-Qed.
-
-Lemma mI_correct i n :
-	m_ i n \contained_in mI_ i n.
-Proof.
-replace (m_ i n) with (((IZR 2) * (IPR i) + 1) / ((IZR 2) * (IPR n +1 )))%R; last first.
-	by rewrite /m_; field; apply: IPR0.
-apply div_correct_R.
-		replace (2 * IPR i + 1)%R with (IZR (2* (Z.pos i) + 1)).
-			by apply I.fromZ_correct.
-		by rewrite plus_IZR mult_IZR.
-	replace (2 * (IPR n + 1))%R with (IZR (2* (Z.pos n + 1))).
-		by apply I.fromZ_correct.
-	by rewrite mult_IZR plus_IZR.
-rewrite /is_zero /Req_bool.
-rewrite Rcompare_Gt => //.
-apply Rmult_lt_0_compat; first lra.
-apply Rle_lt_0_plus_1.
-rewrite -INR_IPR.
-exact: pos_INR.
+case: n => [ | n]; first exact I00.
+apply /div_correct_R; try apply I.fromZ_correct.
+rewrite /is_zero /Req_bool Rcompare_Gt => //.
+by apply /IZR_lt /Zofnat_pos.
 Qed.
 
 Definition mu_ i n:= cos (m_ i n * PI).
+
+Lemma mu_cheby_nodes i n: (i < n)%nat -> mu_ i n = (cheby_nodes n)`_i.
+Proof.
+case: n => // n ineq.
+rewrite /mu_/m_.
+rewrite /cheby_nodes.
+rewrite (nth_map 0%nat); last by rewrite size_iota.
+f_equal; rewrite nth_iota => //.
+rewrite add0n /Rdiv.
+have -> : IZR (Z.of_nat (2 * i + 1)) = i.*2.+1%:R.
+	admit.
+have -> : IZR (Z.of_nat (2 * n.+1)) = (n.+1).*2%:R.
+	admit.
+lra.
+Admitted.
 
 Definition piI := I.pi prec.
 Definition muI_ i n:= I.cos prec (mul (mI_ i n) piI).
 
 Lemma cos_correct_R x I:
 	x \contained_in I -> (cos x) \contained_in (I.cos prec I).
-Proof.
-by move => xcI; have /=:= I.cos_correct prec I (Xreal x) xcI.
-Qed.
+Proof. by move => xcI; have /=:= I.cos_correct prec I (Xreal x) xcI. Qed.
 
 Lemma atan_correct_R x I:
 	x \contained_in I -> (atan x) \contained_in (I.atan prec I).
+Proof. by move => xcI; have /=:= I.atan_correct prec I (Xreal x) xcI. Qed.
+
+Lemma muI_correct i n: mu_ i n \contained_in muI_ i n.
 Proof.
-by move => xcI; have /=:= I.atan_correct prec I (Xreal x) xcI.
+by apply /cos_correct_R /mul_correct_R; [apply mI_correct | apply I.pi_correct].
 Qed.
 
-Lemma muI_correct i n:
-	mu_ i n \contained_in muI_ i n.
+Definition Icheby_nodes (n : nat) := [seq muI_ i n | i <- seq.iota 0%nat n].
+
+Lemma Icheby_nodes_correct n:
+	forall i, (cheby_nodes n)`_ i \contained_in nth I0 (Icheby_nodes n) i.
 Proof.
-apply cos_correct_R.
-apply mul_correct_R.
-apply mI_correct.
-exact: I.pi_correct.
+move => i.
+case E: (i < n)%nat; last first.
+	rewrite !nth_default; first exact: I00.
+		by rewrite size_cheby_nodes leqNgt E.
+	by rewrite /Icheby_nodes size_map size_iota leqNgt E.
+rewrite (nth_map 0%nat); last by rewrite size_iota.
+rewrite nth_iota => //; rewrite add0n.
+rewrite -mu_cheby_nodes => //.
+apply muI_correct.
 Qed.
 
 Lemma sin_correct_R x I:
 	x \contained_in I -> (sin x) \contained_in (I.sin prec I).
-Proof.
-by move => xcI; have /=:= I.sin_correct prec I (Xreal x) xcI.
-Qed.
+Proof. by move => xcI; have /=:= I.sin_correct prec I (Xreal x) xcI. Qed.
 
 Section CMSin.
 Context (I : ID).
@@ -282,55 +286,49 @@ Definition f_ i n := sin ((a + b) / 2  + (b - a)/2 * (mu_ i n))%R.
 
 Definition fI_ i n := I.sin prec (I.add prec (I.scale2 (I.add prec aI bI) (F.ZtoS (-1))) (I.mul prec (I.scale2 (I.sub prec bI aI) (F.ZtoS (-1))) (muI_ i n))).
 
-Lemma fI_correct i n:
-	f_ i n \contained_in fI_ i n.
+Lemma fI_correct i n: f_ i n \contained_in fI_ i n.
 Proof.
 apply sin_correct_R.
 apply add_correct_R.
-	replace ((a + b) / 2)%R with ((a + b) * powerRZ 2 (-1)).
+	suff -> : ((a + b) / 2)%R = ((a + b) * powerRZ 2 (-1)).
 	apply scale2_correct_R.
 		by apply add_correct_R; [apply: aI_correct | apply: bI_correct].
-	replace (Zneg 1) with (Z.opp 1) by trivial.
+	have ->: (Zneg 1) = (Z.opp 1) by trivial.
 	rewrite powerRZ_neg; try lra.
 	by rewrite powerRZ_1.
 apply mul_correct_R; last exact: muI_correct.
-replace ((b - a) / 2)%R with ((b - a) * powerRZ 2 (-1)).
+suff ->: ((b - a) / 2)%R = ((b - a) * powerRZ 2 (-1)).
 	apply scale2_correct_R.
 	by apply sub_correct_R; [apply: bI_correct | apply: aI_correct].
-replace (Zneg 1) with (Z.opp 1) by trivial.
+have ->: (Zneg 1) = (Z.opp 1) by trivial.
 rewrite powerRZ_neg; try lra.
 by rewrite powerRZ_1.
 Qed.
 
-Definition iota_pos n := map Pos.of_nat (iota 0 (nat_of_pos n)).
-
-Definition fL n := map (fun i => f_ i n) (iota_pos n).
+Definition fL n := map (fun i => f_ i n) (iota 0 n).
 
 Lemma size_fL n:
-	size (fL n) = nat_of_pos n.
-Proof.
-by rewrite /fL/iota_pos !size_map size_iota.
-Qed.
+	size (fL n) = n.
+Proof. by rewrite /fL !size_map size_iota. Qed.
 
-Definition fLI n := map (fun i => fI_ i n) (iota_pos n).
+Definition fLI n := map (fun i => fI_ i n) (iota 0 n).
 
 Lemma size_fLI n:
-	size (fLI n) = nat_of_pos n.
-Proof.
-by rewrite /fLI/iota_pos !size_map size_iota.
-Qed.
+	size (fLI n) = n.
+Proof. by rewrite /fLI !size_map size_iota. Qed.
 
 Lemma fLI_correct i n:
 	(fL n)`_i \contained_in nth I0 (fLI n) i.
 Proof.
-case E: (nat_of_pos n <= i)%nat.
+case E: (n <= i)%nat.
 	rewrite !nth_default.
 			exact I00.
 		by rewrite size_fL.
 	by rewrite size_fLI.
 rewrite /fL.
-by rewrite !(nth_map xH); first exact: fI_correct;
-	rewrite /iota_pos size_map size_iota; apply/leP; move/leP: E; lia.
+rewrite !(nth_map 0%nat); try by rewrite size_iota leqNgt ltnS E.
+rewrite nth_iota; last by rewrite leqNgt ltnS E.
+apply / fI_correct.
 Qed.
 
 Definition c_ k n := Cshaw (fL n) (mu_ k n).

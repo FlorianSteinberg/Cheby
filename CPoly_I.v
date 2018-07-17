@@ -187,12 +187,12 @@ apply sub_correct_R; first by apply CbIA_crct.
 by apply mul_correct_R; first by apply CbIA_crct.
 Qed.
 
-Definition m_ i n := match n with
+Definition m i n := match n with
 	| 0 => 0
 	| S n' => (IZR (Z.of_nat (2 * i + 1)) / IZR (Z.of_nat (2 * n)))%R
 end.
 
-Definition mI_ i n := match n with
+Definition mI i n := match n with
 	| 0 => I0
 	| S n' =>	div (I.fromZ (Z.of_nat (2* i + 1))) (I.fromZ (Z.of_nat (2 * n)))
 end.
@@ -200,7 +200,7 @@ end.
 Lemma Zofnat_pos n: (0 < n)%nat -> (0 < Z.of_nat n)%Z.
 Proof. by case: n. Qed.
 
-Lemma mI_correct i n: m_ i n \contained_in mI_ i n.
+Lemma mI_correct i n: m i n \contained_in mI i n.
 Proof.
 case: n => [ | n]; first exact I00.
 apply /div_correct_R; try apply I.fromZ_correct.
@@ -208,15 +208,15 @@ rewrite /is_zero /Req_bool Rcompare_Gt => //.
 by apply /IZR_lt /Zofnat_pos.
 Qed.
 
-Definition mu_ i n:= cos (m_ i n * PI).
+Definition mu i n:= cos (m i n * PI).
 
 Lemma IZR_Zof_nat n : IZR (Z.of_nat n) = n%:R.
 Proof. by rewrite -INR_IZR_INZ natr_INR. Qed.
 
-Lemma mu_cheby_nodes i n: (i < n)%nat -> mu_ i n = (cheby_nodes n)`_i.
+Lemma mu_cheby_nodes i n: (i < n)%nat -> mu i n = (cheby_nodes n)`_i.
 Proof.
 case: n => // n ineq.
-rewrite /mu_/m_.
+rewrite /mu/m.
 rewrite /cheby_nodes.
 rewrite (nth_map 0%nat); last by rewrite size_iota.
 f_equal; rewrite nth_iota => //.
@@ -229,7 +229,7 @@ lra.
 Qed.
 
 Definition piI := I.pi prec.
-Definition muI_ i n:= I.cos prec (mul (mI_ i n) piI).
+Definition muI i n:= I.cos prec (mul (mI i n) piI).
 
 Lemma cos_correct_R x I:
 	x \contained_in I -> (cos x) \contained_in (I.cos prec I).
@@ -239,12 +239,12 @@ Lemma atan_correct_R x I:
 	x \contained_in I -> (atan x) \contained_in (I.atan prec I).
 Proof. by move => xcI; have /=:= I.atan_correct prec I (Xreal x) xcI. Qed.
 
-Lemma muI_correct i n: mu_ i n \contained_in muI_ i n.
+Lemma muI_correct i n: mu i n \contained_in muI i n.
 Proof.
 by apply /cos_correct_R /mul_correct_R; [apply mI_correct | apply I.pi_correct].
 Qed.
 
-Definition Icheby_nodes (n : nat) := [seq muI_ i n | i <- seq.iota 0%nat n].
+Definition Icheby_nodes (n : nat) := [seq muI i n | i <- seq.iota 0%nat n].
 
 Lemma size_Icheby_nodes n: size (Icheby_nodes n) = n.
 Proof. by rewrite size_map size_iota. Qed.
@@ -291,16 +291,58 @@ by apply sub_correct_R; apply: FtoI_correct.
 Qed.
 
 Section CMSin.
-Context (a b : D).
+Locate Fnan.
+Context (a b : D) (annan: F.toX a <> Xnan) (bnnan: F.toX b <> Xnan).
 Notation I := (Interval.Interval_interval_float.Ibnd a b).
 
-Lemma sin_correct_R x I:
-	x \contained_in I -> (sin x) \contained_in (I.sin prec I).
-Proof. by move => xcI; have /=:= I.sin_correct prec I (Xreal x) xcI. Qed.
+Lemma ineq_cntd x:
+	x \contained_in I <-> (D2R a <= x <= D2R b)%R.
+Proof.
+rewrite /contains /I.convert /D2R.
+case: (F.toX a) annan => [ | ar]// _.
+by case: (F.toX b) bnnan => [ | br] //= _.
+Qed.
+
+Lemma sin_correct_R x J:
+	x \contained_in J -> (sin x) \contained_in (I.sin prec J).
+Proof. by move => xcI; have /=:= I.sin_correct prec J (Xreal x) xcI. Qed.
 
 Definition value_list n:= map sin (scheby_nodes (D2R a) (D2R b) n).
 
 Definition Ivalue_list n := map (I.sin prec) (Ischeby_nodes a b n).
+
+Fixpoint Tvalues (n : nat) (i : nat) (j: nat) {struct i} : R :=
+  if i is i1.+1 then
+    if i1 is i2.+1 then mu n j *+2 * Tvalues n i1 j - Tvalues n i2 j
+    else mu n j
+  else 1.
+
+Lemma TvaluesSS n i j:
+	(Tvalues n i.+2 j) = (mu n j *+2* Tvalues n i.+1 j - Tvalues n i j)%R.
+Proof. done. Qed.
+
+Lemma Tvalues_correct n i j: Tvalues n i j = (pT _ i).[mu n j].
+Proof.
+elim/induc2: i => [ | | i ih1 ih2]; first by rewrite pT0 /= hornerC.
+	by rewrite pT1 hornerX.
+rewrite pTSS TvaluesSS ih1 ih2.
+by rewrite hornerD hornerN hornerM mulr2n hornerD hornerX.
+Qed.
+
+Definition Tvalues_list n j := map (fun i => Tvalues n i j) (iota 0 n).
+
+Definition sin_coefs n j:= \sum_(i < n) (value_list n)`_i * (Tvalues_list n j)`_i.
+
+Lemma dsprod_coef_p2pT l n i:
+	(size l <= n)%nat -> dsprod_coef (Poly l) n i = (P2CP l)`_i.
+Proof.
+Admitted.
+
+Lemma dsprod_sin_coefs n j:
+	sin_coefs n j = dsprod_coef (interpolation sin (cheby_nodes n.+1)) n j.
+Proof.
+rewrite dsprod_coef_interpolation.
+Admitted.
 
 Lemma Ivalue_list_correct n i: (value_list n)`_i \contained_in nth I0 (Ivalue_list n) i.
 Proof.
@@ -349,9 +391,6 @@ end.
 Require Import Coquelicot.Coquelicot.
 Notation "f ^( n )" := (Derive_n f n) (at level 2, format "f ^( n )").
 
-Ltac toR := rewrite /GRing.add /GRing.opp /GRing.zero /GRing.mul /GRing.inv
-  /GRing.one //=.
-
 Lemma induc P:
 	P 0%nat -> P 1%nat -> P 2%nat -> P 3%nat -> (forall n, P n -> P (n.+4)) -> forall n, P n.
 Proof.
@@ -374,42 +413,45 @@ have ->: (-1 * -1) = 1 by lra.
 by rewrite Rmult_1_l.
 Qed.
 
-Lemma Gamma_correct x n:
-	x \contained_in I -> (gamma n x) \contained_in (Gamma n I).
+Lemma Gamma_correct x n J:
+	x \contained_in J -> (gamma n x) \contained_in (Gamma n J).
 Proof.
 intros; move: n.
 by apply induc; try apply neg_correct_R; try apply sin_correct_R; try apply cos_correct_R.
 Qed.
 
-Lemma lower_Gamma_correct x n:
-	F.toX (I.lower (Gamma n I)) <> Xnan ->
-	x \contained_in I -> 0 <= D2R (I.lower (Gamma n I)) -> 0 <= sin^(n + 2) x.
+Lemma lower_Gamma_correct x n J:
+	F.toX (I.lower (Gamma n J)) <> Xnan ->
+	x \contained_in J -> 0 <= D2R (I.lower (Gamma n J)) -> 0 <= sin^(n + 2) x.
 Proof.
 intros.
 rewrite Derive_n_sin.
 have /=:= Gamma_correct n H0.
-case: (Gamma n I) H1 H; rewrite /D2R/proj_val; first by rewrite F.nan_correct.
+case: (Gamma n J) H1 H; rewrite /D2R/proj_val; first by rewrite F.nan_correct.
 move => l u /=.
 case: (F.toX l) => //.
 move => r ineq _ [ineq' _].
 lra.
 Qed.
 
-Lemma upper_Gamma_correct x n:
-	F.toX (I.upper (Gamma n I)) <> Xnan ->
-	x \contained_in I -> D2R (I.upper (Gamma n I)) <= 0 -> sin^(n + 2) x <= 0.
+(* The additional assumption should not be necessary, as the enclusures of the sin-
+function should always be contained in [-1,1]. The Interval library does not contain such
+a result, so I don't see an easy way to verify that it is true. *)
+Lemma upper_Gamma_correct x n J:
+	F.toX (I.upper (Gamma n J)) <> Xnan ->
+	x \contained_in J -> D2R (I.upper (Gamma n J)) <= 0 -> sin^(n + 2) x <= 0.
 Proof.
 intros.
 rewrite Derive_n_sin.
 have /=:= Gamma_correct n H0.
-case: (Gamma n I) H1 H; rewrite /D2R/proj_val; first by rewrite F.nan_correct.
+case: (Gamma n J) H1 H; rewrite /D2R/proj_val; first by rewrite F.nan_correct.
 move => l u /=.
 case: (F.toX u) => //.
 move => r ineq _ [_ ineq'].
 lra.
 Qed.
 
-Let diamI :=	match I with
+Let diamI:=	match I with
 	| Interval.Interval_interval_float.Inan => Interval.Interval_interval_float.Inan
 	| Interval.Interval_interval_float.Ibnd l u =>
 		(I.sub prec (Interval.Interval_interval_float.Ibnd u u) (Interval.Interval_interval_float.Ibnd l l))
@@ -421,7 +463,7 @@ Let radIdiv2:= I.scale diamI (F.ZtoS (-2)).
 
 (* Definition V n I := I.power_pos prec J (Pos.of_nat n). *)
 
-Definition Delta (n: nat) I :=
+Definition Delta (n: nat) :=
 	let J := I.lower_extent (I.abs (Gamma (n.+3) I)) in I.meet J (I.neg J).
 
 End CMSin.

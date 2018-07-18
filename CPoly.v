@@ -537,6 +537,22 @@ Variable R: fieldType.
 
 Definition Tab (a b: R) := 	(1 + 1)/(b - a) *: 'X + (- (a + b) / (b - a))%:P.
 
+Lemma Taba a b: b != a -> (Tab a b).[a] = -1.
+Proof.
+move =>neq; rewrite /Tab !hornerE.
+rewrite opprD !mulrDl mul1r mulrC addrA -[a / (b - a) + _ + _]addrA.
+rewrite mulNr subrr rm0 -mulrDl -[a-b]opprB mulNr divrr //.
+by rewrite unitfE; apply: contra neq => eq; rewrite -subr_eq0.
+Qed.
+
+Lemma Tabb a b: b != a -> (Tab a b).[b] = 1.
+Proof.
+move => neq; rewrite /Tab !hornerE.
+rewrite opprD !mulrDl mul1r mulrC addrC addrA -[- a / (b - a) + _ + _]addrA.
+rewrite [- b / (b- a) + _]addrC [- b / _]mulNr subrr rm0 addrC -mulrDl divrr //.
+by rewrite unitfE; apply: contra neq => eq; rewrite -subr_eq0.
+Qed.
+
 Definition pTab a b n := 'T_n \Po (Tab a b).
 
 Notation "''T^(' a ',' b ')_' n" := (pTab a b n)
@@ -605,28 +621,11 @@ Qed.
 
 Lemma horner_pTab_a a b n :
 	b != a -> 	('T^(a,b)_n).[a] = ('T_n).[-1].
-Proof.
-move =>/eqP neq.
-rewrite horner_pTab mulr2n -[a + a - a]addrA.
-congr (_.[_]).
-have -> : a - a = 0 by apply /eqP; rewrite (subr_eq0 a a).
-rewrite rm0 -opprB mulNr divrr => //.
-rewrite unitfE.
-apply /eqP => /eqP eqn; apply /neq /eqP.
-by rewrite -subr_eq0.
-Qed.
+Proof. by move => ineq; rewrite /pTab horner_comp Taba. Qed.
 
 Lemma horner_pTab_b a b n :
 	b != a -> ('T^(a,b)_n).[b] = ('T_n).[1].
-Proof.
-move =>/eqP neq.
-rewrite horner_pTab mulr2n -!addrA [- a - b]addrC !addrA -[b + b - b]addrA.
-have -> : b - b = 0 by apply /eqP; rewrite (subr_eq0 b b).
-rewrite rm0 divrr => //.
-rewrite unitfE.
-apply /eqP => /eqP eqn; apply /neq /eqP.
-by rewrite -subr_eq0.
-Qed.
+Proof. by move => ineq; rewrite /pTab horner_comp Tabb. Qed.
 End pTab.
 
 Notation "''T^(' a ',' b ')_' n" := (pTab a b n)

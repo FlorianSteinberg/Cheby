@@ -1,5 +1,5 @@
 From mathcomp Require Import all_ssreflect all_algebra.
-Require Import Rstruct Reals Psatz Poly_complements CPoly CPoly_exec.
+Require Import Rstruct Reals Psatz Poly_complements CPoly CPoly_exec CPoly_interpolation under.
 Set Implicit Arguments.
 Unset Strict Implicit.
 Import Prenex Implicits.
@@ -97,7 +97,7 @@ Lemma scl2_correct_R x I:
 	x \contained_in I -> (x *+ 2) \contained_in (scl2 I).
 Proof.
 intros.
-replace (Xreal (x *+ 2)) with (Xmul (Xreal x) (Xreal (bpow radix2 1))).
+suff -> :(Xreal (x *+ 2)) = (Xmul (Xreal x) (Xreal (bpow radix2 1))).
 	by apply I.scale2_correct.
 congr Xreal.
 by have ->: (x*2 = x + x)%R by lra.
@@ -187,162 +187,194 @@ apply sub_correct_R; first by apply CbIA_crct.
 by apply mul_correct_R; first by apply CbIA_crct.
 Qed.
 
-(* The schaebischaef nodes: *)
-Definition m_ (i n: positive) := ((IPR i + 1/2) / (IPR n +1))%R.
+Definition m i n := match n with
+	| 0 => 0
+	| S n' => (IZR (Z.of_nat (2 * i + 1)) / IZR (Z.of_nat (2 * n)))%R
+end.
 
-Definition mI_ (i n: positive) :=
-	div (I.fromZ (2* (Z.pos i) + 1)) (I.fromZ (2 * ((Z.pos n) +1 ))).
+Definition mI i n := match n with
+	| 0 => I0
+	| S n' =>	div (I.fromZ (Z.of_nat (2* i + 1))) (I.fromZ (Z.of_nat (2 * n)))
+end.
 
-Lemma IPR0 n:
-	(IPR n + 1)%R <> 0%R.
+Lemma Zofnat_pos n: (0 < n)%nat -> (0 < Z.of_nat n)%Z.
+Proof. by case: n. Qed.
+
+Lemma mI_correct i n: m i n \contained_in mI i n.
 Proof.
-rewrite -INR_IPR.
-replace (INR (Pos.to_nat n) +1)%R with (INR (Pos.to_nat n).+1)%R.
-apply Rlt_neq_sym.
-replace 0%R with (INR 0) by trivial.
-apply lt_INR.
-have:= pos_INR (nat_of_pos n); lia.
-by case: (Pos.to_nat n) => //=; rewrite Rplus_0_l.
+case: n => [ | n]; first exact I00.
+apply /div_correct_R; try apply I.fromZ_correct.
+rewrite /is_zero /Req_bool Rcompare_Gt => //.
+by apply /IZR_lt /Zofnat_pos.
 Qed.
 
-Lemma mI_correct i n :
-	m_ i n \contained_in mI_ i n.
-Proof.
-replace (m_ i n) with (((IZR 2) * (IPR i) + 1) / ((IZR 2) * (IPR n +1 )))%R; last first.
-	by rewrite /m_; field; apply: IPR0.
-apply div_correct_R.
-		replace (2 * IPR i + 1)%R with (IZR (2* (Z.pos i) + 1)).
-			by apply I.fromZ_correct.
-		by rewrite plus_IZR mult_IZR.
-	replace (2 * (IPR n + 1))%R with (IZR (2* (Z.pos n + 1))).
-		by apply I.fromZ_correct.
-	by rewrite mult_IZR plus_IZR.
-rewrite /is_zero /Req_bool.
-rewrite Rcompare_Gt => //.
-apply Rmult_lt_0_compat; first lra.
-apply Rle_lt_0_plus_1.
-rewrite -INR_IPR.
-exact: pos_INR.
-Qed.
+Definition mu n i:= cos (m i n * PI).
 
-Definition mu_ i n:= cos (m_ i n * PI).
+Lemma IZR_Zof_nat n : IZR (Z.of_nat n) = n%:R.
+Proof. by rewrite -INR_IZR_INZ natr_INR. Qed.
+
+Lemma mu_cheby_nodes n i: (i < n)%nat -> mu n i = (cheby_nodes n)`_i.
+Proof.
+case: n => // n ineq.
+rewrite /mu/m.
+rewrite /cheby_nodes.
+rewrite (nth_map 0%nat); last by rewrite size_iota.
+f_equal; rewrite nth_iota => //.
+rewrite add0n /Rdiv.
+have -> : IZR (Z.of_nat (2 * i + 1)) = i.*2.+1%:R.
+	by rewrite IZR_Zof_nat addn1 mul2n.
+have -> : IZR (Z.of_nat (2 * n.+1)) = (n.+1).*2%:R.
+	by rewrite IZR_Zof_nat mul2n.
+lra.
+Qed.
 
 Definition piI := I.pi prec.
-Definition muI_ i n:= I.cos prec (mul (mI_ i n) piI).
+Definition muI i n:= I.cos prec (mul (mI i n) piI).
 
 Lemma cos_correct_R x I:
 	x \contained_in I -> (cos x) \contained_in (I.cos prec I).
-Proof.
-by move => xcI; have /=:= I.cos_correct prec I (Xreal x) xcI.
-Qed.
+Proof. by move => xcI; have /=:= I.cos_correct prec I (Xreal x) xcI. Qed.
 
 Lemma atan_correct_R x I:
 	x \contained_in I -> (atan x) \contained_in (I.atan prec I).
+Proof. by move => xcI; have /=:= I.atan_correct prec I (Xreal x) xcI. Qed.
+
+Lemma muI_correct n i: mu n i \contained_in muI i n.
 Proof.
-by move => xcI; have /=:= I.atan_correct prec I (Xreal x) xcI.
+by apply /cos_correct_R /mul_correct_R; [apply mI_correct | apply I.pi_correct].
 Qed.
 
-Lemma muI_correct i n:
-	mu_ i n \contained_in muI_ i n.
+Definition Icheby_nodes (n : nat) := [seq muI i n | i <- seq.iota 0%nat n].
+
+Lemma size_Icheby_nodes n: size (Icheby_nodes n) = n.
+Proof. by rewrite size_map size_iota. Qed.
+
+Lemma Icheby_nodes_correct n i:
+	(cheby_nodes n)`_ i \contained_in nth I0 (Icheby_nodes n) i.
 Proof.
-apply cos_correct_R.
-apply mul_correct_R.
-apply mI_correct.
-exact: I.pi_correct.
+case E: (i < n)%nat; last first.
+	rewrite !nth_default; first exact: I00.
+		by rewrite size_cheby_nodes leqNgt E.
+	by rewrite size_Icheby_nodes leqNgt E.
+rewrite (nth_map 0%nat); last by rewrite size_iota.
+rewrite nth_iota => //; rewrite add0n.
+rewrite -mu_cheby_nodes => //.
+apply muI_correct.
 Qed.
 
-Lemma sin_correct_R x I:
-	x \contained_in I -> (sin x) \contained_in (I.sin prec I).
+Definition FtoI (a: D) := (Interval.Interval_interval_float.Ibnd a a).
+
+Lemma FtoI_correct a: (D2R a) \contained_in (FtoI a).
+Proof. by rewrite /= /D2R; split; case E: (F.toX a) => //=; lra. Qed.
+
+Definition Ischeby_nodes (a b : D) (n : nat) :=
+	map (fun I => I.scale2 (add (add (mul (sub (FtoI b) (FtoI a)) I) (FtoI a)) (FtoI b)) (F.ZtoS (-1))) (Icheby_nodes n).
+
+Lemma size_Ischeby_nodes a b n : size (Ischeby_nodes a b n) = n.
+Proof. by rewrite size_map size_Icheby_nodes. Qed.
+
+Lemma Ischeby_nodes_correct a b n i:
+	(scheby_nodes (D2R a) (D2R b) n)`_ i \contained_in nth I0 (Ischeby_nodes a b n) i.
 Proof.
-by move => xcI; have /=:= I.sin_correct prec I (Xreal x) xcI.
+case E: (i < n)%nat; last first.
+	rewrite !nth_default; first exact: I00.
+		by rewrite size_scheby_nodes leqNgt E.
+	by rewrite /Ischeby_nodes size_map /Icheby_nodes size_map size_iota leqNgt E.
+rewrite (nth_map I0); last by rewrite size_map size_iota.
+rewrite (nth_map 0%R) /Rdiv; last by rewrite size_cheby_nodes.
+have ->: (/ 2 = powerRZ 2 (-1)) %R by rewrite /powerRZ Pos2Nat.inj_1 pow_1.
+apply scale2_correct_R.
+apply add_correct_R; last exact: FtoI_correct.
+apply add_correct_R; last exact: FtoI_correct.
+apply mul_correct_R; last exact: Icheby_nodes_correct.
+by apply sub_correct_R; apply: FtoI_correct.
 Qed.
 
 Section CMSin.
-Context (I : ID).
-Notation aD := (I.lower I).
-Notation bD := (I.upper I).
-Notation aI := (Interval.Interval_interval_float.Ibnd aD aD).
-Notation bI := (Interval.Interval_interval_float.Ibnd bD bD).
-Notation a := (D2R aD).
-Notation b := (D2R bD).
+Locate Fnan.
+Context (a b : D) (annan: F.toX a <> Xnan) (bnnan: F.toX b <> Xnan).
+Notation I := (Interval.Interval_interval_float.Ibnd a b).
 
-Lemma aI_correct:
-	a \contained_in aI.
+Lemma ineq_cntd x:
+	x \contained_in I <-> (D2R a <= x <= D2R b)%R.
 Proof.
-by rewrite /= /D2R; split; case E: (F.toX aD) => //=; lra.
+rewrite /contains /I.convert /D2R.
+case: (F.toX a) annan => [ | ar]// _.
+by case: (F.toX b) bnnan => [ | br] //= _.
 Qed.
 
-Lemma bI_correct:
-	b \contained_in bI.
+Lemma sin_correct_R x J:
+	x \contained_in J -> (sin x) \contained_in (I.sin prec J).
+Proof. by move => xcI; have /=:= I.sin_correct prec J (Xreal x) xcI. Qed.
+
+Definition value_list n:= map sin (scheby_nodes (D2R a) (D2R b) n).
+
+Definition Ivalue_list n := map (I.sin prec) (Ischeby_nodes a b n).
+
+Fixpoint Tvalues (n : nat) (i : nat) (j: nat) {struct i} : R :=
+  if i is i1.+1 then
+    if i1 is i2.+1 then mu n j *+2 * Tvalues n i1 j - Tvalues n i2 j
+    else mu n j
+  else 1.
+
+Lemma TvaluesSS n i j:
+	(Tvalues n i.+2 j) = (mu n j *+2* Tvalues n i.+1 j - Tvalues n i j)%R.
+Proof. done. Qed.
+
+Lemma Tvalues_correct n i j: Tvalues n i j = (pT _ i).[mu n j].
 Proof.
-by rewrite /= /D2R; split; case E: (F.toX bD) => //=; lra.
+elim/induc2: i => [ | | i ih1 ih2]; first by rewrite pT0 /= hornerC.
+	by rewrite pT1 hornerX.
+rewrite pTSS TvaluesSS ih1 ih2.
+by rewrite hornerD hornerN hornerM mulr2n hornerD hornerX.
 Qed.
 
-Definition f_ i n := sin ((a + b) / 2  + (b - a)/2 * (mu_ i n))%R.
+Definition Tvalues_list n j := map (Tvalues n j) (iota 0 n).
 
-Definition fI_ i n := I.sin prec (I.add prec (I.scale2 (I.add prec aI bI) (F.ZtoS (-1))) (I.mul prec (I.scale2 (I.sub prec bI aI) (F.ZtoS (-1))) (muI_ i n))).
+Definition sin_coefs n j := (if j == 0%nat then 1 else 2%R) / INR (n.+1) * \sum_(i < n.+1) (value_list n.+1)`_i * (Tvalues_list n.+1 j)`_i.
 
-Lemma fI_correct i n:
-	f_ i n \contained_in fI_ i n.
+Lemma dsprod_coef_p2pT l n:
+	(size l <= n)%nat -> CPoly (map (dsprod_coef (Poly l) n) (iota 0 n.+1)) = CPoly (P2CP l).
 Proof.
-apply sin_correct_R.
-apply add_correct_R.
-	replace ((a + b) / 2)%R with ((a + b) * powerRZ 2 (-1)).
-	apply scale2_correct_R.
-		by apply add_correct_R; [apply: aI_correct | apply: bI_correct].
-	replace (Zneg 1) with (Z.opp 1) by trivial.
-	rewrite powerRZ_neg; try lra.
-	by rewrite powerRZ_1.
-apply mul_correct_R; last exact: muI_correct.
-replace ((b - a) / 2)%R with ((b - a) * powerRZ 2 (-1)).
-	apply scale2_correct_R.
-	by apply sub_correct_R; [apply: bI_correct | apply: aI_correct].
-replace (Zneg 1) with (Z.opp 1) by trivial.
-rewrite powerRZ_neg; try lra.
-by rewrite powerRZ_1.
+move => ineq.
+rewrite P2CP_spec; last by  rewrite unitfE; apply /eqP; rewrite natr_INR; toR; lra.
+rewrite /CPoly size_map size_iota.
+under eq_bigr ? rewrite (nth_map 0%nat); last by rewrite size_iota.
+under eq_bigr ? rewrite nth_iota.
+rewrite -dsprod_cheby_eq //.
+by apply /leq_trans; first exact/ size_Poly.
 Qed.
 
-Definition iota_pos n := map Pos.of_nat (iota 0 (nat_of_pos n)).
-
-Definition fL n := map (fun i => f_ i n) (iota_pos n).
-
-Lemma size_fL n:
-	size (fL n) = nat_of_pos n.
+Lemma dsprod_sin_coefs n j:
+	D2R a != D2R b ->
+	sin_coefs n j = sdsprod_coef (D2R a) (D2R b) (interpolation sin (scheby_nodes (D2R a) (D2R b) n.+1)) n j.
 Proof.
-by rewrite /fL/iota_pos !size_map size_iota.
+intros.
+rewrite sdsprod_coef_interpolation_pT //.
+rewrite /sin_coefs /value_list /Tvalues_list.
+congr (_ * _) => //.
+set x := INR _.
+toR.
+rewrite /Rinvx.
+case: (x =P 0) => //.
+by move /(INR_eq _ 0).
+under [LHS] eq_bigr ? rewrite (nth_map 0%nat); last by rewrite size_iota.
+under [LHS] eq_bigr ? rewrite Tvalues_correct nth_iota.
+apply eq_bigr => i _.
+rewrite (nth_map 0%RR); last by rewrite size_scheby_nodes.
+congr (_ * _); last by rewrite mu_cheby_nodes // add0n.
+by rewrite /scheby_nodes (nth_map 0%RR) // size_cheby_nodes.
 Qed.
 
-Definition fLI n := map (fun i => fI_ i n) (iota_pos n).
-
-Lemma size_fLI n:
-	size (fLI n) = nat_of_pos n.
+Lemma Ivalue_list_correct n i: (value_list n)`_i \contained_in nth I0 (Ivalue_list n) i.
 Proof.
-by rewrite /fLI/iota_pos !size_map size_iota.
-Qed.
-
-Lemma fLI_correct i n:
-	(fL n)`_i \contained_in nth I0 (fLI n) i.
-Proof.
-case E: (nat_of_pos n <= i)%nat.
-	rewrite !nth_default.
-			exact I00.
-		by rewrite size_fL.
-	by rewrite size_fLI.
-rewrite /fL.
-by rewrite !(nth_map xH); first exact: fI_correct;
-	rewrite /iota_pos size_map size_iota; apply/leP; move/leP: E; lia.
-Qed.
-
-Definition c_ k n := Cshaw (fL n) (mu_ k n).
-Definition cI_ k n := CshawIA (fLI n) (muI_ k n).
-
-Lemma cI_correct k n:
-	c_ k n \contained_in cI_ k n.
-Proof.
-rewrite /c_ /cI_.
-apply CshawIA_correct; first by move => i; apply fLI_correct.
-	exact: muI_correct.
-by rewrite size_fL size_fLI.
+case E: (i < n)%nat; last first.
+	rewrite !nth_default; first exact: I00.
+		by rewrite size_map size_scheby_nodes leqNgt E.
+	by rewrite size_map size_Ischeby_nodes leqNgt E.
+rewrite (nth_map I0); last by rewrite size_Ischeby_nodes.
+rewrite (nth_map 0%R); last by rewrite size_scheby_nodes.
+exact/sin_correct_R /Ischeby_nodes_correct.
 Qed.
 
 Fixpoint fact p := match p with
@@ -369,9 +401,6 @@ end.
 Require Import Coquelicot.Coquelicot.
 Notation "f ^( n )" := (Derive_n f n) (at level 2, format "f ^( n )").
 
-Ltac toR := rewrite /GRing.add /GRing.opp /GRing.zero /GRing.mul /GRing.inv
-  /GRing.one //=.
-
 Lemma induc P:
 	P 0%nat -> P 1%nat -> P 2%nat -> P 3%nat -> (forall n, P n -> P (n.+4)) -> forall n, P n.
 Proof.
@@ -380,56 +409,59 @@ elim: n {-2}n (leqnn n) => [[]// | n Hn[|[|[|[|m]]]]// Hm].
 by apply /X3 /Hn /leP; move/leP: Hm; lia.
 Qed.
 
-Lemma Derive_n_sin n x: 	sin^(n +2) x = gamma n x.
+Lemma Derive_n_sin n x: 	sin^(n + 2) x = gamma n x.
 Proof.
 apply is_derive_n_unique.
 suff ->: gamma n x = (if odd (n + 2) then (-1) ^ (n +2)./2 * cos x else (-1) ^ (n + 2)./2 * sin x) by apply coquelicot_compl.is_derive_n_sin.
 move: n; apply induc => /=; try toR; try lra.
 move => n; case: (odd (n+2)) => /= ->; toR.
 	rewrite -!Rmult_assoc.
-	replace (-1 * -1) with 1 by lra.
+	have ->: (-1 * -1) = 1 by lra.
 	by rewrite Rmult_1_l.
 rewrite -!Rmult_assoc.
-replace (-1 * -1) with 1 by lra.
+have ->: (-1 * -1) = 1 by lra.
 by rewrite Rmult_1_l.
 Qed.
 
-Lemma Gamma_correct x n:
-	x \contained_in I -> (gamma n x) \contained_in (Gamma n I).
+Lemma Gamma_correct x n J:
+	x \contained_in J -> (gamma n x) \contained_in (Gamma n J).
 Proof.
 intros; move: n.
 by apply induc; try apply neg_correct_R; try apply sin_correct_R; try apply cos_correct_R.
 Qed.
 
-Lemma lower_Gamma_correct x n:
-	F.toX (I.lower (Gamma n I)) <> Xnan ->
-	x \contained_in I -> 0 <= D2R (I.lower (Gamma n I)) -> 0 <= sin^(n + 2) x.
+Lemma lower_Gamma_correct x n J:
+	F.toX (I.lower (Gamma n J)) <> Xnan ->
+	x \contained_in J -> 0 <= D2R (I.lower (Gamma n J)) -> 0 <= sin^(n + 2) x.
 Proof.
 intros.
 rewrite Derive_n_sin.
 have /=:= Gamma_correct n H0.
-case: (Gamma n I) H1 H; rewrite /D2R/proj_val; first by rewrite F.nan_correct.
+case: (Gamma n J) H1 H; rewrite /D2R/proj_val; first by rewrite F.nan_correct.
 move => l u /=.
 case: (F.toX l) => //.
 move => r ineq _ [ineq' _].
 lra.
 Qed.
 
-Lemma upper_Gamma_correct x n:
-	F.toX (I.upper (Gamma n I)) <> Xnan ->
-	x \contained_in I -> D2R (I.upper (Gamma n I)) <= 0 -> sin^(n + 2) x <= 0.
+(* The additional assumption should not be necessary, as the enclusures of the sin-
+function should always be contained in [-1,1]. The Interval library does not contain such
+a result, so I don't see an easy way to verify that it is true. *)
+Lemma upper_Gamma_correct x n J:
+	F.toX (I.upper (Gamma n J)) <> Xnan ->
+	x \contained_in J -> D2R (I.upper (Gamma n J)) <= 0 -> sin^(n + 2) x <= 0.
 Proof.
 intros.
 rewrite Derive_n_sin.
 have /=:= Gamma_correct n H0.
-case: (Gamma n I) H1 H; rewrite /D2R/proj_val; first by rewrite F.nan_correct.
+case: (Gamma n J) H1 H; rewrite /D2R/proj_val; first by rewrite F.nan_correct.
 move => l u /=.
 case: (F.toX u) => //.
 move => r ineq _ [_ ineq'].
 lra.
 Qed.
 
-Let diamI :=	match I with
+Let diamI:=	match I with
 	| Interval.Interval_interval_float.Inan => Interval.Interval_interval_float.Inan
 	| Interval.Interval_interval_float.Ibnd l u =>
 		(I.sub prec (Interval.Interval_interval_float.Ibnd u u) (Interval.Interval_interval_float.Ibnd l l))
@@ -441,7 +473,7 @@ Let radIdiv2:= I.scale diamI (F.ZtoS (-2)).
 
 (* Definition V n I := I.power_pos prec J (Pos.of_nat n). *)
 
-Definition Delta (n: nat) I :=
+Definition Delta (n: nat) :=
 	let J := I.lower_extent (I.abs (Gamma (n.+3) I)) in I.meet J (I.neg J).
 
 End CMSin.

@@ -812,13 +812,11 @@ Hypothesis cont_f :
 Lemma Tab_bound x : a <= x <= b -> -1 <= (Tab a b).[x] <= 1.
 Proof.
 move=> [H1 H2].
-have D :  b + - a != 0 by apply/eqP; lra.
-have <-: (Tab a b).[a] = -1.
-  rewrite /Tab !hornerE /=; toR; rewrite /Rinvx D.
-  by field; apply/eqP.
-have <-: (Tab a b).[b] = 1.
-  rewrite /Tab !hornerE /=; toR; rewrite /Rinvx D.
-  by field; apply/eqP.
+have D' :  b != a by apply/eqP; lra.
+have D :  b + -a != 0 by apply/eqP; lra.
+have ->: -1 = (-1)%RR by toR.
+have ->: 1 = 1%RR by toR.
+rewrite -(@Taba _ a b) // -(@Tabb _ a b) //.
 have F : 0 <= ((1 + 1) / (b - a))%R.
   by apply: Rdiv_le_0_compat; lra.
 rewrite /Tab !hornerE; split; apply: Rplus_le_compat_r.
@@ -992,7 +990,6 @@ elim: (r) => [|k HK].
 rewrite S_INR Rmult_plus_distr_r Rmult_1_l neg_sin.
 by lra.
 Qed.
-
 
 Definition dsprod_cheby n (f g : {poly R}) : R := 
    \sum_(i <- cheby_nodes n) f.[i] * g.[i].

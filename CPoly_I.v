@@ -1,5 +1,5 @@
 From mathcomp Require Import all_ssreflect all_algebra.
-Require Import Rstruct Reals Psatz Poly_complements CPoly CPoly_exec CPoly_interpolation.
+Require Import Rstruct Reals Psatz Poly_complements CPoly CPoly_exec CPoly_interpolation under.
 Set Implicit Arguments.
 Unset Strict Implicit.
 Import Prenex Implicits.
@@ -208,12 +208,12 @@ rewrite /is_zero /Req_bool Rcompare_Gt => //.
 by apply /IZR_lt /Zofnat_pos.
 Qed.
 
-Definition mu i n:= cos (m i n * PI).
+Definition mu n i:= cos (m i n * PI).
 
 Lemma IZR_Zof_nat n : IZR (Z.of_nat n) = n%:R.
 Proof. by rewrite -INR_IZR_INZ natr_INR. Qed.
 
-Lemma mu_cheby_nodes i n: (i < n)%nat -> mu i n = (cheby_nodes n)`_i.
+Lemma mu_cheby_nodes n i: (i < n)%nat -> mu n i = (cheby_nodes n)`_i.
 Proof.
 case: n => // n ineq.
 rewrite /mu/m.
@@ -239,7 +239,7 @@ Lemma atan_correct_R x I:
 	x \contained_in I -> (atan x) \contained_in (I.atan prec I).
 Proof. by move => xcI; have /=:= I.atan_correct prec I (Xreal x) xcI. Qed.
 
-Lemma muI_correct i n: mu i n \contained_in muI i n.
+Lemma muI_correct n i: mu n i \contained_in muI i n.
 Proof.
 by apply /cos_correct_R /mul_correct_R; [apply mI_correct | apply I.pi_correct].
 Qed.
@@ -329,20 +329,42 @@ rewrite pTSS TvaluesSS ih1 ih2.
 by rewrite hornerD hornerN hornerM mulr2n hornerD hornerX.
 Qed.
 
-Definition Tvalues_list n j := map (fun i => Tvalues n i j) (iota 0 n).
+Definition Tvalues_list n j := map (Tvalues n j) (iota 0 n).
 
-Definition sin_coefs n j:= \sum_(i < n) (value_list n)`_i * (Tvalues_list n j)`_i.
+Definition sin_coefs n j := (if j == 0%nat then 1 else 2%R) / INR (n.+1) * \sum_(i < n.+1) (value_list n.+1)`_i * (Tvalues_list n.+1 j)`_i.
 
-Lemma dsprod_coef_p2pT l n i:
-	(size l <= n)%nat -> dsprod_coef (Poly l) n i = (P2CP l)`_i.
+Lemma dsprod_coef_p2pT l n:
+	(size l <= n)%nat -> CPoly (map (dsprod_coef (Poly l) n) (iota 0 n.+1)) = CPoly (P2CP l).
 Proof.
-Admitted.
+move => ineq.
+rewrite P2CP_spec; last by  rewrite unitfE; apply /eqP; rewrite natr_INR; toR; lra.
+rewrite /CPoly size_map size_iota.
+under eq_bigr ? rewrite (nth_map 0%nat); last by rewrite size_iota.
+under eq_bigr ? rewrite nth_iota.
+rewrite -dsprod_cheby_eq //.
+by apply /leq_trans; first exact/ size_Poly.
+Qed.
 
 Lemma dsprod_sin_coefs n j:
-	sin_coefs n j = dsprod_coef (interpolation sin (cheby_nodes n.+1)) n j.
+	D2R a != D2R b ->
+	sin_coefs n j = sdsprod_coef (D2R a) (D2R b) (interpolation sin (scheby_nodes (D2R a) (D2R b) n.+1)) n j.
 Proof.
-rewrite dsprod_coef_interpolation.
-Admitted.
+intros.
+rewrite sdsprod_coef_interpolation_pT //.
+rewrite /sin_coefs /value_list /Tvalues_list.
+congr (_ * _) => //.
+set x := INR _.
+toR.
+rewrite /Rinvx.
+case: (x =P 0) => //.
+by move /(INR_eq _ 0).
+under [LHS] eq_bigr ? rewrite (nth_map 0%nat); last by rewrite size_iota.
+under [LHS] eq_bigr ? rewrite Tvalues_correct nth_iota.
+apply eq_bigr => i _.
+rewrite (nth_map 0%RR); last by rewrite size_scheby_nodes.
+congr (_ * _); last by rewrite mu_cheby_nodes // add0n.
+by rewrite /scheby_nodes (nth_map 0%RR) // size_cheby_nodes.
+Qed.
 
 Lemma Ivalue_list_correct n i: (value_list n)`_i \contained_in nth I0 (Ivalue_list n) i.
 Proof.
@@ -353,18 +375,6 @@ case E: (i < n)%nat; last first.
 rewrite (nth_map I0); last by rewrite size_Ischeby_nodes.
 rewrite (nth_map 0%R); last by rewrite size_scheby_nodes.
 exact/sin_correct_R /Ischeby_nodes_correct.
-Qed.
-
-Definition c_ k n := Cshaw (value_list n) (mu_ k n).
-Definition cI_ k n := CshawIA (Ivalue_list n) (muI_ k n).
-
-Lemma cI_correct k n:
-	c_ k n \contained_in cI_ k n.
-Proof.
-rewrite /c_ /cI_.
-apply CshawIA_correct; first by move => i; apply Ivalue_list_correct.
-	exact: muI_correct.
-by rewrite size_map size_scheby_nodes size_map size_Ischeby_nodes.
 Qed.
 
 Fixpoint fact p := match p with

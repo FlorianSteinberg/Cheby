@@ -23,6 +23,7 @@ Require Import Epsilon FunctionalExtensionality Ranalysis1 Rsqrt_def.
 From mathcomp Require Import ssreflect ssrfun ssrbool eqtype ssrnat seq choice bigop.
 From mathcomp Require Import ssrnum ssralg fintype poly mxpoly.
 Require Import Rtrigo1 Reals.
+Delimit Scope ring_scope with RR.
 
 Set Implicit Arguments.
 Unset Strict Implicit.

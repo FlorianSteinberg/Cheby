@@ -570,11 +570,8 @@ have HH1 : Derive_n f n z = ierror x / (prodl l).[x] * n`!%:R.
   lra.
 rewrite HH1; toR.
 field; split; first by apply/eqP.
-apply/eqP.
-rewrite -[_ != _]/(n`!%:R != 0%:R :> R).
-rewrite Num.Theory.eqr_nat.
-apply: lt0n_neq0.
-apply: fact_gt0.
+move=> /(INR_eq _ 0) H.
+by have := fact_gt0 n; rewrite H.
 Qed.
 
 End bound.
@@ -587,13 +584,6 @@ Proof. by rewrite size_map size_iota. Qed.
 Lemma cheby_nodes_bound n x :
   x \in cheby_nodes n -> -1 <= x <= 1.
 Proof. by move=> /mapP[i _ ->]; apply: COS_bound. Qed.
-
-Lemma natr_INR n : n%:R = INR n.
-Proof.
-elim: n => // n IH.
-rewrite  S_INR [_.+1%:R](natrD _ 1) IH -[1%:R]/1.
-toR; lra.
-Qed.
 
 Lemma root_cheby_nodes n : all (root 'T_n) (cheby_nodes n).
 Proof.

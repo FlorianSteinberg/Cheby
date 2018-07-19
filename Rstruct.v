@@ -423,7 +423,15 @@ Lemma cos_add x y :
    cos (GRing.add x y) = (cos x * cos y - sin x * sin y).
 Proof. by rewrite cos_plus. Qed. 
 
+Lemma natr_INR n : n%:R = INR n.
+Proof.
+elim: n => // n IH.
+rewrite  S_INR [_.+1%:R](natrD _ 1) IH -[1%:R]/1.
+by rewrite addrC.
+Qed.
+
 End ssreal_struct.
 
+
 Ltac toR := rewrite /GRing.add /GRing.opp /GRing.zero /GRing.mul /GRing.inv
-  /GRing.one //=.
+  /GRing.one ?natr_INR //=.

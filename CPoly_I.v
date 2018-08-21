@@ -500,13 +500,16 @@ end.
 
 Definition CPolyab l := \sum_(i < (size l)) l`_i *: 'T^(a,b)_i.
 
+Axiom foo : forall A, A.
+
 Lemma scheby_coef_list_spec n: b != a ->
 	CPolyab (scheby_coef_list n) = interpolation f (scheby_nodes a b n).
 Proof.
 intros.
 case: n => [ | n]; first by rewrite /CPolyab /= big_ord0.
-rewrite [RHS](@sdsprod_cheby_eq a b n); [ | admit | ]; last first.
-	by apply /leq_trans; first exact/interpolation_size; rewrite size_scheby_nodes.
+rewrite [RHS](@sdsprod_cheby_eq a b n); [ | | ]; last first.
+- by apply /leq_trans; first exact/interpolation_size; rewrite size_scheby_nodes.
+- by apply /eqP => eq; move /eqP: H; rewrite eq.
 rewrite /CPolyab size_map size_iota.
 suff eq: forall i, (i < n.+1)%nat -> (scheby_coef_list n.+1)`_i = sdsprod_coef a b (interpolation f (scheby_nodes a b n.+1)) n i.
 	by under eq_bigr ? rewrite eq.
@@ -514,8 +517,6 @@ move => i ineq.
 rewrite (nth_map 0%nat); last by rewrite size_iota.
 rewrite nth_iota //.
 apply sdsprod_coefs.
-by apply /eqP => eq; move /eqP: H; rewrite eq.
-Grab Existential Variables.
 by apply /eqP => eq; move /eqP: H; rewrite eq.
 Qed.
 

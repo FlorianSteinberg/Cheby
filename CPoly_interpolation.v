@@ -1,5 +1,6 @@
 From mathcomp Require Import all_ssreflect.
 From mathcomp Require Import all_algebra.
+
 Require Import Rstruct CPoly CPoly_trigo.
 Import Rtrigo_def.
 Import Rtrigo1.
@@ -47,6 +48,21 @@ Definition prodl (l : seq R) : {poly R} :=
   \prod_(i <- undup l) ('X - i%:P).
 
 Local Notation "'W[ l ]" := (prodl l) (format "''W[' l ]").
+
+Lemma prodl_memE i l :
+ uniq l -> i \in l ->
+ prodl l = 
+ ('X - i%:P) * \prod_(j <- l | j != i) ('X - j%:P).
+Proof.
+move=> Hu; rewrite /prodl undup_id //.
+elim: l Hu => //= a l IH /andP[aNIl /IH IH1].
+rewrite inE; case: eqP => /= [Ha _| /eqP aDi /IH1 IH2].
+  rewrite Ha !big_cons eqxx /=.
+  congr (_ * _); rewrite [RHS]big_seq_cond [RHS](eq_bigl (fun i => (i \in l) && true)).
+    by rewrite -big_seq_cond.
+  by move=> j; case: eqP => // ->; rewrite (negPf aNIl).
+by rewrite !big_cons eq_sym (negPf aDi) /= IH2 mulrCA.
+Qed.
 
 Lemma monic_prodl l : prodl l \is monic.
 Proof.
@@ -1319,3 +1335,162 @@ by toR; rewrite /Rinvx aDb1; field; apply/eqP.
 Qed.
 
 End ChebyCoef.
+
+Section Newton.
+
+Variable R : fieldType.
+
+Variable f : R -> R.
+
+Definition ddiff (l : seq R) := 
+  \sum_(i <- l) (f i / (\prod_(j <- l | j != i) (i - j))).
+
+Lemma ddiffE a b l : 
+  uniq [::a, b  & l] ->
+  ddiff (a :: l) = (ddiff (b :: l) + (a - b) * ddiff [::a, b & l])%RR.
+Proof.
+rewrite /= inE negb_or => /and3P[/andP[aDb aNIl] bNIl Ul].
+rewrite /ddiff !big_cons !eqxx [b == _]eq_sym (negPf aDb) /=.
+have F x : x \notin l -> \prod_(j <- l | j != x) (x - j) = 
+                         \prod_(j <- l) (x - j).
+  move=> xNIl.
+  rewrite big_seq_cond [RHS]big_seq_cond.
+  apply: eq_bigl => i.
+  by case: eqP => // ->; rewrite (negPf xNIl).
+rewrite !F //.
+set Pa := \prod_(_ <- _ | _) _.
+set Pb := \prod_(_ <- _ | _) _.
+set Sa := \sum_(j <- l) _.
+set Sb := \sum_(j <- l) _.
+set Sab := \sum_(j <- l) _.
+rewrite !mulrDr mulrCA invfM.
+rewrite [((a - b) * (_ / _))%RR]mulrA divff ?div1r; last first.
+  by rewrite GRing.subr_eq0.
+rewrite mulrCA invfM -opprB mulNr.
+rewrite [((b - a) * (_ / _))%RR]mulrA divff ?div1r; last first.
+  by rewrite GRing.subr_eq0 eq_sym.
+rewrite mulrN [RHS]addrCA -!addrA; congr (_ + _)%RR.
+rewrite !addrA [(_ + Sb)%RR]addrC addrK opprB.
+rewrite mulr_sumr -big_split /=.
+rewrite [LHS]big_seq_cond [RHS]big_seq_cond; apply: eq_big=> i //.
+rewrite andbT => iIl.
+rewrite !big_cons (_ : a != i) 1?(_ : b != i) /=; last 2 first.
+- by apply: contra bNIl => /eqP->.
+- by apply: contra aNIl => /eqP->.
+set P := \prod_(_ <- _ | _) _.
+rewrite (_ : a - b = (i - b) - (i - a))%RR; last first.
+  by rewrite opprB [in RHS]addrC addrA subrK.
+rewrite [(((i - b) - _)* _)%RR]mulrBl.
+set x := (_ / _)%RR.
+set y := (_ / _)%RR.
+rewrite {1}[(_ * P)%RR]mulrC [(_ * (P * _))%RR]mulrA.
+rewrite invfM [(f i * _)%RR]mulrA [((i - b) * _)%RR]mulrC -/x divfK; last first.
+  by rewrite subr_eq0; apply: contra bNIl => /eqP<-.
+rewrite [((i - a) * (_ * P))%RR]mulrC invfM  [(f i * _)%RR]mulrA -/y.
+rewrite mulrC divfK; last first.
+  by rewrite subr_eq0; apply: contra aNIl => /eqP<-.
+by rewrite addrC subrK.
+Qed.
+
+Lemma ddiff_singleton a : ddiff [:: a] = f a.
+Proof. 
+ rewrite [LHS]big_cons big_cons !big_nil eqxx /=.
+by rewrite addr0 divr1.
+Qed.
+
+Lemma ddiff_perm_eq l1 l2 :  perm_eq l1 l2 -> ddiff l1 = ddiff l2.
+Proof.
+move=> H.
+rewrite /ddiff.
+apply: etrans (_ : \sum_(i <- l1)
+   f i / (\prod_(j <- l2 | j != i) (i - j))= _).
+  apply:eq_bigr => i _.
+  congr (_ / _)%RR.
+  by apply: eq_big_perm.
+by apply: eq_big_perm.
+Qed.
+
+Definition lagrange (l : seq R) i := 
+      ((\prod_(j <- l | j != i) (i - j)) ^-1)
+         *:  \prod_(j <- l | j != i) ('X - j %:P).
+
+Lemma horner_lagrange l i j :
+  j \in i :: l -> (lagrange l i).[j] = (i == j)%:R.
+Proof.
+move=> H.
+rewrite /lagrange !hornerE horner_prod.
+rewrite [X in (_ * X = _)%RR](eq_bigr (fun x : R => (j - x)%RR)) => [|k]; 
+     last by rewrite !hornerE.
+rewrite mulrC.
+have H1 : (\prod_(j0 <- l | j0 != i) (i - j0)) != 0%RR.
+  rewrite prodf_seq_eq0.
+  by apply/hasPn=> x; rewrite subr_eq0 eq_sym; case: eqP.
+case: (i =P j)=> [<-|/eqP iDj].
+  by rewrite divff.
+suff->: \prod_(i0 <- l | i0 != i) (j - i0) = 0%RR.
+  by rewrite mul0r.
+move: H; rewrite inE eq_sym (negPf iDj) /=.
+elim: {H1}l => //= a l IH.
+  rewrite !big_cons !inE.
+case: (a =P i) => /= [->|/eqP jDa].
+  by rewrite eq_sym (negPf iDj).
+case: (j =P a) => [->|_ /IH ->].
+  by rewrite subrr mul0r.
+by rewrite mulr0.
+Qed.
+
+Lemma size_lagrange l i :
+  i \in l -> (size (lagrange l i) <= size l)%nat.
+Proof.
+move=> iIl.
+rewrite size_scale; last first.
+  rewrite invr_eq0.
+  rewrite prodf_seq_eq0.
+  by apply/hasPn=> x; rewrite subr_eq0 eq_sym; case: eqP.
+rewrite (big_nth 0%RR) big_mkord size_prod; last first.
+  by move=> k _; apply/monic_neq0/monicXsubC.
+rewrite (eq_bigr (fun i => 2%nat)); last first.
+  by move=> j; rewrite size_XsubC.
+rewrite sum_nat_const muln2 -addnn -addSn addnK.
+have I : (index i l < size l)%nat by rewrite index_mem.
+pose o := Ordinal I.
+rewrite -[X in (_ < X)%nat]card_ord [X in (_ < X)%nat](cardD1 o) inE /= ltnS.
+apply/subset_leq_card/subsetP => k; rewrite !inE unfold_in andbT.
+apply: contra => /eqP->.
+by rewrite nth_index.
+Qed.
+
+Lemma interpolationE l :
+  uniq l -> interpolation f l = \sum_(i <- l) f i *: lagrange l i.
+Proof.
+move=> Hs.
+apply/eqP; rewrite -subr_eq0.
+set p := (_ - _)%RR.
+case: eqP => // /eqP pNZ.
+have: (size p <= size l)%nat.
+  apply: leq_trans (size_add _ _) _.
+  rewrite size_opp geq_max interpolation_size //.
+  apply: leq_trans (size_sum _ _ _) _.
+  rewrite (big_nth 0%RR) big_mkord.
+  apply/bigmax_leqP=> i _.
+  apply: leq_trans (size_scale_leq _ _) _.
+  apply:  size_lagrange.
+  by rewrite mem_nth.
+rewrite leqNgt; case/negP.
+apply: max_poly_roots => //.
+apply/allP => x xIl.
+apply/rootP; rewrite !hornerE horner_interpolation //.
+have I : (index x l < size l)%nat by rewrite index_mem.
+pose o := Ordinal I.
+rewrite (big_nth 0%RR) big_mkord (bigD1 o) //=.
+rewrite nth_index // !(horner_lagrange, hornerE, inE, eqxx) //.
+rewrite horner_sum big1 ?hornerE ?addn0 ?subrr //.
+move=> k.
+rewrite !(horner_lagrange, hornerE, inE, eqxx) //; last first.
+  by rewrite xIl orbT.
+case: (_ =P x) => /= [H /eqP[]|_]; last by rewrite mulr0.
+apply/val_eqP.
+by rewrite /= -(nth_uniq 0%RR (ltn_ord _)) // H nth_index.
+Qed.
+
+End Newton.

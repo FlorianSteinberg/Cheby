@@ -432,6 +432,21 @@ Qed.
 
 End ssreal_struct.
 
+(* More theorems to make Reals and ssreflect work together *)
 
 Ltac toR := rewrite /GRing.add /GRing.opp /GRing.zero /GRing.mul /GRing.inv
   /GRing.one ?natr_INR //=.
+
+Lemma pow_expn x n : Nat.pow x n = expn x n.
+Proof. by elim: n => //= n ->; rewrite expnS. Qed.
+
+Lemma Rabs_expr x n : Rabs (x ^+ n)%RR = (Rabs x ^+ n)%RR.
+Proof.
+elim: n => [|n IH]; first by rewrite !expr0 Rabs_R1.
+by rewrite !exprS Rabs_mult IH.
+Qed.
+
+Lemma Rabs_exprN1 n : Rabs ((-1) ^+ n)%RR = 1.
+Proof. by rewrite Rabs_expr Rabs_Ropp Rabs_R1 expr1n. Qed.
+
+

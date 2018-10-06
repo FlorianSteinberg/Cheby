@@ -616,9 +616,38 @@ Definition cheby_nodes (n : nat) := [seq cos (i.*2.+1%:R * PI / n.*2%:R) | i <- 
 Lemma size_cheby_nodes n : size (cheby_nodes n) = n.
 Proof. by rewrite size_map size_iota. Qed.
 
+Lemma Z_of_nat_S n : Z.of_nat n.+1 = (Z.of_nat n + 1)%Z.
+Proof. rewrite /=; lia. Qed.
+
+Lemma Z_of_nat_double n : Z.of_nat n.*2 = (Z.of_nat n * 2)%Z.
+Proof.
+by elim: n => [//=|n IH]; rewrite doubleS !Z_of_nat_S IH; lia.
+Qed.
+
 Lemma cheby_nodes_bound n x :
+  x \in cheby_nodes n -> -1 < x < 1.
+Proof. 
+move=> /mapP[i Hi ->].
+set u := _ / _.
+have Le : -1 <= cos u <= 1 by apply: COS_bound.
+suff: cos u <> -1 /\ cos u <> 1 by lra.
+have DD : INR n.*2 <> 0.
+  case: (n) Hi => // m _; rewrite doubleS !S_INR.
+  suff: (0 <= INR m.*2) by lra.
+  by apply: pos_INR.
+suff : sin u <> 0 => [|/sin_eq_0_0[k Hk]].
+  move=> H; split; have := sin2_cos2 u; rewrite /Rsqr; nra.
+have H1 : i.*2.+1%:R / n.*2%:R = IZR k.
+  have: 0 < PI by have := Rgt_2PI_0; lra.
+  rewrite /u in Hk; nra.
+have : i.*2.+1%:R  = IZR k * n.*2%:R by rewrite -H1; toR; field.
+rewrite !natr_INR !INR_IZR_INZ -mult_IZR => /eq_IZR.
+rewrite Z_of_nat_S !Z_of_nat_double; lia.
+Qed.
+
+Lemma cheby_nodes_boundW n x :
   x \in cheby_nodes n -> -1 <= x <= 1.
-Proof. by move=> /mapP[i _ ->]; apply: COS_bound. Qed.
+Proof. by move/cheby_nodes_bound; lra. Qed.
 
 Lemma root_cheby_nodes n : all (root 'T_n) (cheby_nodes n).
 Proof.
@@ -676,7 +705,7 @@ have F1 x1 : x1 / (2 * INR n) * (2 * INR n) = x1.
 by rewrite -[_ * PI]F1 F F1.
 Qed.
 
-Lemma cheby_prodl n : 
+Lemma cheby_prod n : 
    'T_ n = (expn 2 n.-1)%nat%:R *:  \prod_(z <- cheby_nodes n) ('X - z%:P).
 Proof.
 set p := 'T_n.
@@ -689,6 +718,12 @@ apply: all_roots_prod_XsubC.
 - by apply: root_cheby_nodes.
 rewrite uniq_rootsE.
 apply: uniq_cheby_nodes.
+Qed.
+
+Lemma cheby_prodl n : 
+   'T_ n = (expn 2 n.-1)%nat%:R *:  prodl (cheby_nodes n).
+Proof.
+by rewrite /prodl undup_id ?cheby_prod // uniq_cheby_nodes.
 Qed.
 
 Section ChebyBound.
@@ -730,7 +765,7 @@ have [/eqP-> | Hc] := boolP (ierror f (cheby_nodes n) x == 0).
   apply/lt_0_INR/leP/neq0_lt0n/eqP/eqP.
   by rewrite muln_eq0 negb_or -!lt0n expn_gt0 fact_gt0.
 have [z1 [H1z1 ->]] := ierror_val (sym_equal (size_cheby_nodes n))
-         (uniq_cheby_nodes n) (@cheby_nodes_bound n)
+         (uniq_cheby_nodes n) (@cheby_nodes_boundW n)
          deriv_f cont_f Hx Hc.
 rewrite !Rabs_mult Rabs_R1 Rabs_Rinv; try lra.
 rewrite Rabs_pos_eq; try lra.
@@ -770,11 +805,15 @@ Lemma size_scheby_nodes n : size (scheby_nodes n) = n.
 Proof. by rewrite size_map size_cheby_nodes. Qed.
 
 Lemma scheby_nodes_bound n x :
-  x \in scheby_nodes n -> a <= x <= b.
+  x \in scheby_nodes n -> a < x < b.
 Proof.
 move=> /mapP[i /cheby_nodes_bound] [H1 H2] ->.
 nra.
 Qed.
+
+Lemma scheby_nodes_boundW n x :
+  x \in scheby_nodes n -> a <= x <= b.
+Proof. move/scheby_nodes_bound; lra. Qed.
 
 Lemma root_scheby_nodes n : all (root ('T^(a,b)_n)) (scheby_nodes n).
 Proof.
@@ -881,7 +920,7 @@ have [/eqP-> | Hc] := boolP (ierror f (scheby_nodes a b n) x == 0).
   apply/lt_0_INR/leP/neq0_lt0n/eqP/eqP.
   by rewrite muln_eq0 negb_or -!lt0n expn_gt0 fact_gt0.
 have [z1 [H1z1 ->]] := ierror_val (sym_equal (size_scheby_nodes a b n))
-         (@uniq_scheby_nodes a b aLb n) (@scheby_nodes_bound a b aLb n)
+         (@uniq_scheby_nodes a b aLb n) (@scheby_nodes_boundW a b aLb n)
          deriv_f cont_f Hx Hc.
 rewrite !Rabs_mult Rabs_R1 Rabs_Rinv; try lra.
 rewrite Rabs_pos_eq; try lra.
@@ -1533,7 +1572,6 @@ Proof.
 move=> /= /andP[aNIl Ul].
 rewrite -interpolation_ddiff /= ?aNIl ?(negPf aNIl) //.
 rewrite coefD coefZ nth_default ?interpolation_size ?add0r //.
-Search _ lead_coef "E".
 rewrite [size _]pred_Sn -size_prodl_uniq // -lead_coefE (eqP (monic_prodl _)) mulr1.
 rewrite divfK //.
 have := root_prodl l a.
@@ -2183,4 +2221,84 @@ apply: ddiff_le c1Lb1 b2Lc2 xLy Ul Pb _ _ _ => //.
 move=> m z Hm Bz.
 apply: ex_derive_n_opp.
 by apply: Pe.
+Qed.
+
+Lemma ierror_cheby_diff n f x :
+ x \notin (cheby_nodes n) ->
+ ierror f (cheby_nodes n) x = /INR (2 ^ n.-1) * ddiff f (rcons (cheby_nodes n) x) * ('T_n).[x].
+Proof.
+pose RC := [comRingType of R].
+move=> xNIc.
+rewrite /ierror [_ - _](@error_ddiff [fieldType of R]); last first.
+  by rewrite cons_uniq xNIc uniq_cheby_nodes.
+rewrite cheby_prodl hornerE /=; toR.
+rewrite -[RHS](@mulrA RC) [RHS](@mulrC RC) -![RHS](@mulrA RC); toR.
+congr (_ * _).
+  by apply/ddiff_perm_eq; rewrite perm_eq_sym perm_rcons.
+rewrite pow_expn; toR.
+set u : R := _.[_]; field.
+by apply/not_0_INR/eqP; rewrite expn_eq0.
+Qed.
+
+Lemma interpolation_scheby_ge n c1 c2 f x :
+  c1 < -1 -> 1 < c2 -> -1 <= x <= 1 ->
+  (forall m x, (m <= n.+1)%nat -> -1 <= x <= 1 -> continuous (Derive_n f m) x) ->
+  (   (forall x,  -1 <= x <= 1-> Derive_n f n.+1 x <= 0) 
+    \/
+      (forall x,  -1 <= x <= 1-> Derive_n f n.+1 x >= 0)) ->
+  (forall m x, (m <= n.+1)%nat -> c1 < x < c2 -> ex_derive_n f m x) ->
+  Rabs (ierror f (cheby_nodes n) x) <=
+    Rmax (Rabs (ierror f (cheby_nodes n) (-1))) 
+         (Rabs (ierror f (cheby_nodes n) 1)).
+Proof.
+move=> c1L1 c2G1 xB Pc Pd Pe.
+have [xIc|xNIc] := boolP (x \in cheby_nodes n).
+  rewrite {1}/ierror horner_interpolation // Rminus_eq_0 Rabs_R0.
+  by rewrite /Rmax; case: Rle_dec => H; split_Rabs; lra.
+have Ul : uniq [::-1, 1 & cheby_nodes n].
+  rewrite 2!cons_uniq uniq_cheby_nodes andbT.
+  rewrite inE (_: _ == _ = false); last by apply/eqP; lra.
+  by apply/andP; split; apply/negP=>/cheby_nodes_bound; lra.
+rewrite !ierror_cheby_diff //; last 2 first.
+- by apply/negP=> /cheby_nodes_bound; lra.
+- by apply/negP=> /cheby_nodes_bound; lra.
+rewrite horner1_pT hornerN1_pT !Rabs_mult Rabs_R1 Rabs_exprN1 !Rmult_1_r.
+rewrite -Rmult_max_distr_l; last by apply: Rabs_pos.
+rewrite !Rmult_assoc; apply: Rmult_le_compat_l; first by apply: Rabs_pos.
+rewrite -[X in _ <= X]Rmult_1_r.
+apply: Rmult_le_compat; try apply: Rabs_pos; last first.
+  suff : -1 <= ('T_n).[x] <= 1 by split_Rabs; lra.
+  rewrite -pT_Cheby //.
+  by apply: COS_bound.
+have [->|/eqP xD1] := (x =P 1); first by apply: Rmax_r.
+have [->|/eqP xDN1] := (x =P -1); first by apply: Rmax_l.
+set dx := ddiff _ _; set dN1 := ddiff _ _; set d1 := ddiff _ _.
+have Ux : uniq [:: x, 1 & cheby_nodes n].
+  rewrite 2!cons_uniq inE negb_or -andbA.
+  apply/and4P; split => //; try lra.
+    by apply/negP=> /cheby_nodes_bound; lra.
+  by apply: uniq_cheby_nodes.
+have Bx i :
+    i \in [:: x, 1 & cheby_nodes n] -> -1 <= i <= 1.
+  rewrite 2!inE => /or3P[/eqP->|/eqP->|H]; try lra.
+  by apply: cheby_nodes_boundW H.
+have UNx : uniq [:: -1, x & cheby_nodes n].
+  rewrite 2!cons_uniq inE negb_or -andbA.
+  apply/and4P; split => //; try lra.
+  - by rewrite eq_sym.
+  - by apply/negP=> /cheby_nodes_bound; lra.
+  by apply: uniq_cheby_nodes.
+have BxN i :
+    i \in [:: -1, x & cheby_nodes n] -> -1 <= i <= 1.
+  rewrite 2!inE => /or3P[/eqP->|/eqP->|H]; try lra.
+  by apply: cheby_nodes_boundW H.
+case: Pd => Pd.
+  suff: d1 <= dx <= dN1.
+    by rewrite /Rmax; case: Rle_dec; split_Rabs; lra.
+  split; apply: (ddiff_ge c1L1 c2G1); rewrite ?size_cheby_nodes //; try lra.
+suff: dN1 <= dx <= d1.
+  by rewrite /Rmax; case: Rle_dec; split_Rabs; lra.
+split; apply: (ddiff_le c1L1 c2G1); rewrite ?size_cheby_nodes //; try lra.
+  by move=> y /Pd; lra.
+by move=> y /Pd; lra.
 Qed.

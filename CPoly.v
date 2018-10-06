@@ -51,6 +51,17 @@ rewrite pTSS hornerD hornerN mulrnAl hornerMn.
 by rewrite -commr_polyX hornerMX !IH // !mulr1 mulrS [1+ _]addrC addrK.
 Qed.
 
+Lemma hornerN1_pT n : ('T_n).[-1: R] = (-1) ^+ n.
+Proof.
+elim: n {-2}n (leqnn n) => [[] // _ |n IH]; first by rewrite pT0 hornerC.
+move=> m; rewrite leq_eqVlt; case/orP => [|Hm]; last first.
+  by apply: IH; rewrite -ltnS.
+move/eqP->; case: n IH=> [|n] IH; first by rewrite pT1 hornerX.
+rewrite pTSS hornerD hornerN mulrnAl hornerMn.
+rewrite -commr_polyX hornerMX !IH //.
+by rewrite !exprS !(mulN1r, mulrN1, opprK) mulr2n addrK.
+Qed.
+
 Lemma commr_pT p n : GRing.comm p ('T_n).
 Proof.
 elim: n {-2}n (leqnn n)=> [[] // _ |n IH m]. 

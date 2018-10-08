@@ -449,4 +449,253 @@ Qed.
 Lemma Rabs_exprN1 n : Rabs ((-1) ^+ n)%RR = 1.
 Proof. by rewrite Rabs_expr Rabs_Ropp Rabs_R1 expr1n. Qed.
 
+Require Import Reals Coquelicot.Coquelicot Psatz.
 
+Lemma continuous_continuity_pt f t : 
+  continuous f t -> continuity_pt f t.
+Proof.
+move=> Hc.
+apply: limit1_imp; last first.
+  apply: is_lim_Reals_0.
+  apply: is_lim_comp_continuous => //.
+  apply: is_lim_id.
+by move=> x [_]; lra.
+Qed.
+
+Import path.
+
+Lemma eqR_leb a b : (a == b) = (Rleb a b && Rleb b a).
+Proof.
+apply/eqP/andP=> [->|[/RlebP H /RlebP]]; try lra.
+by split; apply/RlebP; lra.
+Qed.
+
+Lemma Rleb_total : total Rleb.
+Proof.
+move=> a b; have [/RlebP->//|/RlebP->//] : a <= b \/ b <= a by lra.
+by rewrite orbT.
+Qed.
+
+Lemma Rleb_trans : transitive Rleb.
+Proof. by move=> a b c /RlebP H /RlebP H1;apply/RlebP; lra. Qed.
+
+Lemma Rltb_trans : transitive Rltb.
+Proof. by move=> a b c /RltbP H /RltbP H1;apply/RltbP; lra. Qed.
+
+Lemma Rltb_sorted_uniq_leb s : sorted Rltb s = uniq s && sorted Rleb s.
+Proof.
+case: s => //= n s; elim: s n => //= m s IHs n.
+rewrite inE Rltb_def negb_or IHs -!andbA eq_sym.
+case sn: (n \in s); last do !bool_congr.
+rewrite andbF; apply/and5P=> [[ne_nm lenm _ _ le_ms]]; case/negP: ne_nm.
+by rewrite eqR_leb lenm; apply: (allP (order_path_min Rleb_trans le_ms)).
+Qed.
+
+Lemma ex_derive_n_minus_inter f g n a b (h := fun z => f z - g z) :
+      (forall x k,
+        (k <= n)%nat -> a < x < b -> ex_derive_n f k x) ->
+      (forall x k,
+        (k <= n)%nat -> a < x < b -> ex_derive_n g k x) ->
+      (forall x k,
+        (k <= n)%nat -> a < x < b -> ex_derive_n h k x).
+Proof.
+move=> Hf Hg x k kLn aLxLb.
+pose d := (Rmin (x - a) (b - x)) / 2.
+have Pd : 0 < d.
+  by rewrite /d /Rmin; case: Rle_dec; lra.
+have Hd : a < x - d < x /\ x < x + d < b.
+  by rewrite /d /Rmin; case: Rle_dec; lra.
+apply: ex_derive_n_minus.
+  exists (mkposreal _ Pd) => /= y Hy k1 Hk1.
+  apply: Hf; first apply: leq_trans kLn.
+    by apply/leP.
+  rewrite /ball /= /AbsRing_ball /= /abs /= /minus /plus /opp /= in Hy.
+  split_Rabs; lra.
+exists (mkposreal _ Pd) => /= y Hy k1 Hk1.
+apply: Hg; first apply: leq_trans kLn.
+  by apply/leP.
+rewrite /ball /= /AbsRing_ball /= /abs /= /minus /plus /opp /= in Hy.
+split_Rabs; lra.
+Qed.
+
+Lemma Z_of_nat_S n : Z.of_nat n.+1 = (Z.of_nat n + 1)%Z.
+Proof. rewrite /=; lia. Qed.
+
+Lemma Z_of_nat_double n : Z.of_nat n.*2 = (Z.of_nat n * 2)%Z.
+Proof.
+by elim: n => [//=|n IH]; rewrite doubleS !Z_of_nat_S IH; lia.
+Qed.
+
+Lemma RInt_deriv_lin (f : R -> R) (x y : R) t1 t2  b1 b2 c1 c2 :
+   y != 0 -> t1 <= t2 -> c1 < b1 -> b2 < c2 ->
+  b1 <= x + t1 * y <= b2 -> 
+  b1 <= x + t2 * y <= b2 -> 
+  (forall x, c1 < x < c2 -> ex_derive f x) ->
+  (forall x, b1 <= x <= b2 -> continuous (Derive f) x) ->
+   RInt (fun z : R => Derive f  (y * z + x)) t1 t2 = 
+    (/y) * (f (y * t2 + x) - f (y * t1 + x)).
+Proof.
+pose g t := y * t + x.
+have ef u : ex_derive g u.
+  by repeat (apply: ex_derive_mult || apply: ex_derive_plus ||
+             apply : ex_derive_const || apply: ex_derive_id).
+have Dg u : Derive g u = y.
+    rewrite !(Derive_plus, Derive_const, Derive_mult, Derive_id) ; try
+      by repeat (apply: ex_derive_mult || apply: ex_derive_plus ||
+                apply : ex_derive_const || apply: ex_derive_id).
+    by ring.
+have Cg u : continuous g u.
+  by do 5
+   (apply: continuous_plus || apply: continuous_mult || apply: continuous_id || 
+    apply: continuous_const).
+pose RC := R_CompleteNormedModule.
+move=> /eqP xDy t1Lt2 c1Lb1 b2Lc2 xt1B xt2B Df Cf.
+have RyP : 0 < Rabs y by split_Rabs; lra.
+have CDfg t : t1 <= t <= t2 ->continuous (Derive (f \o g)) t.
+  move=> tB.
+  have : continuous (fun x => Derive g x * Derive f (g x)) t.
+    apply: continuous_mult.
+      apply: (continuous_ext (fun _ => y)) => [v//|].
+      by apply: continuous_const.
+    apply: continuous_comp => //.
+    apply: Cf.
+    by rewrite /g; nra.
+  apply: continuous_ext_loc.
+  have K2 a b c : 0 < a -> b < c / a -> a * b < c.
+    move=> aP abLc.
+    rewrite (_ : c =  a * (c / a)).
+      by apply: Rmult_lt_compat_l.
+    by field; lra.
+  have gtB : b1 <= g t <= b2 by rewrite /g; nra.
+  pose eps := Rmin (Rabs ((c1 - g t)/ y))
+                   (Rabs ((c2 - g t)/ y)).
+  have epsP : 0 < eps by
+  apply: Rmin_glb_lt; rewrite Rabs_div //;
+  apply: Rdiv_lt_0_compat; split_Rabs; lra.
+  exists (mkposreal _ epsP) => u /= Hu.
+  have uB : c1 < g u < c2.
+    have F u1 u2 u3 : u1 < Rmin u2 u3 -> (u1 < u2 /\ u1 < u3).
+      by rewrite /Rmin; case: Rle_dec; lra.
+    have /F[F1 F2] : Rabs (u - t) < eps by apply: Hu.
+    split.
+      suff : Rabs (g t - g u) < Rabs (c1 - g t) by split_Rabs; lra.
+      have -> : g t - g u = y * (t - u)  by rewrite /g; lra.
+      rewrite Rabs_mult.
+      apply: K2 => //.
+      by rewrite -Rabs_div // Rabs_minus_sym.
+    suff : Rabs (g t - g u) < Rabs (c2 - g t) by split_Rabs; lra.
+    have -> : g t - g u = y * (t - u)  by rewrite /g; lra.
+    rewrite Rabs_mult.
+    apply: K2 => //.
+    by rewrite -Rabs_div // Rabs_minus_sym.
+  rewrite [RHS]Derive_comp //.
+  by apply: Df; lra.
+rewrite (_ : _ - _ = (f \o g) t2 - (f \o g) t1); last first.
+  by rewrite /g; congr (_ - f _); ring.
+rewrite -RInt_Derive; last 2 first.
+  move=> t; rewrite Rmin_left // Rmax_right // => tB.
+  apply: ex_derive_comp => //.
+    by apply: Df; rewrite /g; nra.
+  move=> t; rewrite Rmin_left // Rmax_right // => tB //.
+  by exact: CDfg.
+rewrite -[RHS](@RInt_scal RC); last first.
+  apply: ex_RInt_continuous => t; rewrite Rmin_left // Rmax_right //.
+  by exact: CDfg.
+apply: RInt_ext; rewrite Rmin_left // Rmax_right // => u Hu.
+rewrite [in RHS]Derive_comp => //; last first.
+  by apply: Df; rewrite /g; nra.
+rewrite Dg /g /scal /= /mult /=; field; lra.
+Qed.
+
+
+Section Sum.
+
+Import GRing.Theory.
+Open Scope ring_scope.
+
+
+Lemma ex_RInt_sum (T : eqType) (P : pred T) (f : T -> R -> R) a b l :
+  (forall i, i \in l -> P i -> ex_RInt (f i) a b) -> 
+  ex_RInt (fun x : R => \sum_(j <- l | P j) f j x)  a b.
+Proof.
+elim: l => /= [_|c l IH He].
+  apply: ex_RInt_ext => [x Hx|].
+    by rewrite big_nil.
+  by apply: ex_RInt_const.
+apply: ex_RInt_ext => [x Hx|].
+  by rewrite big_cons.
+have [Pc | NPc] := boolP (P c); last first.
+  apply: IH => i iIl.
+  by apply: He; rewrite inE iIl orbT.
+apply: ex_RInt_plus.
+  by apply: He => //; rewrite inE eqxx.
+apply: IH => i iIl.
+by apply: He; rewrite inE iIl orbT.
+Qed.
+
+Lemma RInt_sum (T : eqType) (P : pred T) (f : T -> R -> R) a b l :
+  (forall i, i \in l -> P i -> ex_RInt (f i) a b) ->
+  RInt
+    (fun x : R => \sum_(i <- l| P i) (f i x)) a b =
+  \sum_(i <- l | P i)
+    RInt
+      (fun x : R => (f i x)) a b.
+Proof.
+elim: l => /= [HR|c l IH HR].
+  apply: etrans.
+    apply: RInt_ext => i Hi.
+    by rewrite big_nil.
+  by rewrite RInt_const [LHS](@mulr0 [ringType of R]) big_nil.
+rewrite big_cons.
+apply: etrans.
+  apply: RInt_ext => x Hx.
+  by rewrite big_cons.
+case: (boolP (P c)) => [HP|HNP]; last first.
+  apply: IH => i iIl Pi.
+  by apply: HR; rewrite ?inE ?iIl ?orbT.
+rewrite RInt_plus ?IH => // [i iIl Pi||].
+- by apply: HR; rewrite ?inE ?iIl ?orbT.
+- by apply: HR; rewrite ?inE ?eqxx.
+apply: ex_RInt_sum=> i iIl Pi.
+by apply: HR; rewrite ?inE ?iIl ?orbT.
+Qed.
+
+End Sum.
+
+Lemma ex_RInt_comp_lin1 f (u v a b : R) :
+       ex_RInt f (u * a + v) (u * b + v) ->
+       @ex_RInt R_CompleteNormedModule (fun y : R => f (u * y + v)) a b.
+Proof.
+move=> H.
+case: (Req_dec u 0) => [->|/eqP uNz].
+  apply: ex_RInt_ext => [x Hx|].
+    rewrite [_ * _](@mul0r [ringType of R]) 
+            [_ + _](@add0r [ringType of R]).
+     by [].
+  by apply: ex_RInt_const.
+apply: ex_RInt_ext => [x Hx|].
+  rewrite -[RHS](@mulfK _ u); last by [].
+  by rewrite mulrC [(_ * u)%RR]mulrC.
+apply: ex_RInt_scal.
+by apply: ex_RInt_comp_lin.
+Qed.
+
+Lemma MVT_le (f : R -> R) (a b : R) (df : R -> R): 
+   (forall x : R,
+     a <= x <= b -> is_derive f x (df x)) ->
+   (forall x : R,
+     a <= x <= b -> 0 <= df x) ->
+   (forall x : R,
+      a <= x <= b -> continuity_pt f x) ->
+     a <= b -> f a <= f b.
+Proof.
+move=> H1 H2 H3 aLb.
+case: (MVT_gen f a b df) => x;
+    rewrite Rmin_left // Rmax_right // => Hx.
+- by apply: H1; lra.
+- by apply: H3.
+rewrite (_ : f b = f b - f a + f a); try lra.
+have [Hx1 ->] := Hx.
+have := H2 _ Hx1.
+nra.
+Qed.

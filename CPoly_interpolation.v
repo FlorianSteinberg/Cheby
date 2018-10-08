@@ -271,44 +271,15 @@ Definition has_zeros f n a b :=
         forall x,  x \in l ->  a <= x <= b /\ f x = 0 &
         size l = n].
 
-Import path.
-
-Lemma eqR_leb a b : (a == b) = (Rleb a b && Rleb b a).
-Proof.
-apply/eqP/andP=> [->|[/RlebP H /RlebP]]; try lra.
-by split; apply/RlebP; lra.
-Qed.
-
-Lemma Rleb_total : total Rleb.
-Proof.
-move=> a b; have [/RlebP->//|/RlebP->//] : a <= b \/ b <= a by lra.
-by rewrite orbT.
-Qed.
-
-Lemma Rleb_trans : transitive Rleb.
-Proof. by move=> a b c /RlebP H /RlebP H1;apply/RlebP; lra. Qed.
-
-Lemma Rltb_trans : transitive Rltb.
-Proof. by move=> a b c /RltbP H /RltbP H1;apply/RltbP; lra. Qed.
-
-Lemma Rltb_sorted_uniq_leb s : sorted Rltb s = uniq s && sorted Rleb s.
-Proof.
-case: s => //= n s; elim: s n => //= m s IHs n.
-rewrite inE Rltb_def negb_or IHs -!andbA eq_sym.
-case sn: (n \in s); last do !bool_congr.
-rewrite andbF; apply/and5P=> [[ne_nm lenm _ _ le_ms]]; case/negP: ne_nm.
-by rewrite eqR_leb lenm; apply: (allP (order_path_min Rleb_trans le_ms)).
-Qed.
-
 Lemma has_zerosEs f n a b :
   has_zeros f n a b <->
   exists l : seq R,
-   [/\  sorted Rltb l,
+   [/\  path.sorted Rltb l,
         forall x,  x \in l ->  a <= x <= b /\ f x = 0 &
         size l = n].
 Proof.
 split=> [] [l [H1 H2 H3]].
-  exists (sort Rleb l); split => [|x|].
+  exists (path.sort Rleb l); split => [|x|].
   - rewrite Rltb_sorted_uniq_leb sort_uniq H1 sort_sorted //.
     exact: Rleb_total.
   - by rewrite mem_sort; exact: H2.
@@ -396,7 +367,7 @@ Qed.
 
 Lemma has_zeros_deriv f n a b :
  (forall x, a < x < b -> ex_derive f x) ->
- (forall x, a <= x <= b -> continuity_pt f x) ->
+ (forall x, a <= x <= b -> continuous f x) ->
   has_zeros f n.+1 a b -> 
   has_zeros (Derive f) n a b.
 Proof.
@@ -407,7 +378,7 @@ have F1 x : a1 < x < a2 -> derivable_pt f x.
   move=> HH; apply: ex_derive_Reals_0.
   by apply: Hd; lra.
 have F2 x : a1 <= x <= a2 -> continuity_pt f x.
-  by move=> HH; apply: Hc; lra.
+  by move=> HH; apply/continuous_continuity_pt/Hc; lra.
 have [||x [P HP]] := Rolle f a1 a2 F1 F2; try lra.
 have F3 : has_zeros (Derive f) 1 a x.
   apply/has_zeros_1; exists x; split => //; try lra.
@@ -427,7 +398,7 @@ Qed.
 
 Lemma has_zeros_deriv_n f m n a b :
  (forall x k, (k <= m)%nat -> a < x < b -> ex_derive_n f k x) ->
- (forall x k, (k <= m)%nat -> a <= x <= b -> continuity_pt (Derive_n f k) x) ->
+ (forall x k, (k <= m)%nat -> a <= x <= b -> continuous (Derive_n f k) x) ->
   has_zeros f n a b -> 
   has_zeros (Derive_n f m) (n - m) a b.
 Proof.
@@ -451,47 +422,20 @@ Qed.
 
 Section bound.
 
-Lemma ex_derive_n_minus_inter f g n a b (h := fun z => f z - g z) :
-      (forall x k,
-        (k <= n)%nat -> a < x < b -> ex_derive_n f k x) ->
-      (forall x k,
-        (k <= n)%nat -> a < x < b -> ex_derive_n g k x) ->
-      (forall x k,
-        (k <= n)%nat -> a < x < b -> ex_derive_n h k x).
-Proof.
-move=> Hf Hg x k kLn aLxLb.
-pose d := (Rmin (x - a) (b - x)) / 2.
-have Pd : 0 < d.
-  by rewrite /d /Rmin; case: Rle_dec; lra.
-have Hd : a < x - d < x /\ x < x + d < b.
-  by rewrite /d /Rmin; case: Rle_dec; lra.
-apply: ex_derive_n_minus.
-  exists (mkposreal _ Pd) => /= y Hy k1 Hk1.
-  apply: Hf; first apply: leq_trans kLn.
-    by apply/leP.
-  rewrite /ball /= /AbsRing_ball /= /abs /= /minus /plus /opp /= in Hy.
-  split_Rabs; lra.
-exists (mkposreal _ Pd) => /= y Hy k1 Hk1.
-apply: Hg; first apply: leq_trans kLn.
-  by apply/leP.
-rewrite /ball /= /AbsRing_ball /= /abs /= /minus /plus /opp /= in Hy.
-split_Rabs; lra.
-Qed.
-
 Variable f : R -> R.
 Variable n : nat.
 Variable l : list R.
 Hypothesis size_n : n = size l.
 Hypothesis Ul : uniq l.
-Variables a b : R.
+Variables a b c1 c2 : R.
+Hypothesis c1La : c1 < a.
+Hypothesis bLc2 : b < c2.
 Hypothesis range : forall x : R, x \in l -> a <= x <= b.
 Hypothesis deriv_f : 
-  forall x, a <= x <= b ->
-   locally x (fun y : R => forall k : nat, (k <= n)%nat -> ex_derive_n f k y).
-
+  forall x k, c1 < x < c2 -> (k <= n)%nat -> ex_derive_n f k x.
 Hypothesis cont_f :
  forall x k, (k <= n)%nat -> a <= x <= b ->
-   continuity_pt (Derive_n f k) x.
+   continuous (Derive_n f k) x.
 
 Definition ierror x := f x - (interpolation f l).[x].
 
@@ -512,52 +456,54 @@ pose g y := ierror y - c * (prodl l).[y].
 have F0 x1 k : (k <= n)%nat -> a < x1 < b -> ex_derive_n g k x1.
   apply:  ex_derive_n_minus_inter => [|y k1 k1Ln aLyLb].
     apply:  ex_derive_n_minus_inter=> [x2 k1 k1Ln aLx2Lb|*].
-      have /deriv_f[e] : a <= x2 <= b by lra. 
-      by apply => //; apply: ball_center.
+      by apply: deriv_f; try lra.
     by apply: ex_derive_n_horner.
   apply: ex_derive_n_scal_l.
   by apply: ex_derive_n_horner.
-have F1 y k : (k <= n)%nat -> a <= y <= b ->
-  locally y 
-        (fun y => 
+have F1 y k : (k <= n)%nat -> c1 < y < c2 ->
           Derive_n f k y - Derive_n (horner (interpolation f l)) k y
                          - Derive_n (fun y => c * (prodl l).[y]) k y = 
-          Derive_n g k y).
-  move=> kLn aLyLb.
-  have [e He] := deriv_f aLyLb.
-  exists (pos_div_2 e) => y1 Hy1.
+          Derive_n g k y.
+  move=> kLn c1LyLc2.
+  pose e := Rmin (y - c1) (c2 - y).
+  have He : 0 < e.
+     by rewrite /e /Rmin; case: Rle_dec; lra.
+  pose pe := mkposreal _ He.
   rewrite /g /ierror !Derive_n_minus //.
-  - exists (pos_div_2 e) => y2 Hy2 k1 k1Ln.
-    apply: He => //.
-      rewrite (_ : e = (pos_div_2 e) + (pos_div_2 e) :> R) /=; try lra.
-      by apply: ball_triangle Hy2.
+  - exists (pos_div_2 pe) => y2 Hy2 k1 k1Ln.
+    apply: deriv_f => //.
+      move/coquelicot_compl.ball_to_lra: Hy2; rewrite /= /e /Rmin.
+      by case: Rle_dec; lra.
     by apply: leq_trans kLn; apply/leP.
-  - by exists e => *; apply: ex_derive_n_horner.
-  - exists (pos_div_2 (pos_div_2 e)) => y2 Hy2 k1 k1Ln.
+  - by exists pe => *; apply: ex_derive_n_horner.
+  - exists (pos_div_2 (pos_div_2 pe)) => y2 Hy2 k1 k1Ln.
     apply: ex_derive_n_minus.
-      exists (pos_div_2 (pos_div_2 e)) => y3 Hy3 k2 k2Ln.
-      apply: He => //.
-        rewrite (_ : e = (pos_div_2 e) + (pos_div_2 (pos_div_2 e))
-                                       + (pos_div_2 (pos_div_2 e)):> R) /=; try lra.
-        apply: ball_triangle Hy3.
-        by apply: ball_triangle Hy2.
+      exists (pos_div_2 (pos_div_2 pe)) => y3 Hy3 k2 k2Ln.
+      apply: deriv_f => //.
+      move/coquelicot_compl.ball_to_lra: Hy2.
+      move/coquelicot_compl.ball_to_lra: Hy3; rewrite /= /e /Rmin.
+      by case: Rle_dec; lra.
       apply: leq_trans kLn.
       by apply: leq_trans (_ : k1 <= _)%nat; apply/leP.
-    by exists e => *; apply: ex_derive_n_horner.
-  exists e => *; apply: ex_derive_n_scal_l.
+    by exists pe => *; apply: ex_derive_n_horner.
+  exists pe => *; apply: ex_derive_n_scal_l.
   by apply: ex_derive_n_horner.
 have F2 y k : (k <= n)%nat -> a <= y <= b ->
-              continuity_pt (Derive_n g k) y.
+              continuous (Derive_n g k) y.
   move=> kLn aLyLb.
-  apply: continuity_pt_ext_loc (F1 _ _ kLn aLyLb) _.
-  apply: continuity_pt_minus.
-    apply: continuity_pt_minus.
-      by apply: cont_f.
-    apply: derivable_continuous_pt.
-    apply: ex_derive_Reals_0.
-    by apply: (@ex_derive_n_horner _ _ k.+1).
-  apply: derivable_continuous_pt.
-  apply: ex_derive_Reals_0.
+  pose e := Rmin (y - c1) (c2 - y).
+  have He : 0 < e.
+     by rewrite /e /Rmin; case: Rle_dec; lra.
+  pose pe := mkposreal _ He.
+  apply: continuous_ext_loc.
+    exists (pos_div_2 pe) => z /coquelicot_compl.ball_to_lra /= Hz.
+    apply: F1 => //.
+    by move: Hz; rewrite /e /Rmin; case: Rle_dec; lra.
+  repeat apply: continuous_minus.
+  - by apply: cont_f.
+  - apply: ex_derive_continuous.
+      by apply: (ex_derive_n_horner _ _ k.+1).
+  apply: ex_derive_continuous.
   apply: (@ex_derive_n_scal_l _ k.+1).
   by apply: ex_derive_n_horner.
 have F3 : has_zeros g n.+1 a b.
@@ -590,7 +536,7 @@ have F4 : has_zeros (Derive_n g n) (n.+1 - n) a b.
   by apply: has_zeros_deriv_n.
 rewrite subSnn in F4.
 have /has_zeros_1[z [Hz]] := F4.
-have [e /(_ z (ball_center _ _))<-] := F1 _ _ (leqnn n) Hz.
+rewrite -(F1 _ _ (leqnn n)); last by lra.
 rewrite Derive_n_horner.
 rewrite {2}size_n.
 rewrite interpolation_derivn_eq0 !hornerE.
@@ -615,14 +561,6 @@ Definition cheby_nodes (n : nat) := [seq cos (i.*2.+1%:R * PI / n.*2%:R) | i <- 
 
 Lemma size_cheby_nodes n : size (cheby_nodes n) = n.
 Proof. by rewrite size_map size_iota. Qed.
-
-Lemma Z_of_nat_S n : Z.of_nat n.+1 = (Z.of_nat n + 1)%Z.
-Proof. rewrite /=; lia. Qed.
-
-Lemma Z_of_nat_double n : Z.of_nat n.*2 = (Z.of_nat n * 2)%Z.
-Proof.
-by elim: n => [//=|n IH]; rewrite doubleS !Z_of_nat_S IH; lia.
-Qed.
 
 Lemma cheby_nodes_bound n x :
   x \in cheby_nodes n -> -1 < x < 1.
@@ -729,14 +667,16 @@ Qed.
 Section ChebyBound.
 
 Variable f : R -> R.
+Variable c1 c2 : R.
+Hypothesis c1LN1 : c1 < -1.
+Hypothesis c2G1 : 1 < c2.
+
 Variable n : nat.
 Hypothesis deriv_f : 
-  forall x, -1 <= x <= 1 ->
-   locally x (fun y : R => forall k : nat, (k <= n)%nat -> ex_derive_n f k y).
+  forall x k, c1 < x < c2 -> (k <= n)%nat -> ex_derive_n f k x.
 
 Hypothesis cont_f :
- forall x k, (k <= n)%nat -> -1 <= x <= 1 ->
-   continuity_pt (Derive_n f k) x.
+ forall x k, (k <= n)%nat -> -1 <= x <= 1 -> continuous (Derive_n f k) x.
 
 Lemma ierror_cheby x z :
   -1 <= x <= 1 ->
@@ -765,7 +705,7 @@ have [/eqP-> | Hc] := boolP (ierror f (cheby_nodes n) x == 0).
   apply/lt_0_INR/leP/neq0_lt0n/eqP/eqP.
   by rewrite muln_eq0 negb_or -!lt0n expn_gt0 fact_gt0.
 have [z1 [H1z1 ->]] := ierror_val (sym_equal (size_cheby_nodes n))
-         (uniq_cheby_nodes n) (@cheby_nodes_boundW n)
+         (uniq_cheby_nodes n) c1LN1 c2G1 (@cheby_nodes_boundW n)
          deriv_f cont_f Hx Hc.
 rewrite !Rabs_mult Rabs_R1 Rabs_Rinv; try lra.
 rewrite Rabs_pos_eq; try lra.
@@ -863,15 +803,16 @@ Section SChebyBound.
 
 Variable a b : R.
 Hypothesis aLb : a < b.
+Variable c1 c2 : R.
+Hypothesis c1La : c1 < a.
+Hypothesis bLc2 : b < c2.
 Variable f : R -> R.
 Variable n : nat.
 Hypothesis deriv_f : 
-  forall x, a <= x <= b ->
-   locally x (fun y : R => forall k : nat, (k <= n)%nat -> ex_derive_n f k y).
+  forall x k, c1 < x < c2 -> (k <= n)%nat -> ex_derive_n f k x.
 
 Hypothesis cont_f :
- forall x k, (k <= n)%nat -> a <= x <= b ->
-   continuity_pt (Derive_n f k) x.
+ forall x k, (k <= n)%nat -> a <= x <= b -> continuous (Derive_n f k) x.
 
 Lemma Tab_bound x : a <= x <= b -> -1 <= (Tab a b).[x] <= 1.
 Proof.
@@ -920,7 +861,7 @@ have [/eqP-> | Hc] := boolP (ierror f (scheby_nodes a b n) x == 0).
   apply/lt_0_INR/leP/neq0_lt0n/eqP/eqP.
   by rewrite muln_eq0 negb_or -!lt0n expn_gt0 fact_gt0.
 have [z1 [H1z1 ->]] := ierror_val (sym_equal (size_scheby_nodes a b n))
-         (@uniq_scheby_nodes a b aLb n) (@scheby_nodes_boundW a b aLb n)
+         (@uniq_scheby_nodes a b aLb n) c1La bLc2 (@scheby_nodes_boundW a b aLb n)
          deriv_f cont_f Hx Hc.
 rewrite !Rabs_mult Rabs_R1 Rabs_Rinv; try lra.
 rewrite Rabs_pos_eq; try lra.
@@ -1633,132 +1574,6 @@ Definition iddiff f l  :=
     iddiff_rec l1 f a 1 a
    else 0.
 
-Lemma RInt_deriv_lin (f : R -> R) (x y : R) t1 t2  b1 b2 c1 c2 :
-   y != 0 -> t1 <= t2 -> c1 < b1 -> b2 < c2 ->
-  b1 <= x + t1 * y <= b2 -> 
-  b1 <= x + t2 * y <= b2 -> 
-  (forall x, c1 < x < c2 -> ex_derive f x) ->
-  (forall x, b1 <= x <= b2 -> continuous (Derive f) x) ->
-   RInt (fun z : R => Derive f  (y * z + x)) t1 t2 = 
-    (/y) * (f (y * t2 + x) - f (y * t1 + x)).
-Proof.
-pose g t := y * t + x.
-have ef u : ex_derive g u.
-  by repeat (apply: ex_derive_mult || apply: ex_derive_plus ||
-             apply : ex_derive_const || apply: ex_derive_id).
-have Dg u : Derive g u = y.
-    rewrite !(Derive_plus, Derive_const, Derive_mult, Derive_id) ; try
-      by repeat (apply: ex_derive_mult || apply: ex_derive_plus ||
-                apply : ex_derive_const || apply: ex_derive_id).
-    by ring.
-have Cg u : continuous g u.
-  by do 5
-   (apply: continuous_plus || apply: continuous_mult || apply: continuous_id || 
-    apply: continuous_const).
-pose RC := R_CompleteNormedModule.
-move=> /eqP xDy t1Lt2 c1Lb1 b2Lc2 xt1B xt2B Df Cf.
-have RyP : 0 < Rabs y by split_Rabs; lra.
-have CDfg t : t1 <= t <= t2 ->continuous (Derive (f \o g)) t.
-  move=> tB.
-  have : continuous (fun x => Derive g x * Derive f (g x)) t.
-    apply: continuous_mult.
-      apply: (continuous_ext (fun _ => y)) => [v//|].
-      by apply: continuous_const.
-    apply: continuous_comp => //.
-    apply: Cf.
-    by rewrite /g; nra.
-  apply: continuous_ext_loc.
-  have K2 a b c : 0 < a -> b < c / a -> a * b < c.
-    move=> aP abLc.
-    rewrite (_ : c =  a * (c / a)).
-      by apply: Rmult_lt_compat_l.
-    by field; lra.
-  have gtB : b1 <= g t <= b2 by rewrite /g; nra.
-  pose eps := Rmin (Rabs ((c1 - g t)/ y))
-                   (Rabs ((c2 - g t)/ y)).
-  have epsP : 0 < eps by
-  apply: Rmin_glb_lt; rewrite Rabs_div //;
-  apply: Rdiv_lt_0_compat; split_Rabs; lra.
-  exists (mkposreal _ epsP) => u /= Hu.
-  have uB : c1 < g u < c2.
-    have F u1 u2 u3 : u1 < Rmin u2 u3 -> (u1 < u2 /\ u1 < u3).
-      by rewrite /Rmin; case: Rle_dec; lra.
-    have /F[F1 F2] : Rabs (u - t) < eps by apply: Hu.
-    split.
-      suff : Rabs (g t - g u) < Rabs (c1 - g t) by split_Rabs; lra.
-      have -> : g t - g u = y * (t - u)  by rewrite /g; lra.
-      rewrite Rabs_mult.
-      apply: K2 => //.
-      by rewrite -Rabs_div // Rabs_minus_sym.
-    suff : Rabs (g t - g u) < Rabs (c2 - g t) by split_Rabs; lra.
-    have -> : g t - g u = y * (t - u)  by rewrite /g; lra.
-    rewrite Rabs_mult.
-    apply: K2 => //.
-    by rewrite -Rabs_div // Rabs_minus_sym.
-  rewrite [RHS]Derive_comp //.
-  by apply: Df; lra.
-rewrite (_ : _ - _ = (f \o g) t2 - (f \o g) t1); last first.
-  by rewrite /g; congr (_ - f _); ring.
-rewrite -RInt_Derive; last 2 first.
-  move=> t; rewrite Rmin_left // Rmax_right // => tB.
-  apply: ex_derive_comp => //.
-    by apply: Df; rewrite /g; nra.
-  move=> t; rewrite Rmin_left // Rmax_right // => tB //.
-  by exact: CDfg.
-rewrite -[RHS](@RInt_scal RC); last first.
-  apply: ex_RInt_continuous => t; rewrite Rmin_left // Rmax_right //.
-  by exact: CDfg.
-apply: RInt_ext; rewrite Rmin_left // Rmax_right // => u Hu.
-rewrite [in RHS]Derive_comp => //; last first.
-  by apply: Df; rewrite /g; nra.
-rewrite Dg /g /scal /= /mult /=; field; lra.
-Qed.
-
-Lemma ex_RInt_sum (T : eqType) (P : pred T) (f : T -> R -> R) a b l :
-  (forall i, i \in l -> P i -> ex_RInt (f i) a b) -> 
-  ex_RInt (fun x : R => \sum_(j <- l | P j) f j x)  a b.
-Proof.
-elim: l => /= [_|c l IH He].
-  apply: ex_RInt_ext => [x Hx|].
-    by rewrite big_nil.
-  by apply: ex_RInt_const.
-apply: ex_RInt_ext => [x Hx|].
-  by rewrite big_cons.
-have [Pc | NPc] := boolP (P c); last first.
-  apply: IH => i iIl.
-  by apply: He; rewrite inE iIl orbT.
-apply: ex_RInt_plus.
-  by apply: He => //; rewrite inE eqxx.
-apply: IH => i iIl.
-by apply: He; rewrite inE iIl orbT.
-Qed.
-
-Lemma RInt_sum (T : eqType) (P : pred T) (f : T -> R -> R) a b l :
-  (forall i, i \in l -> P i -> ex_RInt (f i) a b) ->
-  RInt
-    (fun x : R => \sum_(i <- l| P i) (f i x)) a b =
-  \sum_(i <- l | P i)
-    RInt
-      (fun x : R => (f i x)) a b.
-Proof.
-elim: l => /= [HR|c l IH HR].
-  apply: etrans.
-    apply: RInt_ext => i Hi.
-    by rewrite big_nil.
-  by rewrite RInt_const [LHS](@mulr0 [ringType of R]) big_nil.
-rewrite big_cons.
-apply: etrans.
-  apply: RInt_ext => x Hx.
-  by rewrite big_cons.
-case: (boolP (P c)) => [HP|HNP]; last first.
-  apply: IH => i iIl Pi.
-  by apply: HR; rewrite ?inE ?iIl ?orbT.
-rewrite RInt_plus ?IH => // [i iIl Pi||].
-- by apply: HR; rewrite ?inE ?iIl ?orbT.
-- by apply: HR; rewrite ?inE ?eqxx.
-apply: ex_RInt_sum=> i iIl Pi.
-by apply: HR; rewrite ?inE ?iIl ?orbT.
-Qed.
 
 Lemma iddiff_rec_sum b1 b2 c1 c2 f k prev var acc l :
   c1 < b1 -> b2 < c2 ->
@@ -1913,55 +1728,6 @@ rewrite {2}(_ : a = (a - a) * 1 + a); try lra.
 rewrite (@iddiff_rec_sum b1 b2 c1 c2) => // [|i Hi]; try lra.
   by apply: eq_bigr => i _; rewrite mulr1 subrK.
 by have := Hb _ Hi; lra.
-Qed.
-
-Lemma ex_RInt_comp_lin1 f (u v a b : R) :
-       ex_RInt f (u * a + v) (u * b + v) ->
-       @ex_RInt R_CompleteNormedModule (fun y : R => f (u * y + v)) a b.
-Proof.
-move=> H.
-case: (Req_dec u 0) => [->|/eqP uNz].
-  apply: ex_RInt_ext => [x Hx|].
-    rewrite [_ * _](@mul0r [ringType of R]) 
-            [_ + _](@add0r [ringType of R]).
-     by [].
-  by apply: ex_RInt_const.
-apply: ex_RInt_ext => [x Hx|].
-  rewrite -[RHS](@mulfK _ u); last by [].
-  by rewrite mulrC [(_ * u)%RR]mulrC.
-apply: ex_RInt_scal.
-by apply: ex_RInt_comp_lin.
-Qed.
-
-Lemma MVT_le (f : R -> R) (a b : R) (df : R -> R): 
-   (forall x : R,
-     a <= x <= b -> is_derive f x (df x)) ->
-   (forall x : R,
-     a <= x <= b -> 0 <= df x) ->
-   (forall x : R,
-      a <= x <= b -> continuity_pt f x) ->
-     a <= b -> f a <= f b.
-Proof.
-move=> H1 H2 H3 aLb.
-case: (MVT_gen f a b df) => x;
-    rewrite Rmin_left // Rmax_right // => Hx.
-- by apply: H1; lra.
-- by apply: H3.
-rewrite (_ : f b = f b - f a + f a); try lra.
-have [Hx1 ->] := Hx.
-have := H2 _ Hx1.
-nra.
-Qed.
-
-Lemma continuous_continuity_pt f t : 
-  continuous f t -> continuity_pt f t.
-Proof.
-move=> Hc.
-apply: limit1_imp; last first.
-  apply: is_lim_Reals_0.
-  apply: is_lim_comp_continuous => //.
-  apply: is_lim_id.
-by move=> x [_]; lra.
 Qed.
 
 Lemma iddiff_rec_le b1 b2 c1 c2 f k x y prev var acc l :

@@ -336,7 +336,7 @@ by congr (_ * _); last by rewrite mu_cheby_nodes // add0n.
 Qed.
 
 Definition cheby_coef_list n :=
-  if n is n1.+1 then [seq cheby_coefs n1 i | i <- iota 0 n1.+1] else [::].
+  [seq cheby_coefs n.-1 i | i <- iota 0 n].
 
 Lemma cheby_coef_list_spec n: 
 	CPoly (cheby_coef_list n) = interpolation f (cheby_nodes n).
@@ -365,7 +365,7 @@ Context (If: ID -> ID).
 Hypothesis env: If \is_envelope_of f.
 Notation iota:= seq.iota.
 
-Definition Ivalue_list n:= map If (Icheby_nodes n).
+Definition Ivalue_list n:= [seq If i | i <- Icheby_nodes n].
 
 Lemma Ivalue_list_correct n i: (i < n)%nat ->
 	(f (cheby_nodes n)`_i) \contained_in nth I0 (Ivalue_list n) i.
@@ -396,12 +396,12 @@ apply mul_correct; last exact/ih2.
 exact/scl2_correct/Imu_correct.
 Qed.
 
-Definition ITvalue_list n j := map (ITvalues n j) (iota 0 n).
+Definition ITvalue_list n j := [seq ITvalues n j i | i <- iota 0 n].
 
 Lemma ITvalue_list_correct n i j: (j < n)%nat ->
 	('T_i).[(cheby_nodes n)`_j] \contained_in nth I0 (ITvalue_list n i) j.
 Proof.
-intros.
+move=> jLn.
 rewrite -Tvalue_list_correct //.
 rewrite !(nth_map 0%nat); try by rewrite size_iota.
 rewrite Tvalues_correct nth_iota //.
@@ -450,8 +450,7 @@ rewrite Tvalue_list_correct //.
 exact/ ITvalue_list_correct.
 Qed.
 
-Definition Icheby_coef_list n :=
-  if n is n.+1 then [seq Icheby_coefs n i | i <- iota 0 n.+1] else [::].
+Definition Icheby_coef_list n := [seq Icheby_coefs n.-1 i | i <- iota 0 n].
 
 Lemma Icheby_coef_list_correct n i:
 	(cheby_coef_list f n)`_i  \contained_in (nth I0 (Icheby_coef_list n) i).
@@ -496,9 +495,7 @@ congr (_ * _); last by rewrite mu_cheby_nodes // add0n.
 by rewrite /scheby_nodes (nth_map 0%RR) // size_cheby_nodes.
 Qed.
 
-Definition scheby_coef_list n := 
-  if n is n.+1 then [seq scheby_coefs n i | i <- seq.iota 0 n.+1]
-  else [::].
+Definition scheby_coef_list n := [seq scheby_coefs n.-1 i | i <- seq.iota 0 n].
 
 Definition CPolyab l := \sum_(i < (size l)) l`_i *: 'T^(a,b)_i.
 
@@ -520,8 +517,9 @@ apply sdsprod_coefs.
 by apply /eqP => eq; move /eqP: H; rewrite eq.
 Qed.
 
-Definition CM_correct L Delta f I := forall l x, (forall i, l`_i \contained_in nth I0 L i) ->
-	x \contained_in I -> Rabs (f x - (CPolyab l).[x]) \contained_in Delta.
+Definition CM_correct L Delta f I := 
+  forall l x, (forall i, l`_i \contained_in nth I0 L i) ->
+ 	x \contained_in I -> Rabs (f x - (CPolyab l).[x]) \contained_in Delta.
 End scheby_coefs.
 
 Section Ischeby_coefs.
@@ -531,7 +529,7 @@ Context (If: ID -> ID).
 Hypothesis env: If \is_envelope_of f.
 Notation iota:= seq.iota.
 
-Definition Isvalue_list n := map If (Ischeby_nodes a b n).
+Definition Isvalue_list n := [seq If i | i <- Ischeby_nodes a b n].
 
 Lemma Isvalue_list_correct n i:
 	(svalue_list (D2R a) (D2R b) f n)`_i \contained_in (nth I0 (Isvalue_list n) i).
@@ -544,10 +542,14 @@ rewrite svalue_list_correct // (nth_map I0); last by rewrite size_Ischeby_nodes.
 exact /env/Ischeby_nodes_correct.
 Qed.
 
-Definition Ischeby_coefs n j := mul (div (if j == 0%nat then I.fromZ 1 else I.fromZ 2) (I.fromZ (Z.of_nat (n.+1)))) (Isum n.+1 (fun i => mul (nth I0 (Isvalue_list n.+1) i) (nth I0 (ITvalue_list n.+1 j) i))).
+Definition Ischeby_coefs n j := 
+  mul (div (if j == 0%nat then I.fromZ 1 else I.fromZ 2) 
+      (I.fromZ (Z.of_nat (n.+1)))) 
+      (Isum n.+1 (fun i => mul (nth I0 (Isvalue_list n.+1) i) (nth I0 (ITvalue_list n.+1 j) i))).
 
 Lemma Ischeby_coefs_correct n j: (D2R a) != (D2R b) ->
-	sdsprod_coef (D2R a) (D2R b) (interpolation f (scheby_nodes (D2R a) (D2R b) n.+1)) n j \contained_in (Ischeby_coefs n j).
+	sdsprod_coef (D2R a) (D2R b) (interpolation f (scheby_nodes (D2R a) (D2R b) n.+1)) n j 
+     \contained_in (Ischeby_coefs n j).
 Proof.
 intros.
 rewrite -sdsprod_coefs //.
@@ -568,9 +570,7 @@ rewrite Tvalue_list_correct //.
 exact/ ITvalue_list_correct.
 Qed.
 
-Definition Ischeby_coef_list n := 
-  if n is n.+1 then [seq Ischeby_coefs n i | i <- iota 0 n.+1] 
-  else [::].
+Definition Ischeby_coef_list n := [seq Ischeby_coefs n.-1 i | i <- iota 0 n].
 
 Lemma Ischeby_coef_list_correct n i: D2R a != D2R b ->
 	(scheby_coef_list (D2R a) (D2R b) f n)`_i  \contained_in (nth I0 (Ischeby_coef_list n) i).

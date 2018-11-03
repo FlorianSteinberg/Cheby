@@ -23,7 +23,7 @@ Module I := FloatIntervalFull F.
 Section CPoly_interval.
 Notation mant := Interval.Interval_bigint_carrier.BigIntRadix2.smantissa_type.
 Notation xpnt := Interval.Interval_bigint_carrier.BigIntRadix2.exponent_type.
-Check I.fromZ 0.
+
 Notation D := F.type.
 Notation ID := (Interval_interval_float.f_interval F.type).
 Notation "x '\contained_in' I" := (contains (I.convert I) (Xreal x)) (at level 20).
@@ -189,8 +189,25 @@ End ICshaw.
 
 Section Icheby_nodes.
 
+Definition I1 := I.fromZ 1.
+Definition I2 := I.fromZ 2.
+
+Fixpoint Iilist n (f g : ID -> ID) k :=
+  if n is n.+1 then g k :: (Iilist n f g (f k))
+  else [::].
+
+Lemma size_Iilist n f g k : size (Iilist n f g k) = n.
+Proof. by elim: n k => //= n IH k; rewrite IH. Qed.
+
+Lemma nth_Iilist n u f g k i : (i < n)%nat ->
+  nth u (Iilist n f g k) i = g (ssrnat.iter i f k).
+Proof.
+elim: n i k u => //= n IH [|i] //= k u L.
+by rewrite IH // -iterSr.
+Qed.
+
 Definition m n i:=
-  if n is 0 then 0 else (IZR (Z.of_nat (2 * i + 1)) / IZR (Z.of_nat (2 * n)))%R.
+  if n is 0 then 0 else (INR (i.*2.+1) / INR (n.*2))%R.
 
 Definition mu n i:= cos (m n i * PI).
 
@@ -199,63 +216,98 @@ Proof.
 case: n => // n ineq.
 rewrite /mu /m /cheby_nodes (nth_map 0%nat); last by rewrite size_iota.
 congr cos; rewrite nth_iota //.
-rewrite add0n /Rdiv !IZR_Zof_nat addn1 !mul2n.
+rewrite add0n /Rdiv !natr_INR.
 lra.
 Qed.
 
-Definition Im n i := 
-  if n is 0 then I0 
-  else div (I.fromZ (Z.of_nat (2* i + 1))) (I.fromZ (Z.of_nat (2 * n))).
+Definition Imlist n v2n := 
+   Iilist n (fun x => add I2 x) (fun x => div x v2n) I1.
 
-Lemma Im_correct n i: m n i \contained_in Im n i.
+Lemma Iiter_add21 i :
+  INR (i.*2.+1) \contained_in ssrnat.iter i [eta I.add prec I2] I1.
 Proof.
-case: n => [ | n]; first by apply I00.
-apply /div_correct; try apply I.fromZ_correct.
+have v1D : 1 \contained_in I1 by apply: I.fromZ_correct.
+have v2D : 2 \contained_in I2 by apply: I.fromZ_correct.
+elim: i => // j IH.
+rewrite doubleS 2!S_INR Rplus_assoc Rplus_comm iterS.
+by apply: add_correct.
+Qed.
+
+Lemma Imlist_correct n i u v2n :
+   (i < n)%nat -> 
+   (2 * INR n)%R \contained_in v2n ->
+   m n i \contained_in nth u (Imlist n v2n) i.
+Proof.
+case: n => // n iLb v2nD; rewrite /Im nth_Iilist //.
+apply: div_correct; first by apply: Iiter_add21.
+  by rewrite -mul2n mult_INR.
 rewrite /is_zero /Req_bool Rcompare_Gt => //.
-by apply /IZR_lt /Zofnat_pos.
+by apply/(lt_INR 0)/ltP.
 Qed.
 
 Definition Ipi := I.pi prec.
-Definition Imu n i:= I.cos prec (mul (Im n i) Ipi).
 
-Lemma Imu_correct n i: mu n i \contained_in Imu n i.
+Definition Icheby_nodes n v2n := 
+   Iilist n (fun x => add I2 x) (fun x => I.cos prec (div (mul x Ipi) v2n)) I1.
+
+Lemma Imulist_correct n u v2n i:
+   (i < n)%nat -> 
+   (2 * INR n)%R \contained_in v2n ->
+    mu n i \contained_in nth u (Icheby_nodes n v2n) i.
 Proof.
-by apply /cos_correct /mul_correct; [apply Im_correct | apply I.pi_correct].
+case: n =>  // n iLn v2nD.
+rewrite nth_Iilist //.
+apply: cos_correct => //.
+have ->: (m n.+1 i * PI = INR i.*2.+1 * PI / INR n.+1.*2)%R.
+  by rewrite /m /Rdiv; lra.
+apply: div_correct.
+- apply: mul_correct; first by apply: Iiter_add21.
+  by apply: I.pi_correct.
+- by rewrite -mul2n mult_INR.
+rewrite /is_zero /Req_bool Rcompare_Gt => //.
+by apply/(lt_INR 0)/ltP.
 Qed.
 
-Definition Icheby_nodes (n : nat) := [seq Imu n i | i <- seq.iota 0%nat n].
+Lemma size_Icheby_nodes n v2n: size (Icheby_nodes n v2n) = n.
+Proof. by rewrite size_Iilist. Qed.
 
-Lemma size_Icheby_nodes n: size (Icheby_nodes n) = n.
-Proof. by rewrite size_map size_iota. Qed.
-
-Lemma Icheby_nodes_correct n i: (cheby_nodes n)`_ i \contained_in nth I0 (Icheby_nodes n) i.
+Lemma Icheby_nodes_correct n v2n i: 
+   (2 * INR n)%R \contained_in v2n ->
+   (cheby_nodes n)`_ i \contained_in nth I0 (Icheby_nodes n v2n) i.
 Proof.
-case E: (i < n)%nat; last first.
-	rewrite !nth_default; first exact: I00.
-		by rewrite size_cheby_nodes leqNgt E.
-	by rewrite size_Icheby_nodes leqNgt E.
+move=> v2nD.
+have [nLi|iLn] := leqP n i.
+	rewrite !nth_default; first by exact: I00.
+		by rewrite size_cheby_nodes.
+	by rewrite size_Icheby_nodes.
+case: n iLn v2nD => [|n] // iLn v2nD.
 rewrite (nth_map 0%nat); last by rewrite size_iota.
 rewrite nth_iota => //; rewrite add0n.
-rewrite -mu_cheby_nodes => //.
-apply Imu_correct.
+have -> : (i.*2.+1%:R * PI / n.+1.*2%:R = i.*2.+1%:R / n.+1.*2%:R * PI)%R.
+  by lra.
+rewrite !natr_INR.
+rewrite -[cos _]/(mu n.+1 i).
+by apply: Imulist_correct.
 Qed.
 
-Definition Ischeby_nodes (a b : D) (n : nat) :=
+Definition Ischeby_nodes (a b : D) (n : nat) v2n :=
   [seq I.scale2 
          (add (add (mul (sub (FtoI b) (FtoI a)) i) (FtoI a)) (FtoI b)) 
-         (F.ZtoS (-1)) | i <- Icheby_nodes n].
+         (F.ZtoS (-1)) | i <- Icheby_nodes n v2n].
 
-Lemma size_Ischeby_nodes a b n : size (Ischeby_nodes a b n) = n.
+Lemma size_Ischeby_nodes a b n v2n : size (Ischeby_nodes a b n v2n) = n.
 Proof. by rewrite size_map size_Icheby_nodes. Qed.
 
-Lemma Ischeby_nodes_correct a b n i:
-	(scheby_nodes (D2R a) (D2R b) n)`_ i \contained_in nth I0 (Ischeby_nodes a b n) i.
+Lemma Ischeby_nodes_correct a b n v2n i :
+  (2 * INR n)%R \contained_in v2n ->
+	(scheby_nodes (D2R a) (D2R b) n)`_ i \contained_in nth I0 (Ischeby_nodes a b n v2n) i.
 Proof.
-case E: (i < n)%nat; last first.
+move=> v2nD.
+have [nLi|iLn] := leqP n i.
 	rewrite !nth_default; first exact: I00.
-		by rewrite size_scheby_nodes leqNgt E.
-	by rewrite /Ischeby_nodes size_map /Icheby_nodes size_map size_iota leqNgt E.
-rewrite (nth_map I0); last by rewrite size_map size_iota.
+		by rewrite size_scheby_nodes.
+	by rewrite size_map size_Icheby_nodes.
+rewrite (nth_map I0); last by rewrite size_Icheby_nodes.
 rewrite (nth_map 0%R) /Rdiv; last by rewrite size_cheby_nodes.
 have ->: (/ 2 = powerRZ 2 (-1)) %R by rewrite /powerRZ Pos2Nat.inj_1 pow_1.
 apply /scale2_correct /add_correct; last exact: FtoI_correct.
@@ -263,6 +315,7 @@ apply add_correct; last exact: FtoI_correct.
 apply mul_correct; last exact: Icheby_nodes_correct.
 by apply sub_correct; apply: FtoI_correct.
 Qed.
+
 End Icheby_nodes.
 
 Section cheby_coefs.
@@ -363,104 +416,318 @@ Section Icheby_coefs.
 Context (f: R -> R).
 Context (If: ID -> ID).
 Hypothesis env: If \is_envelope_of f.
-Notation iota:= seq.iota.
 
-Definition Ivalue_list n:= [seq If i | i <- Icheby_nodes n].
+Definition Ivalue_list n v2n := [seq If i | i <- Icheby_nodes n v2n].
 
-Lemma Ivalue_list_correct n i: (i < n)%nat ->
-	(f (cheby_nodes n)`_i) \contained_in nth I0 (Ivalue_list n) i.
+Lemma Ivalue_list_correct n v2n i: (i < n)%nat ->
+  (2 * INR n)%R \contained_in v2n ->
+	(f (cheby_nodes n)`_i) \contained_in nth I0 (Ivalue_list n v2n) i.
 Proof.
-intros.
-rewrite (nth_map I0); last by rewrite size_map size_iota.
+move=> iLn v2nD.
+rewrite (nth_map I0) ?size_Icheby_nodes //.
 exact/env/Icheby_nodes_correct.
 Qed.
 
-Fixpoint ITvalues (n : nat) (i : nat) (j: nat) {struct i} : ID :=
-  if i is i1.+1 then
-    if i1 is i2.+1 then sub (mul (scl2 (Imu n j))  (ITvalues n i1 j)) (ITvalues n i2 j)
-    else Imu n j
-  else I.fromZ 1.
+Fixpoint IT3values l1 l2 l3 : seq ID :=
+  if l1 is m::l1 then
+    if l2 is v1::l2 then 
+      if l3 is v2::l3 then sub (mul (scl2 m)  v2) v1 :: IT3values l1 l2 l3
+      else [::]
+    else [::]
+  else [::].
 
-Lemma ITvaluesSS n i j:
-	(ITvalues n i.+2 j) = sub (mul (scl2 (Imu n j))  (ITvalues n i.+1 j)) (ITvalues n i j).
-Proof. done. Qed.
-
-Lemma ITvalues_correct n i j: (pT _ i).[mu n j] \contained_in ITvalues n i j.
+Lemma size_IT3values l1 l2 l3  :
+  size l2 = size l1 -> size l3 = size l1 ->
+  size (IT3values l1 l2 l3) = size l1.
 Proof.
-rewrite -Tvalues_correct.
-elim/ induc2: i => [ | | i ih1 ih2]; first by rewrite /= F.fromZ_correct; lra.
-	by apply Imu_correct.
-rewrite ITvaluesSS TvaluesSS.
-apply sub_correct; last exact/ih1.
-apply mul_correct; last exact/ih2.
-exact/scl2_correct/Imu_correct.
+elim: l1 l2 l3 => // a l1 IH [|b l2] [|c l3] //= [] H1 [] H2.
+by rewrite IH.
 Qed.
 
-Definition ITvalue_list n j := [seq ITvalues n j i | i <- iota 0 n].
-
-Lemma ITvalue_list_correct n i j: (j < n)%nat ->
-	('T_i).[(cheby_nodes n)`_j] \contained_in nth I0 (ITvalue_list n i) j.
+Lemma IT3values_correct l1 l2 l3 n m k  :
+  size l2 = size l1 -> size l3 = size l1 ->
+  (forall i, (i < size l1)%nat -> (cheby_nodes n)`_(m + i) \contained_in nth I0 l1 i) ->
+  (forall i, (i < size l2)%nat -> (pT _ k).[(cheby_nodes n)`_(m + i)] \contained_in nth I0 l2 i) ->
+  (forall i, (i < size l3)%nat -> (pT _ k.+1).[(cheby_nodes n)`_(m + i)] \contained_in nth I0 l3 i) ->
+  (forall i, (i < size (IT3values l1 l2 l3))%nat -> 
+      (pT _ k.+2).[(cheby_nodes n)`_(m + i)] \contained_in nth I0 (IT3values l1 l2 l3) i).
 Proof.
-move=> jLn.
-rewrite -Tvalue_list_correct //.
-rewrite !(nth_map 0%nat); try by rewrite size_iota.
-rewrite Tvalues_correct nth_iota //.
-exact/ITvalues_correct.
+elim: l1 l2 l3 m k => // a l1 IH  [|b l2] // [|c l3] //= m k [] Hs2 [] Hs3 Hl1 Hl2 Hl3 [|i] /= H.
+  rewrite pTSS !hornerE.
+  apply: sub_correct; last first.
+    by have /= := Hl2 0%nat; rewrite addn0; apply.
+  apply: mul_correct; last first.
+    by have /= := Hl3 0%nat; rewrite addn0; apply.
+  rewrite -mulr2n.
+  apply: scl2_correct.
+  by have /= := Hl1 0%nat; rewrite addn0; apply.
+rewrite -addSnnS; apply: IH => //.
+- by move=> i1 Hi1; rewrite addSnnS; apply: Hl1.
+- by move=> i1 Hi1; rewrite addSnnS; apply: Hl2.
+by move=> i1 Hi1; rewrite addSnnS; apply: Hl3.
 Qed.
 
-Fixpoint Isum n (F: nat -> ID):=
-	if n is n'.+1 then add (Isum n' F) (F n') else I0.
+Fixpoint ITvalues_rec (n : nat) l1 l2 l3 : seq (seq ID) :=
+  if n is n1.+1 then
+    let l4 := IT3values l1 l2 l3 in
+    l4 :: ITvalues_rec n1 l1 l3 l4
+  else [::].
 
-Lemma Isum_correct n A a:
-	(forall i, (i < n)%nat -> a i \contained_in A i) -> 
-  (\sum_(i< n) a i) \contained_in (Isum n A).
+Lemma size_ITvalues_rec n l1 l2 l3  :
+  size (ITvalues_rec n l1 l2 l3) = n.
 Proof.
-elim: n; intros.
-	rewrite big1; last by case.
-	by rewrite /Isum; apply I00.
-rewrite big_ord_recr /=.
-apply add_correct; last exact/H0.
-apply/H => i ineq.
-exact/H0/leqW.
+by elim: n l1 l2 l3 => //= n IH l1 l2 l3; rewrite IH.
 Qed.
 
-Definition Icheby_coefs n j := 
-   mul (div (if j == 0%nat then I.fromZ 1 else I.fromZ 2) 
-            (I.fromZ (Z.of_nat (n.+1)))) 
-       (Isum n.+1 (fun i => mul (nth I0 (Ivalue_list n.+1) i) 
-                  (nth I0 (ITvalue_list n.+1 j) i))).
-
-Lemma Icheby_coefs_correct n j:
-	dsprod_coef (interpolation f (cheby_nodes n.+1)) n j \contained_in (Icheby_coefs n j).
+Lemma size_size_ITvalues_rec n l1 l2 l3 p :
+  size l2 = size l1 -> size l3 = size l1 ->
+  (p < n)%nat -> size (nth [::] (ITvalues_rec n l1 l2 l3) p) = size l1.
 Proof.
+elim: n l1 l2 l3 p => //= n IH l1 l2 l3 [H1 H2 _|p H1 H2 Hi] //=.
+  by rewrite size_IT3values.
+apply: IH => //.
+by rewrite size_IT3values.
+Qed.
+
+Lemma ITvalues_rec_correct l1 l2 l3 n m k  :
+  size l2 = size l1 -> size l3 = size l1 ->
+  (forall i, (i < size l1)%nat -> (cheby_nodes n)`_i \contained_in nth I0 l1 i) ->
+  (forall i, (i < size l2)%nat -> (pT _ k).[(cheby_nodes n)`_i] \contained_in nth I0 l2 i) ->
+  (forall i, (i < size l3)%nat -> (pT _ k.+1).[(cheby_nodes n)`_i] \contained_in nth I0 l3 i) ->
+  (forall i p,
+      let l4 := nth [::] (ITvalues_rec m l1 l2 l3) p in
+      (p < m)%nat -> 
+      (i < size l1)%nat -> 
+      (pT _(k.+2 + p)).[(cheby_nodes n)`_(i)] \contained_in nth I0 l4 i).
+Proof.
+elim: m k l1 l2 l3 => // m1 IH k l1 l2 l3 Hs2 Hs3 Hl1 Hl2 Hl3 i [/= _ H|p] /=.
+  rewrite addn0 -{2}[i]add0n.
+  apply: IT3values_correct => //.
+  by rewrite size_IT3values.
+move=> H11 H2; rewrite -addSnnS.
+apply: IH => //.
+- by rewrite size_IT3values.
+move=> i1 Hi1.
+rewrite -{2}[i1]add0n.
+by apply: IT3values_correct.
+Qed.
+
+Definition ITvalues n l1 l2 :=
+  if n is n1.+1 then 
+     l1 ::
+     if n1 is n2.+1 then
+       l2 :: ITvalues_rec n2 l2 l1 l2
+     else [::]
+  else [::].
+
+Lemma size_ITvalue n l1 l2 : size (ITvalues n l1 l2) = n.
+Proof.
+case: n => // [] [|n] //=.
+by rewrite size_ITvalues_rec.
+Qed.
+
+Lemma size_size_ITvalues n l1 l2 p :
+  size l1 = n -> size l2 = n ->
+  (p < n)%nat -> size (nth [::] (ITvalues n l1 l2) p) = n.
+Proof.
+case: n => // [] [|n] //=; first by case: p.
+case: p => //=.
+case => [|p] Hl1 Hl2 Hp //.
+by rewrite size_size_ITvalues_rec ?Hl2.
+Qed.
+
+Lemma ITvalues_correct n l1 l2 v2n p i :
+      l1 = nseq n I1 ->
+      (2 * INR n)%R \contained_in v2n ->
+      l2 = Icheby_nodes n v2n ->
+      (p < n)%nat -> 
+      (i < n)%nat -> 
+      (pT _(i)).[mu n p] \contained_in nth I0 (nth [::] (ITvalues n l1 l2) i) p.
+Proof.
+case: n => // [] [|n] // l1D v2nD l2D.
+  case: p => // _; case: i => //.
+  rewrite pT0 hornerE [ITvalues _ _ _]/= {2}/nth => _.
+  rewrite l1D nth_nseq.
+  by apply: I.fromZ_correct.
+move=> Hp Hi.
+rewrite [ITvalues _ _]/=.
+case: i Hi => [|[|i]].
+- rewrite [ITvalues _ _ _]/= {2}/nth pT0 hornerE.
+  rewrite l1D (@nth_nseq _ _ (n.+2)) Hp =>  _.
+  by apply: I.fromZ_correct.
+- rewrite [ITvalues _ _ _]/= l2D {2}/nth pT1 hornerE => _.
+  rewrite mu_cheby_nodes //.
+  by apply: Icheby_nodes_correct.
+move=> Hi.
+rewrite [nth [::] _ _]/=.
+rewrite -{1}[i.+1]add1n -addSn.
+rewrite mu_cheby_nodes //.
+apply: ITvalues_rec_correct => //.
+- by rewrite l1D l2D size_Icheby_nodes /= size_nseq.
+- by move=> j Hj; rewrite l2D; apply: Icheby_nodes_correct.
+- move=> j Hj.
+  rewrite l1D pT0 hornerE (@nth_nseq _ _ (n.+2)).
+  move: Hj; rewrite l1D /= size_nseq => ->.
+  by apply: I.fromZ_correct.
+- move=> j Hj.
+  rewrite pT1 hornerE l2D.
+  by apply: Icheby_nodes_correct.
+by rewrite l2D size_Icheby_nodes.
+Qed.
+
+(*
+End Icheby_coefs.
+End CPoly_interval.
+End CPoly_interval.
+
+Module V := CPoly_interval SFBI2.
+
+Export V.
+
+From Bignums Require Import BigZ.
+
+Print SFBI2.precision.
+Print Interval_bigint_carrier.BigIntRadix2.exponent_type.
+
+Definition I1 := I.fromZ 1.
+Definition I2 := I.fromZ 2.
+
+Compute (fun x => ITvalues 10%bigZ x (I.fromZ (Z.of_nat x))) 3%N.
+
+*)
+
+Fixpoint Isum (F : ID -> ID -> ID) l1 l2 :=
+  if l1 is a :: l1 then
+  if l2 is b :: l2 then
+     add (F a b) (Isum F l1 l2)  
+  else I0
+  else I0.
+
+Lemma Isum_correct n g G (l1 l2 : seq R) Il1 Il2:
+  (forall x y X Y, x \contained_in X -> y \contained_in Y
+      -> g x y \contained_in G X Y) ->
+  size l1 = n -> size l2 = n ->
+  size Il1 = n -> size Il2 = n ->
+  (forall i, (i < n)%nat -> nth 0 l1 i \contained_in nth I0 Il1 i) ->
+  (forall i, (i < n)%nat -> nth 0 l2 i \contained_in nth I0 Il2 i) ->
+  (\sum_(i < n) (g (nth 0 l1 i) (nth 0 l2 i)))
+      \contained_in (Isum G Il1 Il2).
+Proof.
+move=> H; elim: l1 l2 Il1 Il2 n => 
+   [|a l1 IH] [|b l2] [|A Il1] [|B Il2] [|n] //.
+  move=> _ _ _ _ _ _ .
+  by rewrite big_ord0; apply: I.fromZ_correct.
+move=> [sl1] [sl2] [sIl1] [sIl2] Cl1 Cl2.
+rewrite big_ord_recl /=.
+apply: add_correct.
+  apply: H; first by have /= := Cl1 0%nat; apply.
+  by have /= := Cl2 0%nat; apply.
+apply: IH => // i Hi; first by apply: (Cl1 i.+1).
+by apply: (Cl2 i.+1).
+Qed.
+
+Definition Icheby_coefs vn vl1 vl2 :=
+  let g x y := mul (If x) y in 
+  let res := [seq div (mul I2 (Isum g vl1 i)) vn | i <- vl2] in
+  if res is a :: res1 then (div a I2) :: res1
+  else res.
+
+Lemma size_Icheby_coefs_correct vn vl1 vl2 :
+  size (Icheby_coefs vn vl1 vl2) = size vl2.
+Proof.
+rewrite /Icheby_coefs.
+case E : [seq _ | _ <- _] => [|a l].
+  by rewrite -E size_map.
+apply: etrans (_ : _ = size (a :: l)) _ => //.
+by rewrite -E size_map.
+Qed.
+
+Lemma Icheby_coefs_correct n vn v2n l1 vl1 vl2 j :
+   l1 = nseq n.+1 I1 ->
+   (2 * INR n.+1)%R \contained_in v2n ->
+   INR n.+1 \contained_in vn ->
+   vl1 = Icheby_nodes n.+1 v2n ->
+   vl2 = ITvalues n.+1 l1 vl1 ->
+   (j < n.+1)%nat ->
+	dsprod_coef (interpolation f (cheby_nodes n.+1)) n j \contained_in 
+             (nth I0 (Icheby_coefs vn vl1 vl2) j).
+Proof.
+move=> v1D v2nD vnD vl1D -> jL.
 rewrite -dsprod_coefs.
-apply mul_correct.
-	apply div_correct; first by case: ifP => _; apply I.fromZ_correct.
-		by rewrite INR_IZR_INZ; apply I.fromZ_correct.
-	rewrite /is_zero.
-	apply Req_bool_false.
-	have ->: (0 = INR 0)%R by rewrite /=.
-	by move => /INR_eq eq.
-apply (@Isum_correct _ (fun i : nat => mul (nth I0 (Ivalue_list n.+1) i) (nth I0 (ITvalue_list n.+1 j) i)) (fun i => (value_list f n.+1)`_i * (Tvalue_list n.+1 j)`_i)).
-move => i ineq.
-apply mul_correct.
-	rewrite value_list_correct //.
-	by apply Ivalue_list_correct.
-rewrite Tvalue_list_correct //.
-exact/ ITvalue_list_correct.
-Qed.
-
-Definition Icheby_coef_list n := [seq Icheby_coefs n.-1 i | i <- iota 0 n].
-
-Lemma Icheby_coef_list_correct n i:
-	(cheby_coef_list f n)`_i  \contained_in (nth I0 (Icheby_coef_list n) i).
-Proof.
-case: n => [ | n]; first by rewrite !nth_default //; apply I00.
-case E: (i < n.+1)%nat; last first.
-	by rewrite !nth_default; first exact I00; rewrite size_map size_iota leqNgt E.
-rewrite !(nth_map 0%nat); try by rewrite size_iota.
-rewrite nth_iota //dsprod_coefs.
-exact/Icheby_coefs_correct.
+rewrite /cheby_coefs /Icheby_coefs.
+have := size_ITvalue n.+1 l1 vl1.
+case E : ITvalues => [|a l] // _.
+have -> : a = nth [::] (ITvalues n.+1 l1 vl1) 0 by rewrite E.
+rewrite map_cons.
+case: j jL => [|j] jL; set s := \sum_(i < _) _.
+  rewrite eqxx {1}/nth.
+  rewrite -[((1 / INR n.+1)%R * s)%RR]/((1 / INR n.+1 * s))%R.
+  have -> : ((1 / INR n.+1) *  s = 
+             ((2 * s) / INR n.+1) / 2)%R.
+    by field; apply: (not_INR _ 0).
+  apply: div_correct; last 2 first.
+  - by apply: I.fromZ_correct.
+  - by case: is_zero_spec=> //; lra.
+  apply: div_correct => //; last first.
+    by case: is_zero_spec=> // /(INR_eq _ 0).
+  apply: mul_correct.
+    by apply: I.fromZ_correct.
+  have ->: s = 
+      \sum_(i < n.+1)
+        f ((cheby_nodes n.+1)`_i) * (Tvalue_list n.+1 0)`_i.
+    apply: eq_bigr => i _; congr (_ * _).
+    by rewrite (nth_map 0) // size_cheby_nodes.
+  apply: (@Isum_correct n.+1
+            (fun x y =>  f x * y)
+            (fun x y =>  mul (If x)  y)) => //.
+  - move=> x y X Y Hx Hy; apply: mul_correct => //.
+    by apply: env.
+  - by rewrite size_cheby_nodes.
+  - by rewrite size_map size_iota.
+  - by rewrite vl1D size_Icheby_nodes.
+  - rewrite size_size_ITvalues //.
+      by rewrite v1D size_nseq.
+    by rewrite vl1D size_Icheby_nodes.
+  - move=> i Hi; rewrite vl1D.
+    by apply: Icheby_nodes_correct.
+  move=> i Hi.
+  rewrite Tvalue_list_correct // -mu_cheby_nodes //.
+  by apply: ITvalues_correct vl1D _ _.
+set u := (_ * _)%RR.
+have {u}->: (u = (2 * s) / INR n.+1)%R.
+  rewrite /u; set v := INR _.
+  toR; rewrite /u /=.
+  by field; apply: (not_INR _ 0).
+have -> : forall a b, nth I0 (a ::  b) j.+1 = nth I0 b j by [].
+rewrite (nth_map [::]); last first.
+  by rewrite -ltnS  -[(size l).+1]/(size (a :: l)) -E size_ITvalue.
+apply: div_correct => //; last first.
+  by case: is_zero_spec=> // /(INR_eq _ 0).
+apply: mul_correct.
+  by apply: I.fromZ_correct.
+have ->: s = 
+    \sum_(i < n.+1)
+        f ((cheby_nodes n.+1)`_i) * (Tvalue_list n.+1 j.+1)`_i.
+  apply: eq_bigr => i _; congr (_ * _).
+  by rewrite (nth_map 0) // size_cheby_nodes.
+apply: (@Isum_correct n.+1
+            (fun x y =>  f x * y)
+            (fun x y =>  mul (If x)  y)) => //.
+- move=> x y X Y Hx Hy; apply: mul_correct => //.
+  by apply: env.
+- by rewrite size_cheby_nodes.
+- by rewrite size_map size_iota.
+- by rewrite vl1D size_Icheby_nodes.
+- rewrite -[nth [::] l j]/(nth [::] (a :: l) j.+1).
+  rewrite -E size_size_ITvalues //.
+    by rewrite v1D size_nseq.
+  by rewrite vl1D size_Icheby_nodes.
+- move=> i Hi; rewrite vl1D.
+  by apply: Icheby_nodes_correct.
+move=> i Hi.
+rewrite Tvalue_list_correct // -mu_cheby_nodes //.
+rewrite -[nth [::] l j]/(nth [::] (a :: l) j.+1) -E.
+by apply: ITvalues_correct vl1D _ _.
 Qed.
 
 End Icheby_coefs.
@@ -520,6 +787,7 @@ Qed.
 Definition CM_correct L Delta f I := 
   forall l x, (forall i, l`_i \contained_in nth I0 L i) ->
  	x \contained_in I -> Rabs (f x - (CPolyab l).[x]) \contained_in Delta.
+
 End scheby_coefs.
 
 Section Ischeby_coefs.
@@ -527,61 +795,115 @@ Context (a b : D).
 Context (f: R -> R).
 Context (If: ID -> ID).
 Hypothesis env: If \is_envelope_of f.
-Notation iota:= seq.iota.
 
-Definition Isvalue_list n := [seq If i | i <- Ischeby_nodes a b n].
+Definition Isvalue_list n v2n := [seq If i | i <- Ischeby_nodes a b n v2n].
 
-Lemma Isvalue_list_correct n i:
-	(svalue_list (D2R a) (D2R b) f n)`_i \contained_in (nth I0 (Isvalue_list n) i).
+Lemma Isvalue_list_correct n v2n i: (i < n)%nat ->
+  (2 * INR n)%R \contained_in v2n ->
+  (f (scheby_nodes (D2R a) (D2R b) n)`_i) \contained_in nth I0 (Isvalue_list n v2n) i.
 Proof.
-case E: (i < n)%nat; last first.
-	rewrite !nth_default; first exact/I00; rewrite size_map.
-		by rewrite size_scheby_nodes leqNgt E.
-	by rewrite size_Ischeby_nodes leqNgt E.
-rewrite svalue_list_correct // (nth_map I0); last by rewrite size_Ischeby_nodes.
-exact /env/Ischeby_nodes_correct.
+move=> iLn v2nD.
+rewrite (nth_map I0) ?size_Ischeby_nodes //.
+exact/env/Ischeby_nodes_correct.
 Qed.
 
-Definition Ischeby_coefs n j := 
-  mul (div (if j == 0%nat then I.fromZ 1 else I.fromZ 2) 
-      (I.fromZ (Z.of_nat (n.+1)))) 
-      (Isum n.+1 (fun i => mul (nth I0 (Isvalue_list n.+1) i) (nth I0 (ITvalue_list n.+1 j) i))).
-
-Lemma Ischeby_coefs_correct n j: (D2R a) != (D2R b) ->
-	sdsprod_coef (D2R a) (D2R b) (interpolation f (scheby_nodes (D2R a) (D2R b) n.+1)) n j 
-     \contained_in (Ischeby_coefs n j).
+Lemma Ischeby_coefs_correct n vn v2n l1 vl1 vl2 vl3 j :
+   (F.cmp a b = Xlt \/ F.cmp a b = Xgt) ->
+   l1 = nseq n.+1 I1 ->
+   (2 * INR n.+1)%R \contained_in v2n ->
+   INR n.+1 \contained_in vn ->
+   vl1 = Icheby_nodes n.+1 v2n ->
+   vl2 = ITvalues n.+1 l1 vl1 ->
+   vl3 = Ischeby_nodes a b n.+1 v2n ->
+   (j < n.+1)%nat ->
+	sdsprod_coef (D2R a) (D2R b)
+    (interpolation f (scheby_nodes (D2R a) (D2R b) n.+1)) n j \contained_in 
+             (nth I0 (Icheby_coefs If vn vl3 vl2) j).
 Proof.
-intros.
-rewrite -sdsprod_coefs //.
-apply mul_correct.
-	apply div_correct; first by case: ifP => _; apply I.fromZ_correct.
-		by rewrite INR_IZR_INZ; apply I.fromZ_correct.
-	rewrite /is_zero.
-	apply Req_bool_false.
-	have ->: (0 = INR 0)%R by rewrite /=.
-	by move => /INR_eq eq.
-apply (@Isum_correct _ (fun i : nat => mul (nth I0 (Isvalue_list n.+1) i) 
-                                           (nth I0 (ITvalue_list n.+1 j) i))
-                       (fun i => (svalue_list (D2R a) (D2R b) f n.+1)`_i * 
-                                 (Tvalue_list n.+1 j)`_i)).
-move => i ineq.
-apply mul_correct; first by apply Isvalue_list_correct.
-rewrite Tvalue_list_correct //.
-exact/ ITvalue_list_correct.
-Qed.
-
-Definition Ischeby_coef_list n := [seq Ischeby_coefs n.-1 i | i <- iota 0 n].
-
-Lemma Ischeby_coef_list_correct n i: D2R a != D2R b ->
-	(scheby_coef_list (D2R a) (D2R b) f n)`_i  \contained_in (nth I0 (Ischeby_coef_list n) i).
-Proof.
-intros.
-case: n => [ | n]; first by rewrite !nth_default //; apply I00.
-case E: (i < n.+1)%nat; last first.
-	by rewrite !nth_default; first exact I00; rewrite size_map size_iota leqNgt E.
-rewrite !(nth_map 0%nat); try by rewrite size_iota.
-rewrite nth_iota //sdsprod_coefs //.
-exact/Ischeby_coefs_correct.
+move=> DD v1D v2nD vnD vl1D -> -> jL.
+rewrite -sdsprod_coefs //; last first.
+  apply/eqP.
+  move: DD; rewrite F.cmp_correct.
+  rewrite /D2R  /Xcmp; do 2 case: F.toX => //=.
+  - by case; discriminate.
+  - by move=> r []; discriminate.
+  - by move=> r []; discriminate.
+  move=> r1 r2; case: Rcompare_spec; try lra.
+  by move=> _ []; discriminate.
+rewrite /scheby_coefs /Icheby_coefs.
+have := size_ITvalue n.+1 l1 vl1.
+case E : ITvalues => [|a1 l] // _.
+have -> : a1 = nth [::] (ITvalues n.+1 l1 vl1) 0 by rewrite E.
+rewrite map_cons.
+case: j jL => [|j] jL; set s := \sum_(i < _) _.
+  rewrite eqxx {1}/nth.
+  rewrite -[((1 / INR n.+1)%R * s)%RR]/((1 / INR n.+1 * s))%R.
+  have -> : ((1 / INR n.+1) *  s = 
+             ((2 * s) / INR n.+1) / 2)%R.
+    by field; apply: (not_INR _ 0).
+  apply: div_correct; last 2 first.
+  - by apply: I.fromZ_correct.
+  - by case: is_zero_spec=> //; lra.
+  apply: div_correct => //; last first.
+    by case: is_zero_spec=> // /(INR_eq _ 0).
+  apply: mul_correct.
+    by apply: I.fromZ_correct.
+  have ->: s = 
+      \sum_(i < n.+1)
+        f ((scheby_nodes (D2R a) (D2R b) n.+1)`_i) * (Tvalue_list n.+1 0)`_i.
+    apply: eq_bigr => i _; congr (_ * _).
+    by rewrite (nth_map 0) // size_scheby_nodes.
+  apply: (@Isum_correct n.+1
+            (fun x y =>  f x * y)
+            (fun x y =>  mul (If x)  y)) => //.
+  - move=> x y X Y Hx Hy; apply: mul_correct => //.
+    by apply: env.
+  - by rewrite size_scheby_nodes.
+  - by rewrite size_map size_iota.
+  - by rewrite size_Ischeby_nodes.
+  - rewrite size_size_ITvalues //.
+      by rewrite v1D size_nseq.
+    by rewrite vl1D size_Icheby_nodes.
+  - move=> i Hi.
+    by apply: Ischeby_nodes_correct.
+  move=> i Hi.
+  rewrite Tvalue_list_correct // -mu_cheby_nodes //.
+  by apply: ITvalues_correct vl1D _ _.
+set u := (_ * _)%RR.
+have {u}->: (u = (2 * s) / INR n.+1)%R.
+  rewrite /u; set v := INR _.
+  toR; rewrite /u /=.
+  by field; apply: (not_INR _ 0).
+have -> : forall a b, nth I0 (a ::  b) j.+1 = nth I0 b j by [].
+rewrite (nth_map [::]); last first.
+  by rewrite -ltnS  -[(size l).+1]/(size (a1 :: l)) -E size_ITvalue.
+apply: div_correct => //; last first.
+  by case: is_zero_spec=> // /(INR_eq _ 0).
+apply: mul_correct.
+  by apply: I.fromZ_correct.
+have ->: s = 
+    \sum_(i < n.+1)
+        f ((scheby_nodes (D2R a) (D2R b) n.+1)`_i) * (Tvalue_list n.+1 j.+1)`_i.
+  apply: eq_bigr => i _; congr (_ * _).
+  by rewrite (nth_map 0) // size_scheby_nodes.
+apply: (@Isum_correct n.+1
+            (fun x y =>  f x * y)
+            (fun x y =>  mul (If x)  y)) => //.
+- move=> x y X Y Hx Hy; apply: mul_correct => //.
+  by apply: env.
+- by rewrite size_scheby_nodes.
+- by rewrite size_map size_iota.
+- by rewrite size_Ischeby_nodes.
+- rewrite -[nth [::] l j]/(nth [::] (a1 :: l) j.+1).
+  rewrite -E size_size_ITvalues //.
+    by rewrite v1D size_nseq.
+  by rewrite vl1D size_Icheby_nodes.
+- move=> i Hi.
+  by apply: Ischeby_nodes_correct.
+move=> i Hi.
+rewrite Tvalue_list_correct // -mu_cheby_nodes //.
+rewrite -[nth [::] l j]/(nth [::] (a1 :: l) j.+1) -E.
+by apply: ITvalues_correct vl1D _ _.
 Qed.
 
 End Ischeby_coefs.
@@ -603,8 +925,6 @@ Qed.
 Notation Isin := (I.sin prec).
 Lemma env: Isin \is_envelope_of sin.
 Proof. exact/ sin_correct. Qed.
-
-Definition Ischeby_coef_list_sin n:= Ischeby_coef_list a b Isin n.
 
 Fixpoint fact p := match p with
 	| 0 => 1%positive
@@ -713,3 +1033,29 @@ Qed.
 End CMSin.
 
 End CPoly_interval.
+
+End CPoly_interval.
+Module V := CPoly_interval SFBI2.
+
+Export V.
+
+From Bignums Require Import BigZ.
+
+Definition I1 := I.fromZ 1.
+Definition I2 := I.fromZ 2.
+Definition prec := 20%bigZ.
+Definition n := 10%nat.
+Definition vn := I.fromZ (Z.of_nat n.+1).
+Definition v2n := I.fromZ (2 * Z.of_nat n.+1).
+Definition a := I1.
+Definition b := I2.
+Definition l1 :=
+  Eval vm_compute in  nseq n.+1 I1.
+Definition vl1 := 
+  Eval vm_compute in Icheby_nodes prec n.+1 v2n.
+Definition vl2 :=
+  Eval vm_compute in ITvalues prec n.+1 l1 vl1.
+Definition vl3 := 
+  Eval vm_compute in Ischeby_nodes prec (I.lower a) (I.upper b) n.+1 v2n.
+Eval vm_compute in 
+  Icheby_coefs prec (I.sin prec) vn vl3 vl2.

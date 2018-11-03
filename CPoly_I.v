@@ -1047,8 +1047,9 @@ Definition prec := 20%bigZ.
 Definition n := 10%nat.
 Definition vn := I.fromZ (Z.of_nat n.+1).
 Definition v2n := I.fromZ (2 * Z.of_nat n.+1).
-Definition a := I1.
-Definition b := I2.
+Definition a := I.lower I1.
+Definition b := I.upper I2.
+Compute SFBI2.cmp a b.
 Definition l1 :=
   Eval vm_compute in  nseq n.+1 I1.
 Definition vl1 := 
@@ -1056,6 +1057,7 @@ Definition vl1 :=
 Definition vl2 :=
   Eval vm_compute in ITvalues prec n.+1 l1 vl1.
 Definition vl3 := 
-  Eval vm_compute in Ischeby_nodes prec (I.lower a) (I.upper b) n.+1 v2n.
+  Eval vm_compute in Ischeby_nodes prec a b n.+1 v2n.
 Eval vm_compute in 
   Icheby_coefs prec (I.sin prec) vn vl3 vl2.
+

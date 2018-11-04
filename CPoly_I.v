@@ -184,7 +184,7 @@ Lemma IsCshaw_correct n (p: seq R) (P: seq ID) (x a b : R) (X A B : ID) :
   x \contained_in X -> 
   a \contained_in A -> 
   b \contained_in B -> 
-		(\sum_(i < n) p`_ i *: 'T^(a,b)_i).[x] \contained_in (IsCshaw A B P X).
+		(\sum_(i < n) p`_ i *: 'T^(a,b)_i).[x] \contained_in IsCshaw A B P X.
 Proof.
 move=> aDb Sp SP IP IX IA IB.
 rewrite horner_sum.
@@ -954,10 +954,42 @@ Notation Isin := (I.sin prec).
 Lemma env: Isin \is_envelope_of sin.
 Proof. exact/ sin_correct. Qed.
 
-Fixpoint fact p := match p with
-	| 0 => 1%positive
-	| S n => ((Pos.of_nat (S n)) * (fact n))%positive
-end.
+Fixpoint mfact_rec n p := 
+  if n is n1.+1 then (p * (mfact_rec n1 p.+1))%nat 
+  else 1%nat.
+
+Lemma mfact_recE n p : mfact_rec n p.+1 = ((n + p)`! %/ p`!)%nat.
+Proof.
+elim: n p => //= [|n IH] p.
+  by rewrite divnn add0n fact_gt0.
+rewrite IH muln_divA; first by rewrite factS divnMl // addnS.
+elim: (n) => //= n1 IH1.
+apply: dvdn_trans IH1 _.
+rewrite addSn factS.
+by apply/dvdn_mull/dvdnn.
+Qed.
+
+Fixpoint Ifact_rec n p := 
+  if n is n1.+1 then mul p (Ifact_rec n1 (add I1 p)) 
+  else I1.
+
+Definition Ifact n := Ifact_rec n I1.
+
+Lemma Ifact_correct n : INR (n`!) \contained_in Ifact n.
+Proof.
+rewrite /Ifact (_ : n`! = (n + 0)`! %/ 0`!)%nat; last first.
+  by rewrite addn0 divn1.
+rewrite -mfact_recE.
+have : INR 1 \contained_in I1 by apply: I.fromZ_correct.
+elim: n 1%nat I1 => [|n IH] m M H; first by apply: I.fromZ_correct.
+lazy iota beta delta [mfact_rec Ifact_rec]. 
+rewrite mult_INR.
+apply: mul_correct => //.
+apply: IH.
+rewrite S_INR Rplus_comm.
+apply: add_correct => //.
+by apply: I.fromZ_correct.
+Qed.
 
 Fixpoint gamma n x := match n with
 		| 0 => sin x

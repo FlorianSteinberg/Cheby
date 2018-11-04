@@ -134,7 +134,8 @@ Fixpoint ICb q (x : ID) : ID * ID :=
    let a1 := sub (add a (scl2 (mul (fst t) x))) (snd t) in
    (a1, (fst t)) else (I0, I0).
 
-Definition ICshaw p x := sub (ICb p x).1 (mul (ICb p x).2 x).
+Definition ICshaw p x := 
+  let: (i1, i2) := ICb p x in sub i1 (mul i2 x).
 
 Lemma ICb_crct (p: seq R) (pI: seq ID) (x: R) (I: ID):
 	(forall i, (p`_i) \contained_in (nth I0 pI i)) -> x \contained_in I  -> size p = size pI ->
@@ -153,23 +154,6 @@ apply add_correct; first exact: (prp 0%nat).
 by apply /scl2_correct /mul_correct.
 Qed.
 
-Lemma ICshaw_crct (p: seq R) (pI: seq ID) (x: R) (J: ID):
-	(forall i, p`_i \contained_in (nth I0 pI i)) -> x \contained_in J -> size p = size pI ->
-		(Cshaw p x) \contained_in (ICshaw pI J).
-Proof.
-move => prp xJ.
-case: pI p prp => [p prp eq | I pI p prp eq].
-	have ->: p = [::] by apply size0nil.
-	rewrite /Cshaw/=.
-	rewrite /ICshaw/ICb.
-	replace (Xreal 0) with (Xsub (Xreal 0) (Xreal 0)) by
-		by rewrite Xsub_split/Xadd/Xneg Ropp_0 Rplus_0_r.
-	apply sub_correct; first exact: I00.
-	by apply mul_correct; first exact: I00.
-apply sub_correct; first by apply ICb_crct.
-by apply mul_correct; first by apply ICb_crct.
-Qed.
-
 Lemma ICshaw_correct (p: seq R) (pI: seq ID) (x: R) (J: ID):
 	(forall i, p`_i \contained_in (nth I0 pI i)) -> x \contained_in J -> size p = size pI ->
 		(Cshaw p x) \contained_in (ICshaw pI J).
@@ -181,11 +165,55 @@ case: pI p prp => [p prp eq | I pI p prp eq].
 	rewrite /Cshaw /= /ICshaw/ICb.
 	apply sub_correct; first exact I00.
 	by apply mul_correct; first exact I00.
-rewrite /Cshaw/ICshaw.
-apply sub_correct; first by apply ICb_crct.
-by apply mul_correct; first by apply ICb_crct.
+have := ICb_crct prp xJ eq.
+rewrite /Cshaw/ICshaw; case: ICb => i j [H1 H2].
+apply sub_correct => //.
+by apply mul_correct.
 Qed.
 End ICshaw.
+
+Section IsCshaw.
+
+Definition IsCshaw a b p x := 
+  let x1 := (div (sub (sub (scl2 x) b) a) (sub b a)) in
+  ICshaw p x1.
+
+Lemma IsCshaw_correct n (p: seq R) (P: seq ID) (x a b : R) (X A B : ID) :
+  a != b -> size p = n -> size P = n ->
+	(forall i, p`_i \contained_in (nth I0 P i)) -> 
+  x \contained_in X -> 
+  a \contained_in A -> 
+  b \contained_in B -> 
+		(\sum_(i < n) p`_ i *: 'T^(a,b)_i).[x] \contained_in (IsCshaw A B P X).
+Proof.
+move=> aDb Sp SP IP IX IA IB.
+rewrite horner_sum.
+have -> : \sum_(i < n) (p`_i *: 'T^(a,b)_i).[x] =
+          \sum_(i < n) p`_i * ('T_i).[(Tab a b).[x]].
+  apply: eq_bigr => i _.
+  by rewrite /pTab !hornerE horner_comp !hornerE.
+have -> : \sum_(i < n) p`_i * ('T_i).[(Tab a b).[x]] =
+           (\sum_(i < n) p`_i *: 'T_i).[(Tab a b).[x]].
+  by rewrite horner_sum; apply: eq_bigr => i _; rewrite !hornerE.
+rewrite -Sp -Cshaw_spec.
+apply: ICshaw_correct; rewrite ?SP //.
+rewrite !hornerE.
+toR;  rewrite /Rinvx ifT; last first.
+  by apply/eqP; move/eqP: aDb; lra.
+rewrite (_ : _ + _ = (2 * x - b - a) / (b - a))%R; last first.
+  by field; move/eqP: aDb; lra.
+apply: div_correct.
+- apply: sub_correct => //.
+  apply: sub_correct => //.
+  rewrite (_ : 2 * x = x *+ 2)%R.
+    by apply: scl2_correct.
+  by rewrite mulr2n; toR; lra.
+- by apply: sub_correct.
+rewrite /is_zero; case: Req_bool_spec => //.
+by move/eqP: aDb; lra.
+Qed.
+
+End IsCshaw.
 
 Section Icheby_nodes.
 
@@ -1043,21 +1071,28 @@ From Bignums Require Import BigZ.
 
 Definition I1 := I.fromZ 1.
 Definition I2 := I.fromZ 2.
-Definition prec := 20%bigZ.
-Definition n := 10%nat.
+Definition prec := 150%bigZ.
+Definition n := 75%nat.
 Definition vn := I.fromZ (Z.of_nat n.+1).
 Definition v2n := I.fromZ (2 * Z.of_nat n.+1).
 Definition a := I.lower I1.
 Definition b := I.upper I2.
 Compute SFBI2.cmp a b.
+Time
 Definition l1 :=
-  Eval vm_compute in  nseq n.+1 I1.
+  Eval vm_compute in nseq n.+1 I1.
+Time
 Definition vl1 := 
   Eval vm_compute in Icheby_nodes prec n.+1 v2n.
+Time
 Definition vl2 :=
   Eval vm_compute in ITvalues prec n.+1 l1 vl1.
+Time
 Definition vl3 := 
   Eval vm_compute in Ischeby_nodes prec a b n.+1 v2n.
-Eval vm_compute in 
+Time
+Definition coefs :=
+  Eval vm_compute in 
   Icheby_coefs prec (I.sin prec) vn vl3 vl2.
+
 

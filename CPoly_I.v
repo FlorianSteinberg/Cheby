@@ -1409,7 +1409,7 @@ Definition vn := I.fromZ (Zpos zn).
 Definition v2n := I.fromZ (Zpos z2n).
 Definition a := I.lower I1.
 Definition b := I.upper I2.
-Compute SFBI2.cmp a b.
+
 Time
 Definition l1 :=
   Eval vm_compute in nseq n.+1 I1.

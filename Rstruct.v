@@ -263,13 +263,13 @@ Canonical Structure R_realFieldType := [realFieldType of R].
  
 Lemma Rarchimedean_axiom : Num.archimedean_axiom R_realFieldType.
 Proof.
-move=> x; exists (Zabs_nat (up x) + 2)%N.
+move=> x; exists (Z.abs_nat (up x) + 2)%N.
 have [Hx1 Hx2]:= (archimed x).
 have Hz (z : Z): z = (z - 1 + 1)%Z by rewrite Zplus_comm Zplus_minus.
-have Zabs_nat_Zopp z : Zabs_nat (- z)%Z = Zabs_nat z by case: z.
+have Zabs_nat_Zopp z : Z.abs_nat (- z)%Z = Z.abs_nat z by case: z.
 apply/RltbP/Rabs_def1.
-  apply: (Rlt_trans _ ((Zabs_nat (up x))%:R)%R); last first.
-    rewrite -[((Zabs_nat _)%:R)%R]Rplus_0_r mulrnDr.
+  apply: (Rlt_trans _ ((Z.abs_nat (up x))%:R)%R); last first.
+    rewrite -[((Z.abs_nat _)%:R)%R]Rplus_0_r mulrnDr.
     by apply/Rplus_lt_compat_l/Rlt_0_2.
   apply: (Rlt_le_trans _ (IZR (up x)))=> //.
   elim/(well_founded_ind (Zwf_well_founded 0)): (up x) => z IHz.
@@ -279,10 +279,10 @@ apply/RltbP/Rabs_def1.
     apply/Rplus_le_compat_r/IHz; split; first exact: Zlt_le_weak.
     exact: Zlt_pred.
   apply: (Rle_trans _ (IZR 0)); first exact: IZR_le.
-  by apply/RlebP/(ler0n R_numDomainType (Zabs_nat z)).
+  by apply/RlebP/(ler0n R_numDomainType (Z.abs_nat z)).
 apply: (Rlt_le_trans _ (IZR (up x) - 1)).
   apply: Ropp_lt_cancel; rewrite Ropp_involutive.
-  rewrite Ropp_minus_distr /Rminus -opp_IZR -{2}(Zopp_involutive (up x)).
+  rewrite Ropp_minus_distr /Rminus -opp_IZR -{2}(Z.opp_involutive (up x)).
   elim/(well_founded_ind (Zwf_well_founded 0)): (- up x)%Z => z IHz .
   case: (Z_lt_le_dec 0 z) => [zp | zn].
   rewrite [z]Hz Zabs_nat_Zopp plus_IZR.
@@ -297,7 +297,7 @@ apply: (Rlt_le_trans _ (IZR (up x) - 1)).
   rewrite mulrnDr; apply: (Rlt_le_trans _ 2).
     by rewrite -{1}[1]Rplus_0_r; apply/Rplus_lt_compat_l/Rlt_0_1.
   rewrite -[2]Rplus_0_l; apply: Rplus_le_compat_r.
-  by apply/RlebP/(ler0n R_numDomainType (Zabs_nat _)).
+  by apply/RlebP/(ler0n R_numDomainType (Z.abs_nat _)).
 apply: Rminus_le.
 rewrite /Rminus Rplus_assoc [- _ + _]Rplus_comm -Rplus_assoc -!/(Rminus _ _).
 exact: Rle_minus.

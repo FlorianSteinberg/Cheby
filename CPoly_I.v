@@ -1120,7 +1120,7 @@ rewrite /= !F.fromZ_correct; split.
 by apply/Rle_div_l; lra.
 Qed.
 
-Definition sin_error (b1 b2 : bool) P zn z2n nn :=
+Definition sin_error (b1 : bool) P zn z2n nn :=
   let v := Ibgamma b1 Iab in
   if csign v then
     let Ida := I.abs (I.sub prec (I.sin prec Ia) (IsCshaw Ia Ib P Ia)) in
@@ -1130,7 +1130,7 @@ Definition sin_error (b1 b2 : bool) P zn z2n nn :=
   else
     let Ic := I.div prec
               (I.mul prec (I.power_pos prec (I.sub prec Ib Ia) zn) 
-                          (I.mul prec I01 (I.abs (Ibgamma b2 Iab))))
+                          (I.mul prec I01 (I.abs (Ibgamma (~~b1) Iab))))
               (I.mul prec (I.power_pos prec I2 z2n) (Ifact nn))
      in 
      I.join (I.neg Ic) Ic.
@@ -1201,9 +1201,8 @@ rewrite Rmult_0_l.
 rewrite /round Generic_fmt.round_0; split_Rabs; lra.
 Qed.
 
-Lemma sin_error_correct b1 b2 P n zn z2n x :
+Lemma sin_error_correct b1 P n zn z2n x :
   b1 = odd n ->
-  b2 = ~~ odd n ->
   zn = Pos.of_nat n.+1 ->
   z2n = Pos.of_nat (n.*2.+1) ->
  (F.cmp a b = Xlt) ->
@@ -1214,9 +1213,9 @@ Lemma sin_error_correct b1 b2 P n zn z2n x :
              (nth I0 P j)) ->
    (D2R a <= x <= D2R b)%R -> 
    sin x \contained_in (I.add prec (IsCshaw Ia Ib P Iab)
-                                    (sin_error b1 b2 P zn z2n n.+1)).
+                                    (sin_error b1 P zn z2n n.+1)).
 Proof.
-move=> b1E b2E znE z2nE aLb sP Hi xB.
+move=> b1E znE z2nE aLb sP Hi xB.
 have F1 : (D2R a < D2R b)%R.
   have := F.cmp_correct a b; rewrite aLb.
   rewrite /D2R; case: F.toX; case: F.toX =>  //= r1 r2.
@@ -1356,7 +1355,7 @@ apply: div_correct.
     by apply: in_Iab; lra.
   - move=> y YC.
     apply: abs_correct.
-  rewrite b2E.
+  rewrite b1E.
   by apply: (Igamma_correct n.+1).
 move=> z Hz.
   rewrite Rabs_mult Rabs_div; try lra.
@@ -1402,8 +1401,8 @@ From Bignums Require Import BigZ.
 
 Definition I1 := I.fromZ 1.
 Definition I2 := I.fromZ 2.
-Definition prec := 150%bigZ.
-Definition n := 50%nat.
+Definition prec := 50%bigZ.
+Definition n := 25%nat.
 Definition zn := Pos.of_nat n.+1.
 Definition z2n := (2 * zn)%positive.
 Definition vn := I.fromZ (Zpos zn).
@@ -1432,6 +1431,6 @@ Definition ob :=
   Eval vm_compute in odd n.
 
 Definition error :=
-  Eval vm_compute in  sin_error prec a b ob (~~ ob) coefs zn z2n.
+  Eval vm_compute in  sin_error prec a b ob coefs zn z2n n.+1.
 Print error.
 

@@ -2,6 +2,7 @@ From mathcomp Require Import all_ssreflect all_algebra.
 Require Import Rstruct Reals Psatz under.
 Require Import Poly_complements CPoly CPoly_exec CPoly_interpolation.
 Require Import Coquelicot.Coquelicot.
+Require Import sine_interpolation.
 Set Implicit Arguments.
 Unset Strict Implicit.
 Import Prenex Implicits.
@@ -95,6 +96,20 @@ Qed.
 Lemma neg_correct x I:
 	x \contained_in I -> (-x) \contained_in (I.neg I).
 Proof. by apply I.neg_correct. Qed.
+
+Lemma abs_correct x I:
+	x \contained_in I -> Rabs x \contained_in (I.abs I).
+Proof. by apply I.abs_correct. Qed.
+
+Lemma power_pos_correct x I (n : nat) : 
+  (0 < n)%nat ->
+  x \contained_in I -> (x ^ n) \contained_in I.power_pos prec I (Pos.of_nat n).
+Proof.
+move=> nP.
+have := I.power_pos_correct prec (Pos.of_nat n) I (Xreal x).
+rewrite /= /I.extension /= Nat2Pos.id //.
+by case: n nP.
+Qed.
 
 Lemma stuff (p : {poly R}):
 	(forall i : nat, p`_i \contained_in nth I0 [::] i) -> p = 0.
@@ -792,6 +807,10 @@ Qed.
 
 Definition scheby_coef_list n := [seq scheby_coefs n.-1 i | i <- seq.iota 0 n].
 
+Lemma size_scheby_coef_list n :
+  size (scheby_coef_list n) = n.
+Proof. by rewrite size_map size_iota. Qed.
+
 Definition CPolyab l := \sum_(i < (size l)) l`_i *: 'T^(a,b)_i.
 
 Lemma scheby_coef_list_spec n: b != a ->
@@ -991,6 +1010,36 @@ apply: add_correct => //.
 by apply: I.fromZ_correct.
 Qed.
 
+(* Naive way to check if an interval is of constant sign *)
+
+Definition s0P := I.bnd (F.fromZ 0) F.nan.
+Definition sN0 := I.bnd F.nan (F.fromZ 0).
+
+Definition csign i :=
+  (I.subset i s0P) || (I.subset i sN0).
+
+Lemma csign_correct I :
+  csign I ->    (forall x, x \contained_in I -> (x >= 0)%R)
+             \/ (forall x, x \contained_in I -> (x <= 0)%R) .
+Proof.
+rewrite /csign.
+have := I.subset_correct I s0P.
+case: I.subset => /= [/(_ isT) H _|_].
+  left => x; case: I H => //= l u.
+  rewrite F.fromZ_correct /=.
+  case: F.toX => //= [|r].
+    by rewrite /le_lower /= => [] [].
+  by rewrite /le_lower /=; lra.
+have := I.subset_correct I sN0.
+case: I.subset => /= [/(_ isT) H _|_] //.
+right => x.
+case: I H => //= l u.
+rewrite F.fromZ_correct /=.
+case: (F.toX l) => //= [|r]; case: (F.toX u) => //= [[]//|r1].
+  by lra.
+by lra.
+Qed.
+
 Fixpoint gamma n x := match n with
 		| 0 => sin x
 		| 0.+1 => cos x
@@ -998,6 +1047,8 @@ Fixpoint gamma n x := match n with
 		| 0.+3 => - cos x
 		| n.+4 => gamma n x
 	end.
+
+Fixpoint bgamma b x := if b then cos x else sin x.
 
 Fixpoint Igamma (n: nat) J := match n with
 	| 0 => (I.sin prec J)
@@ -1007,87 +1058,335 @@ Fixpoint Igamma (n: nat) J := match n with
 	| n.+4 => Igamma n J
 end.
 
-Lemma induc4 P:
-	P 0%nat -> P 1%nat -> P 2%nat -> P 3%nat -> (forall n, P n -> P (n.+4)) -> forall n, P n.
-Proof.
-intros.
-elim: n {-2}n (leqnn n) => [[]// | n Hn[|[|[|[|m]]]]// Hm].
-by apply /X3 /Hn /leP; move/leP: Hm; lia.
-Qed.
+Definition Ibgamma b J := if b then I.cos prec J else I.sin prec J.
 
 Notation "f ^( n )" := (Derive_n f n) (at level 2, format "f ^( n )").
 
-Lemma gamma_correct n x: 	sin^(n) x = gamma n x.
-Proof.
-apply is_derive_n_unique.
-suff ->: gamma n x = (if odd n then ((-1) ^ n./2 * cos x)%R else ((-1) ^ n./2 * sin x))%R by apply coquelicot_compl.is_derive_n_sin.
-move: n; apply induc4 => /=; try toR; try lra.
-move => n; case: (odd n) => /= ->; toR.
-	rewrite -!Rmult_assoc.
-	have ->: ((-1 * -1) = 1)%R by lra.
-	by rewrite Rmult_1_l.
-rewrite -!Rmult_assoc.
-have ->: ((-1 * -1) = 1)%R by lra.
-by rewrite Rmult_1_l.
-Qed.
+Lemma expr_Rexp a1 b1 : (a1 ^+ b1)%RR = (a1 ^ b1)%R.
+Proof.  by elim: b1 => //= n <-; rewrite exprS. Qed.
 
 Lemma Igamma_correct n:
-	(Igamma n) \is_envelope_of (sin^(n)).
+ (Ibgamma (odd n)) \is_envelope_of (fun x => (-1) ^ (odd n./2) * sin^(n) x)%R.
 Proof.
-move => x I xI; rewrite gamma_correct /Igamma /gamma.
-by elim/induc4: n; try apply/neg_correct; try exact /sin_correct; try exact/cos_correct.
+move=> x X Hx.
+rewrite Derive_n_sin /Ibgamma; case: odd.
+  rewrite -!expr_Rexp -Rmult_assoc -[(-1) ^+ n./2]signr_odd.
+  case: odd; rewrite ?expr0 ?expr1.
+    rewrite (_ : -1 * -1  * cos x = cos x)%R; last by lra.
+    by apply: cos_correct.
+  rewrite (_ : 1 * 1  * cos x = cos x)%R; last by lra.
+  by apply: cos_correct.
+rewrite -!expr_Rexp -Rmult_assoc -[(-1) ^+ n./2]signr_odd.
+case: odd; rewrite ?expr0 ?expr1.
+  rewrite (_ : -1 * -1  * sin x = sin x)%R; last by lra.
+  by apply: sin_correct.
+rewrite (_ : 1 * 1  * sin x = sin x)%R; last by lra.
+by apply: sin_correct.
 Qed.
 
-Definition bound n := I.abs (Igamma n.+1 I).
+Definition Iab := I.bnd a b.
+Definition Ia := I.bnd a a.
+Definition Ib := I.bnd b b.
+Definition I01 := I.bnd (F.fromZ 0) (F.fromZ 1).
 
-Lemma Iabs_correct x J:
-	x \contained_in J -> Rabs x \contained_in (I.abs J).
-Proof. by apply I.abs_correct. Qed.
-
-Lemma bound_correct x n: x \contained_in I ->
-	Rabs (sin^(n.+1) x) \contained_in (bound n).
-Proof. by intros; apply/Iabs_correct/Igamma_correct. Qed.
-
-Lemma upper_bound_correct x n: x \contained_in I ->
-	F.toX (I.upper (bound n)) <> Xnan -> (Rabs (sin^(n.+1) x) <= D2R (I.upper (bound n)))%R.
+Lemma a_in_Ia : D2R a \contained_in Ia.
 Proof.
-move=> HX.
-rewrite /D2R.
-case E': (bound n) (HX) => [ | /=l u]; first by rewrite F.nan_correct.
-case E: (F.toX u) => [ | r] //= _.
-have:= bound_correct n HX.
-by rewrite E' /= E => [[_]].
+by rewrite /D2R /Ia /=; case: F.toX  => //= r; lra.
 Qed.
 
-Lemma lower_Igamma_correct x n:
-	F.toX (I.lower (Igamma n I)) <> Xnan ->
-	x \contained_in I -> 0 <= D2R (I.lower (Igamma n I)) -> (0 <= sin^(n) x)%R.
+Lemma b_in_Ib : D2R b \contained_in Ib.
 Proof.
-move=> HX HC HP.
-have /=:= Igamma_correct n HC.
-case: (Igamma n) HP HX; rewrite /D2R/proj_val; first by rewrite F.nan_correct.
-move => l u /=.
-case: (F.toX l) => //.
-move => r ineq _ [ineq' _].
-suff: (0 <= r)%R by lra.
-by apply/RleP.
+by rewrite /D2R /Ib /=; case: F.toX  => //= r; lra.
 Qed.
 
-(* The additional assumption should not be necessary, as the enclusures of the sin-
-function should always be contained in [-1,1]. The Interval library does not contain such
-a result, so I don't see an easy way to verify that it is true. *)
-Lemma upper_Igamma_correct x n:
-	F.toX (I.upper (Igamma n I)) <> Xnan ->
-	x \contained_in I -> D2R (I.upper (Igamma n I)) <= 0 -> (sin^(n) x <= 0)%R.
+Lemma in_Iab x : (D2R a <= x <= D2R b)%R -> x \contained_in Iab.
 Proof.
-move=> HX HC HS.
-have /=:= Igamma_correct n HC.
-case: (Igamma n) HS HX; rewrite /D2R/proj_val; first by rewrite F.nan_correct.
-move => l u /=.
-case: (F.toX u) => //.
-move => r ineq _ [_ ineq'].
-suff: (r <= 0)%R by lra.
-by apply/RleP.
+rewrite /= /D2R; (do 2 case: F.toX) => //= r1; lra.
+Qed. 
+
+Lemma I01_correct x z I :
+   (0 <= x <= z)%R -> z \contained_in I -> x \contained_in I.mul prec I01 I.
+Proof.
+move=> xB zI.
+pose t := x / z.
+have [zZ|zNZ]: (z = 0%R) \/ (z <> 0%R) by lra.
+  have -> : x = (0 * z)%R by lra.
+  apply: mul_correct => //=.
+  by rewrite !F.fromZ_correct; lra.
+have->: x = ((x / z) * z)%R by field.
+apply: mul_correct => //.
+rewrite /= !F.fromZ_correct; split.
+  by apply: Rdiv_pos_compat; lra.
+by apply/Rle_div_l; lra.
+Qed.
+
+Definition sin_error (b1 b2 : bool) P zn z2n nn :=
+  let v := Ibgamma b1 Iab in
+  if csign v then
+    let Ida := I.abs (I.sub prec (I.sin prec Ia) (IsCshaw Ia Ib P Ia)) in
+    let Idb := I.abs (I.sub prec (I.sin prec Ib) (IsCshaw Ia Ib P Ib)) in
+    let Ic := I.mul prec I01 (I.join Ida Idb) in
+    I.join (I.neg Ic) Ic
+  else
+    let Ic := I.div prec
+              (I.mul prec (I.power_pos prec (I.sub prec Ib Ia) zn) 
+                          (I.mul prec I01 (I.abs (Ibgamma b2 Iab))))
+              (I.mul prec (I.power_pos prec I2 z2n) (Ifact nn))
+     in 
+     I.join (I.neg Ic) Ic.
+
+Lemma Rabs_join x I :
+  Rabs x \contained_in I ->
+   x \contained_in (I.join (I.neg I) I).
+Proof.
+move=> H.
+apply: I.join_correct.
+split_Rabs.
+  left.
+  rewrite (_ : x = (--x)%R); last by lra.
+  by apply: neg_correct.
+by right.
+Qed.
+
+Lemma Rabs_I01_max y i I J g :
+  (i \contained_in I) ->
+  (forall x, x \contained_in I -> Rabs (g x) \contained_in J)%R ->
+  (forall z, 
+    (forall x, x \contained_in I -> Rabs (g x) <= z)%R ->
+    (Rabs y <= z))%R ->
+  (Rabs y \contained_in (I.mul prec I01 J)).
+Proof.
+move=> iII.
+case: J => // l u.
+move=> H1 H2.
+case E : (F.toX u) => [|x1]; last first.
+  pose z := x1.
+  apply: I01_correct.
+    split; first by split_Rabs; lra.
+    apply: (H2 z) => x /H1 /= [_].
+    by rewrite E.
+  rewrite  /= E.
+  case E1 : (F.toX l) => [|x2] //=.
+    split=> //; rewrite /z; lra.
+  have := H1 _ iII.
+  rewrite /= E1 E /z; lra.
+case E1 : (F.toX l) => [|x2].
+  rewrite /= /I.sign_large_ /= !F.cmp_correct !F.fromZ_correct /= F.zero_correct /=.
+  case: Rcompare_spec; try lra.
+  case: Rcompare_spec; try lra.
+  have := F.mul_correct rnd_DN prec (F.fromZ 1) l.
+  have := F.mul_correct rnd_UP prec (F.fromZ 1) u.
+  rewrite E1 /= E /= !F.fromZ_correct /= => -> -> //.
+rewrite /= /I.sign_large_ /= !F.cmp_correct !F.fromZ_correct /= F.zero_correct /=.
+case: Rcompare_spec; try lra.
+case: Rcompare_spec; try lra.
+rewrite E1 /= E /=.
+case: Rcompare_spec => /=.
+- have := F.mul_correct rnd_DN prec (F.fromZ 1) l.
+  have := F.mul_correct rnd_UP prec (F.fromZ 1) u.
+  rewrite E1 /= E /= !F.fromZ_correct /= => -> -> //.
+- move=> HH1 _ _; split => //.
+  apply: Rle_trans (_ : round F.radix rnd_DN (F.prec prec) 0 <= _)%R.
+    apply: Generic_fmt.round_le; try lra.
+  rewrite /round Generic_fmt.round_0; split_Rabs; lra.
+- have := F.mul_correct rnd_DN prec (F.fromZ 0) l.
+  have := F.mul_correct rnd_UP prec (F.fromZ 1) u.
+  rewrite E1 /= E /= !F.fromZ_correct /= => -> ->.
+  rewrite Rmult_0_l.
+  rewrite /round Generic_fmt.round_0; split_Rabs; lra.
+have := F.mul_correct rnd_DN prec (F.fromZ 0) l.
+have := F.mul_correct rnd_UP prec (F.fromZ 1) u.
+rewrite E1 /= E /= !F.fromZ_correct /= => -> ->.
+rewrite Rmult_0_l.
+rewrite /round Generic_fmt.round_0; split_Rabs; lra.
+Qed.
+
+Lemma sin_error_correct b1 b2 P n zn z2n x :
+  b1 = odd n ->
+  b2 = ~~ odd n ->
+  zn = Pos.of_nat n.+1 ->
+  z2n = Pos.of_nat (n.*2.+1) ->
+ (F.cmp a b = Xlt) ->
+ (size P = n.+1) ->
+ (forall j, (j < n.+1)%nat ->
+   	sdsprod_coef (D2R a) (D2R b)
+    (interpolation sin (scheby_nodes (D2R a) (D2R b) n.+1)) n j \contained_in 
+             (nth I0 P j)) ->
+   (D2R a <= x <= D2R b)%R -> 
+   sin x \contained_in (I.add prec (IsCshaw Ia Ib P Iab)
+                                    (sin_error b1 b2 P zn z2n n.+1)).
+Proof.
+move=> b1E b2E znE z2nE aLb sP Hi xB.
+have F1 : (D2R a < D2R b)%R.
+  have := F.cmp_correct a b; rewrite aLb.
+  rewrite /D2R; case: F.toX; case: F.toX =>  //= r1 r2.
+  by case: Rcompare_spec.
+have F2 : D2R a != D2R b by apply/eqP; lra.
+have F3 : x \contained_in Iab.
+  move: xB F1; rewrite /D2R /=.
+  (do 2 case F.toX) => //= x1; lra.
+pose iv := interpolation sin (scheby_nodes (D2R a) (D2R b) n.+1).
+have->: sin x = (iv.[x] + (ierror sin  (scheby_nodes
+           (D2R a)
+           (D2R b) n.+1) x))%R.
+  by rewrite /ierror -/iv; lra.
+apply: add_correct.
+  rewrite -[iv]scheby_coef_list_spec.
+  apply: IsCshaw_correct => //.
+  - by rewrite size_scheby_coef_list.
+  - move=> i.
+    have [nLi|iLn] := leqP n.+1 i.
+      rewrite /scheby_coef_list !nth_default //.
+      - by apply: I.fromZ_correct.
+      - by rewrite size_map size_iota.
+      by rewrite sP.
+      suff -> : (scheby_coef_list (D2R a) (D2R b) sin n.+1)`_i = 
+               sdsprod_coef (D2R a) (D2R b)
+                 (interpolation sin (scheby_nodes (D2R a) (D2R b) n.+1)) n i.
+        by apply: Hi.
+      rewrite sdsprod_coef_interpolation_pT //.
+      rewrite /scheby_coef_list [LHS](nth_map 0%nat) ?size_iota ?nth_iota //.
+      congr (_ * _)%R.
+      apply: eq_bigr => z _.
+      congr (_ * _); last by apply: Tvalue_list_correct.
+      rewrite svalue_list_correct //.
+      by rewrite (nth_map 0) // size_cheby_nodes.
+  - by apply: a_in_Ia.
+  - by apply: b_in_Ib.
+  by rewrite eq_sym.
+rewrite /sin_error.
+have [/csign_correct H|_] := boolP (csign _).
+  apply: Rabs_join.
+  apply: I01_correct.
+    split; first by split_Rabs; lra.
+    apply: sin_scheby_ge => //.
+    case: H => H.
+      right => x1 /in_Iab Hx1.
+      apply: H.
+      rewrite /Ibgamma b1E; case: odd.
+        by apply: cos_correct.
+      by apply: sin_correct.
+    left => x1 /in_Iab Hx1.
+    apply: H.
+    rewrite /Ibgamma b1E; case: odd.
+      by apply: cos_correct.
+    by apply: sin_correct.
+  rewrite /Rmax; case: Rle_dec => _.
+    apply: I.join_correct.
+    right.
+    apply/abs_correct/sub_correct.
+      by apply/sin_correct/b_in_Ib.
+  rewrite -scheby_coef_list_spec.
+  apply: IsCshaw_correct => //.
+  - by rewrite sP size_scheby_coef_list.
+  - move=> i.
+    have [nLi|iLn] := leqP n.+1 i.
+      rewrite /scheby_coef_list !nth_default //.
+      - by apply: I.fromZ_correct.
+      - by rewrite size_map size_iota.
+      by rewrite sP.
+      suff -> : (scheby_coef_list (D2R a) (D2R b) sin n.+1)`_i = 
+               sdsprod_coef (D2R a) (D2R b)
+                 (interpolation sin (scheby_nodes (D2R a) (D2R b) n.+1)) n i.
+        by apply: Hi.
+      rewrite sdsprod_coef_interpolation_pT //.
+      rewrite /scheby_coef_list [LHS](nth_map 0%nat) ?size_iota ?nth_iota //.
+      congr (_ * _)%R.
+      apply: eq_bigr => z _.
+      congr (_ * _); last by apply: Tvalue_list_correct.
+      rewrite svalue_list_correct //.
+      by rewrite (nth_map 0) // size_cheby_nodes.
+  - by apply: b_in_Ib.
+  - by apply: a_in_Ia.
+  - by apply: b_in_Ib.
+  by rewrite eq_sym.
+    apply: I.join_correct.
+    left.
+    apply/abs_correct/sub_correct.
+      by apply/sin_correct/a_in_Ia.
+  rewrite -scheby_coef_list_spec.
+  apply: IsCshaw_correct => //.
+  - by rewrite sP size_scheby_coef_list.
+  - move=> i.
+    have [nLi|iLn] := leqP n.+1 i.
+      rewrite /scheby_coef_list !nth_default //.
+      - by apply: I.fromZ_correct.
+      - by rewrite size_map size_iota.
+      by rewrite sP.
+      suff -> : (scheby_coef_list (D2R a) (D2R b) sin n.+1)`_i = 
+               sdsprod_coef (D2R a) (D2R b)
+                 (interpolation sin (scheby_nodes (D2R a) (D2R b) n.+1)) n i.
+        by apply: Hi.
+      rewrite sdsprod_coef_interpolation_pT //.
+      rewrite /scheby_coef_list [LHS](nth_map 0%nat) ?size_iota ?nth_iota //.
+      congr (_ * _)%R.
+      apply: eq_bigr => z _.
+      congr (_ * _); last by apply: Tvalue_list_correct.
+      rewrite svalue_list_correct //.
+      by rewrite (nth_map 0) // size_cheby_nodes.
+  - by apply: a_in_Ia.
+  - by apply: a_in_Ia.
+  - by apply: b_in_Ib.
+  by rewrite eq_sym.
+  apply: Rabs_join.
+set u := ierror _ _ _.
+pose e : R := (expn 2 n.+1.*2.-1 * n.+1 `!) %:R.
+pose v := ((D2R b - D2R a)^+ n.+1).
+have vP : (0 < v)%R.
+  rewrite /v expr_Rexp.
+  by apply: pow_lt; toR; lra.
+have vE: (0 < e)%R.
+  rewrite /e natr_INR.
+  apply: (lt_INR 0).
+  by apply/ltP; rewrite muln_gt0 expn_gt0 fact_gt0.
+have -> : Rabs u = ((v * Rabs (u / v * e)) / e)%R.
+  rewrite Rabs_mult Rabs_div; try lra.
+  rewrite (Rabs_pos_eq v); try lra.
+  rewrite (Rabs_pos_eq e); try lra.
+  by field; lra.
+apply: div_correct.
+  apply: mul_correct.
+  rewrite /v expr_Rexp znE.
+  apply: power_pos_correct => //.
+  apply: sub_correct => //.
+  - apply: b_in_Ib.
+  - apply: a_in_Ia.
+  apply: Rabs_I01_max.
+  - suff: (D2R a) \contained_in Iab by apply.
+    by apply: in_Iab; lra.
+  - move=> y YC.
+    apply: abs_correct.
+  rewrite b2E.
+  by apply: (Igamma_correct n.+1).
+move=> z Hz.
+  rewrite Rabs_mult Rabs_div; try lra.
+  rewrite (Rabs_pos_eq v); try lra.
+  rewrite (Rabs_pos_eq e); try lra.
+  suff: (Rabs u <= v / e * z)%R.
+    move=> HH.
+    have-> : (z = (v / e * z) / v * e)%R by field; lra.
+  apply: Rmult_le_compat_r; try lra.
+  apply: Rmult_le_compat_r => //.
+  by have := Rinv_0_lt_compat _ vP; lra.
+  apply: ierror_sin => // y Hy.
+  have /Hz : y \contained_in Iab by apply: in_Iab.
+  rewrite Derive_n_sin -[odd n.+1]/(~~ odd n).
+  case: (odd n).
+    rewrite -!expr_Rexp signr_odd -signr_odd expr_Rexp.
+    case: odd => /=.
+      by rewrite !(Ropp_mult_distr_l_reverse, Ropp_mult_distr_r_reverse) Ropp_involutive !Rmult_1_l.
+    by rewrite !Rmult_1_l.
+    rewrite -!expr_Rexp signr_odd -signr_odd expr_Rexp.
+    case: odd => /=.
+      by rewrite !(Ropp_mult_distr_l_reverse, Ropp_mult_distr_r_reverse) Ropp_involutive !Rmult_1_l.
+    by rewrite !Rmult_1_l.
+rewrite [e]natr_INR mult_INR.
+apply: mul_correct.
+- rewrite -pow_expn pow_INR z2nE.
+  apply: power_pos_correct => //.
+  by rewrite /= F.fromZ_correct; lra.
+- by apply: Ifact_correct.
+by case: is_zero_spec => //; lra.
 Qed.
 
 End CMSin.
@@ -1104,9 +1403,11 @@ From Bignums Require Import BigZ.
 Definition I1 := I.fromZ 1.
 Definition I2 := I.fromZ 2.
 Definition prec := 150%bigZ.
-Definition n := 75%nat.
-Definition vn := I.fromZ (Z.of_nat n.+1).
-Definition v2n := I.fromZ (2 * Z.of_nat n.+1).
+Definition n := 50%nat.
+Definition zn := Pos.of_nat n.+1.
+Definition z2n := (2 * zn)%positive.
+Definition vn := I.fromZ (Zpos zn).
+Definition v2n := I.fromZ (Zpos z2n).
 Definition a := I.lower I1.
 Definition b := I.upper I2.
 Compute SFBI2.cmp a b.
@@ -1127,4 +1428,10 @@ Definition coefs :=
   Eval vm_compute in 
   Icheby_coefs prec (I.sin prec) vn vl3 vl2.
 
+Definition ob :=
+  Eval vm_compute in odd n.
+
+Definition error :=
+  Eval vm_compute in  sin_error prec a b ob (~~ ob) coefs zn z2n.
+Print error.
 

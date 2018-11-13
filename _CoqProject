@@ -6,6 +6,7 @@ Poly_complements.v
 seq_base.v
 CPoly.v
 CPoly_trigo.v
+sine_interpolation.v
 CPoly_interpolation.v
 Poly_exec.v
 CPoly_exec.v
@@ -15,4 +16,3 @@ filter_Rlt.v
 atan_derivative_improper_integral.v
 asin.v
 arcsinh.v
-

@@ -637,10 +637,14 @@ Proof. by move => ineq; rewrite /pTab horner_comp Taba. Qed.
 Lemma horner_pTab_b a b n :
 	b != a -> ('T^(a,b)_n).[b] = ('T_n).[1].
 Proof. by move => ineq; rewrite /pTab horner_comp Tabb. Qed.
+
+Definition CPolyab a b l := \sum_(i < (size l)) l`_i *: 'T^(a,b)_i.
+
 End pTab.
 
 Notation "''T^(' a ',' b ')_' n" := (pTab a b n)
   (at level 3, n at level 2, format "''T^(' a ',' b ')_' n").
+
 
 
 

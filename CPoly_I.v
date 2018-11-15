@@ -44,12 +44,10 @@ Definition FtoI (a: D) := (Interval.Interval_interval_float.Ibnd a a).
 Lemma FtoI_correct a: (D2R a) \contained_in (FtoI a).
 Proof. by rewrite /= /D2R; split; case E: (F.toX a) => //=; lra. Qed.
 
-Lemma I020:
-	forall x, x \contained_in I0 -> x = 0%R.
-Proof. move => x; rewrite /= F.fromZ_correct => /= [[]]; rewrite !/IZR; lra. Qed.
+Lemma I020 x : x \contained_in I0 -> x = 0%R.
+Proof. rewrite /= F.fromZ_correct => /= [[]]; rewrite !/IZR; lra. Qed.
 
-Lemma I00:
-	0 \contained_in I0.
+Lemma I00: 0 \contained_in I0.
 Proof. by rewrite /=F.fromZ_correct/=; lra. Qed.
 
 Lemma mul_correct x y I J:
@@ -65,18 +63,17 @@ Lemma add_correct x y I J:
 Proof. by apply I.add_correct. Qed.
 
 Lemma div_correct x y I J:
-	x\contained_in I -> y \contained_in J -> is_zero y = false -> (x / y) \contained_in (div I J).
+	x \contained_in I -> y \contained_in J -> is_zero y = false -> (x / y) \contained_in (div I J).
 Proof.
-intros.
-have /=:= I.div_correct prec I J (Xreal x) (Xreal y).
-rewrite /Xdiv' H1 /= => crct.
-by apply crct.
+move=> xI yJ yZ.
+have /= := I.div_correct prec I J (Xreal x) (Xreal y) xI yJ.
+by rewrite /Xdiv' yZ.
 Qed.
 
 Lemma scl2_correct x I:
 	x \contained_in I -> (x *+ 2) \contained_in (scl2 I).
 Proof.
-intros.
+move=> xI.
 suff -> :(Xreal (x *+ 2)) = (Xmul (Xreal x) (Xreal (bpow radix2 1))).
 	by apply I.scale2_correct.
 congr Xreal.
@@ -86,8 +83,8 @@ Qed.
 Lemma scale2_correct x z I:
 	x \contained_in I -> (x * (powerRZ 2 z)) \contained_in (I.scale2 I (F.ZtoS z)).
 Proof.
-intros.
-replace (Xreal (x * (powerRZ 2 z))) with (Xmul (Xreal x) (Xreal (bpow radix2 z))).
+move=> xI.
+rewrite (_ : Xreal (x * (powerRZ 2 z)) = Xmul (Xreal x) (Xreal (bpow radix2 z))).
 	by apply I.scale2_correct.
 congr Xreal.
 by rewrite bpow_powerRZ.
@@ -111,17 +108,6 @@ rewrite /= /I.extension /= Nat2Pos.id //.
 by case: n nP.
 Qed.
 
-Lemma stuff (p : {poly R}):
-	(forall i : nat, p`_i \contained_in nth I0 [::] i) -> p = 0.
-Proof.
-move => prp.
-apply polyP => i.
-rewrite coef0.
-apply I020.
-move: (prp i).
-by rewrite nth_default.
-Qed.
-
 Lemma sin_correct x J:
 	x \contained_in J -> (sin x) \contained_in (I.sin prec J).
 Proof. by apply I.sin_correct. Qed.
@@ -134,12 +120,11 @@ Lemma atan_correct x I:
 	x \contained_in I -> (atan x) \contained_in (I.atan prec I).
 Proof. by apply I.atan_correct. Qed.
 
-Lemma Zofnat_pos n: (0 < n)%nat -> (0 < Z.of_nat n)%Z.
-Proof. by case: n. Qed.
-
-Lemma IZR_Zof_nat n : IZR (Z.of_nat n) = n%:R.
-Proof. by rewrite -INR_IZR_INZ natr_INR. Qed.
 End Interval_lemmas.
+
+(*****************************************************************************)
+(* Clenshaw algorithm on [-1; 1] for interval arithmetic                     *)
+(*****************************************************************************)
 
 Section ICshaw.
 
@@ -187,6 +172,10 @@ by apply mul_correct.
 Qed.
 End ICshaw.
 
+(*****************************************************************************)
+(* Clenshaw algorithm on [a; b] for interval arithmetic                      *)
+(*****************************************************************************)
+
 Section IsCshaw.
 
 Definition IsCshaw a b p x := 
@@ -229,6 +218,12 @@ by move/eqP: aDb; lra.
 Qed.
 
 End IsCshaw.
+
+(*****************************************************************************)
+(* Chebyshev nodes on [-1; 1] : Icheby_nodes                                 *)
+(* Chebyshev nodes on [ a; b] : Ischeby_nodes                                *)
+(*****************************************************************************)
+
 
 Section Icheby_nodes.
 
@@ -361,6 +356,10 @@ Qed.
 
 End Icheby_nodes.
 
+(*****************************************************************************)
+(* Chebyshev coefficient on [-1; 1] for real numbers                         *)
+(*****************************************************************************)
+
 Section cheby_coefs.
 
 Context (f: R -> R).
@@ -453,6 +452,11 @@ Definition Ienv f F:=
 	forall x I, x \contained_in I -> (f x) \contained_in (F I).
 
 Notation "F \is_envelope_of f":= (Ienv f F) (at level 70).
+
+
+(*****************************************************************************)
+(* Chebyshev coefficient on [-1; 1] for interval arithmetic                  *)
+(*****************************************************************************)
 
 Section Icheby_coefs.
 
@@ -618,27 +622,6 @@ apply: ITvalues_rec_correct => //.
 by rewrite l2D size_Icheby_nodes.
 Qed.
 
-(*
-End Icheby_coefs.
-End CPoly_interval.
-End CPoly_interval.
-
-Module V := CPoly_interval SFBI2.
-
-Export V.
-
-From Bignums Require Import BigZ.
-
-Print SFBI2.precision.
-Print Interval_bigint_carrier.BigIntRadix2.exponent_type.
-
-Definition I1 := I.fromZ 1.
-Definition I2 := I.fromZ 2.
-
-Compute (fun x => ITvalues 10%bigZ x (I.fromZ (Z.of_nat x))) 3%N.
-
-*)
-
 Fixpoint Isum (F : ID -> ID -> ID) l1 l2 :=
   if l1 is a :: l1 then
   if l2 is b :: l2 then
@@ -775,10 +758,14 @@ Qed.
 
 End Icheby_coefs.
 
+(*****************************************************************************)
+(* Chebyshev coefficient on [a; b] for real numbers                          *)
+(*****************************************************************************)
+
 Section scheby_coefs.
 
 Context (a b : R).
-Context (f: R -> R).
+Context (f : R -> R).
 
 Definition svalue_list n:= [seq f i | i <- scheby_nodes a b n].
 
@@ -811,10 +798,8 @@ Lemma size_scheby_coef_list n :
   size (scheby_coef_list n) = n.
 Proof. by rewrite size_map size_iota. Qed.
 
-Definition CPolyab l := \sum_(i < (size l)) l`_i *: 'T^(a,b)_i.
-
 Lemma scheby_coef_list_spec n: b != a ->
-	CPolyab (scheby_coef_list n) = interpolation f (scheby_nodes a b n).
+	CPolyab a b (scheby_coef_list n) = interpolation f (scheby_nodes a b n).
 Proof.
 intros.
 case: n => [ | n]; first by rewrite /CPolyab /= big_ord0.
@@ -831,13 +816,14 @@ apply sdsprod_coefs.
 by apply /eqP => eq; move /eqP: H; rewrite eq.
 Qed.
 
-Definition CM_correct L Delta f I := 
-  forall l x, (forall i, l`_i \contained_in nth I0 L i) ->
- 	x \contained_in I -> Rabs (f x - (CPolyab l).[x]) \contained_in Delta.
-
 End scheby_coefs.
 
+(*****************************************************************************)
+(* Chebyshev coefficient on [a; b] for interval arithmetic                   *)
+(*****************************************************************************)
+
 Section Ischeby_coefs.
+
 Context (a b : D).
 Context (f: R -> R).
 Context (If: ID -> ID).
@@ -955,154 +941,44 @@ Qed.
 
 End Ischeby_coefs.
 
+Record cms (a : D) (b : D) := CMS { 
+  f : R -> R;
+  P : seq ID; 
+  Delta : ID
+ }.
+
+Definition cms_correct a b (c : cms a b) :=
+  let:  CMS f P Delta  := c in 
+  forall x, (D2R x) \contained_in I.bnd a b ->
+   f (D2R x)  \contained_in add (IsCshaw (I.bnd a a) (I.bnd b b) P (I.bnd x x)) Delta.
+
+
+(*****************************************************************************)
+(* Chebyshev coefficient on [a; b] for real numbers                          *)
+(*****************************************************************************)
+
 Section CMSin.
 
-Context (a b : D) (annan: F.toX a <> Xnan) (bnnan: F.toX b <> Xnan).
-Notation I := (Interval.Interval_interval_float.Ibnd a b).
-Context (f: R -> R).
+Context (a b : D) (annan : F.toX a <> Xnan) (bnnan : F.toX b <> Xnan).
 
-Lemma ineq_cntd x:
-	x \contained_in I <-> (D2R a <= x <= D2R b)%R.
-Proof.
-rewrite /contains /I.convert /D2R.
-case: (F.toX a) annan => [ | ar]// _.
-by case: (F.toX b) bnnan => [ | br] //= _.
-Qed.
+Context (f : R -> R).
 
-Notation Isin := (I.sin prec).
-Lemma env: Isin \is_envelope_of sin.
-Proof. exact/ sin_correct. Qed.
-
-Fixpoint mfact_rec n p := 
-  if n is n1.+1 then (p * (mfact_rec n1 p.+1))%nat 
-  else 1%nat.
-
-Lemma mfact_recE n p : mfact_rec n p.+1 = ((n + p)`! %/ p`!)%nat.
-Proof.
-elim: n p => //= [|n IH] p.
-  by rewrite divnn add0n fact_gt0.
-rewrite IH muln_divA; first by rewrite factS divnMl // addnS.
-elim: (n) => //= n1 IH1.
-apply: dvdn_trans IH1 _.
-rewrite addSn factS.
-by apply/dvdn_mull/dvdnn.
-Qed.
-
-Fixpoint Ifact_rec n p := 
-  if n is n1.+1 then mul p (Ifact_rec n1 (add I1 p)) 
-  else I1.
-
-Definition Ifact n := Ifact_rec n I1.
-
-Lemma Ifact_correct n : INR (n`!) \contained_in Ifact n.
-Proof.
-rewrite /Ifact (_ : n`! = (n + 0)`! %/ 0`!)%nat; last first.
-  by rewrite addn0 divn1.
-rewrite -mfact_recE.
-have : INR 1 \contained_in I1 by apply: I.fromZ_correct.
-elim: n 1%nat I1 => [|n IH] m M H; first by apply: I.fromZ_correct.
-lazy iota beta delta [mfact_rec Ifact_rec]. 
-rewrite mult_INR.
-apply: mul_correct => //.
-apply: IH.
-rewrite S_INR Rplus_comm.
-apply: add_correct => //.
-by apply: I.fromZ_correct.
-Qed.
-
-(* Naive way to check if an interval is of constant sign *)
-
-Definition s0P := I.bnd (F.fromZ 0) F.nan.
-Definition sN0 := I.bnd F.nan (F.fromZ 0).
-
-Definition csign i :=
-  (I.subset i s0P) || (I.subset i sN0).
-
-Lemma csign_correct I :
-  csign I ->    (forall x, x \contained_in I -> (x >= 0)%R)
-             \/ (forall x, x \contained_in I -> (x <= 0)%R) .
-Proof.
-rewrite /csign.
-have := I.subset_correct I s0P.
-case: I.subset => /= [/(_ isT) H _|_].
-  left => x; case: I H => //= l u.
-  rewrite F.fromZ_correct /=.
-  case: F.toX => //= [|r].
-    by rewrite /le_lower /= => [] [].
-  by rewrite /le_lower /=; lra.
-have := I.subset_correct I sN0.
-case: I.subset => /= [/(_ isT) H _|_] //.
-right => x.
-case: I H => //= l u.
-rewrite F.fromZ_correct /=.
-case: (F.toX l) => //= [|r]; case: (F.toX u) => //= [[]//|r1].
-  by lra.
-by lra.
-Qed.
-
-Fixpoint gamma n x := match n with
-		| 0 => sin x
-		| 0.+1 => cos x
-		| 0.+2 => - sin x
-		| 0.+3 => - cos x
-		| n.+4 => gamma n x
-	end.
-
-Fixpoint bgamma b x := if b then cos x else sin x.
-
-Fixpoint Igamma (n: nat) J := match n with
-	| 0 => (I.sin prec J)
-	| 0.+1 => (I.cos prec J)
-	| 0.+2 => I.neg (I.sin prec J)
-	| 0.+3 => I.neg (I.cos prec J)
-	| n.+4 => Igamma n J
-end.
-
-Definition Ibgamma b J := if b then I.cos prec J else I.sin prec J.
-
-Notation "f ^( n )" := (Derive_n f n) (at level 2, format "f ^( n )").
-
-Lemma expr_Rexp a1 b1 : (a1 ^+ b1)%RR = (a1 ^ b1)%R.
-Proof.  by elim: b1 => //= n <-; rewrite exprS. Qed.
-
-Lemma Igamma_correct n:
- (Ibgamma (odd n)) \is_envelope_of (fun x => (-1) ^ (odd n./2) * sin^(n) x)%R.
-Proof.
-move=> x X Hx.
-rewrite Derive_n_sin /Ibgamma; case: odd.
-  rewrite -!expr_Rexp -Rmult_assoc -[(-1) ^+ n./2]signr_odd.
-  case: odd; rewrite ?expr0 ?expr1.
-    rewrite (_ : -1 * -1  * cos x = cos x)%R; last by lra.
-    by apply: cos_correct.
-  rewrite (_ : 1 * 1  * cos x = cos x)%R; last by lra.
-  by apply: cos_correct.
-rewrite -!expr_Rexp -Rmult_assoc -[(-1) ^+ n./2]signr_odd.
-case: odd; rewrite ?expr0 ?expr1.
-  rewrite (_ : -1 * -1  * sin x = sin x)%R; last by lra.
-  by apply: sin_correct.
-rewrite (_ : 1 * 1  * sin x = sin x)%R; last by lra.
-by apply: sin_correct.
-Qed.
-
-Definition Iab := I.bnd a b.
 Definition Ia := I.bnd a a.
-Definition Ib := I.bnd b b.
-Definition I01 := I.bnd (F.fromZ 0) (F.fromZ 1).
 
 Lemma a_in_Ia : D2R a \contained_in Ia.
-Proof.
-by rewrite /D2R /Ia /=; case: F.toX  => //= r; lra.
-Qed.
+Proof. by rewrite /D2R /Ia /=; case: F.toX  => //= r; lra. Qed.
+
+Definition Ib := I.bnd b b.
 
 Lemma b_in_Ib : D2R b \contained_in Ib.
-Proof.
-by rewrite /D2R /Ib /=; case: F.toX  => //= r; lra.
-Qed.
+Proof. by rewrite /D2R /Ib /=; case: F.toX  => //= r; lra. Qed.
+
+Definition Iab := I.bnd a b.
 
 Lemma in_Iab x : (D2R a <= x <= D2R b)%R -> x \contained_in Iab.
-Proof.
-rewrite /= /D2R; (do 2 case: F.toX) => //= r1; lra.
-Qed. 
+Proof. rewrite /= /D2R; (do 2 case: F.toX) => //= r1; lra. Qed. 
+
+Definition I01 := I.bnd (F.fromZ 0) (F.fromZ 1).
 
 Lemma I01_correct x z I :
    (0 <= x <= z)%R -> z \contained_in I -> x \contained_in I.mul prec I01 I.
@@ -1120,32 +996,14 @@ rewrite /= !F.fromZ_correct; split.
 by apply/Rle_div_l; lra.
 Qed.
 
-Definition sin_error (b1 : bool) P zn z2n nn :=
-  let v := Ibgamma b1 Iab in
-  if csign v then
-    let Ida := I.abs (I.sub prec (I.sin prec Ia) (IsCshaw Ia Ib P Ia)) in
-    let Idb := I.abs (I.sub prec (I.sin prec Ib) (IsCshaw Ia Ib P Ib)) in
-    let Ic := I.mul prec I01 (I.join Ida Idb) in
-    I.join (I.neg Ic) Ic
-  else
-    let Ic := I.div prec
-              (I.mul prec (I.power_pos prec (I.sub prec Ib Ia) zn) 
-                          (I.mul prec I01 (I.abs (Ibgamma (~~b1) Iab))))
-              (I.mul prec (I.power_pos prec I2 z2n) (Ifact nn))
-     in 
-     I.join (I.neg Ic) Ic.
-
-Lemma Rabs_join x I :
-  Rabs x \contained_in I ->
-   x \contained_in (I.join (I.neg I) I).
+Lemma Rabs_join x I : 
+  Rabs x \contained_in I -> x \contained_in (I.join (I.neg I) I).
 Proof.
 move=> H.
 apply: I.join_correct.
-split_Rabs.
-  left.
-  rewrite (_ : x = (--x)%R); last by lra.
-  by apply: neg_correct.
-by right.
+split_Rabs; [left|right]; last by [].
+rewrite (_ : x = (--x)%R); last by lra.
+by apply: neg_correct.
 Qed.
 
 Lemma Rabs_I01_max y i I J g :
@@ -1201,6 +1059,132 @@ rewrite Rmult_0_l.
 rewrite /round Generic_fmt.round_0; split_Rabs; lra.
 Qed.
 
+
+(*****************************************************************************)
+(*                             Factorial                                     *)
+(*****************************************************************************)
+
+Fixpoint mfact_rec n p := 
+  if n is n1.+1 then (p * (mfact_rec n1 p.+1))%nat 
+  else 1%nat.
+
+Lemma mfact_recE n p : mfact_rec n p.+1 = ((n + p)`! %/ p`!)%nat.
+Proof.
+elim: n p => //= [|n IH] p.
+  by rewrite divnn add0n fact_gt0.
+rewrite IH muln_divA; first by rewrite factS divnMl // addnS.
+elim: (n) => //= n1 IH1.
+apply: dvdn_trans IH1 _.
+rewrite addSn factS.
+by apply/dvdn_mull/dvdnn.
+Qed.
+
+Fixpoint Ifact_rec n p := 
+  if n is n1.+1 then mul p (Ifact_rec n1 (add I1 p)) 
+  else I1.
+
+Definition Ifact n := Ifact_rec n I1.
+
+Lemma Ifact_correct n : INR (n`!) \contained_in Ifact n.
+Proof.
+rewrite /Ifact (_ : n`! = (n + 0)`! %/ 0`!)%nat; last first.
+  by rewrite addn0 divn1.
+rewrite -mfact_recE.
+have : INR 1 \contained_in I1 by apply: I.fromZ_correct.
+elim: n 1%nat I1 => [|n IH] m M H; first by apply: I.fromZ_correct.
+lazy iota beta delta [mfact_rec Ifact_rec]. 
+rewrite mult_INR.
+apply: mul_correct => //.
+apply: IH.
+rewrite S_INR Rplus_comm.
+apply: add_correct => //.
+by apply: I.fromZ_correct.
+Qed.
+
+(*****************************************************************************)
+(* Naive way to check if an interval is of constant sign                     *)
+(*****************************************************************************)
+
+Definition s0P := I.bnd (F.fromZ 0) F.nan.
+Definition sN0 := I.bnd F.nan (F.fromZ 0).
+
+Definition csign i :=  (I.subset i s0P) || (I.subset i sN0).
+
+Lemma csign_correct I :
+  csign I ->    (forall x, x \contained_in I -> (x >= 0)%R)
+             \/ (forall x, x \contained_in I -> (x <= 0)%R) .
+Proof.
+rewrite /csign.
+have := I.subset_correct I s0P.
+case: I.subset => /= [/(_ isT) H _|_].
+  left => x; case: I H => //= l u.
+  rewrite F.fromZ_correct /=.
+  case: F.toX => //= [|r].
+    by rewrite /le_lower /= => [] [].
+  by rewrite /le_lower /=; lra.
+have := I.subset_correct I sN0.
+case: I.subset => /= [/(_ isT) H _|_] //.
+right => x.
+case: I H => //= l u.
+rewrite F.fromZ_correct /=.
+case: (F.toX l) => //= [|r]; case: (F.toX u) => //= [[]//|r1].
+  by lra.
+by lra.
+Qed.
+
+
+(*****************************************************************************)
+(* Derivative of sin for interval arithmetic                                 *)
+(*****************************************************************************)
+
+Lemma env: I.sin prec \is_envelope_of sin.
+Proof. exact: sin_correct. Qed.
+
+Fixpoint bgamma b x := if b then cos x else sin x.
+
+Definition Ibgamma b J := if b then I.cos prec J else I.sin prec J.
+
+Notation "f ^( n )" := (Derive_n f n) (at level 2, format "f ^( n )").
+
+Lemma Ibgamma_correct n:
+ (Ibgamma (odd n)) \is_envelope_of (fun x => (-1) ^ (odd n./2) * sin^(n) x)%R.
+Proof.
+move=> x X Hx.
+rewrite Derive_n_sin /Ibgamma; case: odd.
+  rewrite -!expr_Rexp -Rmult_assoc -[(-1) ^+ n./2]signr_odd.
+  case: odd; rewrite ?expr0 ?expr1.
+    rewrite (_ : -1 * -1  * cos x = cos x)%R; last by lra.
+    by apply: cos_correct.
+  rewrite (_ : 1 * 1  * cos x = cos x)%R; last by lra.
+  by apply: cos_correct.
+rewrite -!expr_Rexp -Rmult_assoc -[(-1) ^+ n./2]signr_odd.
+case: odd; rewrite ?expr0 ?expr1.
+  rewrite (_ : -1 * -1  * sin x = sin x)%R; last by lra.
+  by apply: sin_correct.
+rewrite (_ : 1 * 1  * sin x = sin x)%R; last by lra.
+by apply: sin_correct.
+Qed.
+
+(*****************************************************************************)
+(* Error of sin                                                              *)
+(*****************************************************************************)
+
+Definition sin_error (b1 : bool) P zn z2n nn :=
+  let v := Ibgamma b1 Iab in
+  if csign v then
+    let Ida := I.abs (I.sub prec (I.sin prec Ia) (IsCshaw Ia Ib P Ia)) in
+    let Idb := I.abs (I.sub prec (I.sin prec Ib) (IsCshaw Ia Ib P Ib)) in
+    let Ic := I.mul prec I01 (I.join Ida Idb) in
+    I.join (I.neg Ic) Ic
+  else
+    let Ic := I.div prec
+              (I.mul prec (I.power_pos prec (I.sub prec Ib Ia) zn) 
+                          (I.mul prec I01 (I.abs (Ibgamma (~~b1) Iab))))
+              (I.mul prec (I.power_pos prec I2 z2n) (Ifact nn))
+     in 
+     I.join (I.neg Ic) Ic.
+
+
 Lemma sin_error_correct b1 P n zn z2n x :
   b1 = odd n ->
   zn = Pos.of_nat n.+1 ->
@@ -1221,38 +1205,41 @@ have F1 : (D2R a < D2R b)%R.
   rewrite /D2R; case: F.toX; case: F.toX =>  //= r1 r2.
   by case: Rcompare_spec.
 have F2 : D2R a != D2R b by apply/eqP; lra.
-have F3 : x \contained_in Iab.
+have F3 : D2R b != D2R a by rewrite eq_sym.
+have F4 : x \contained_in Iab.
   move: xB F1; rewrite /D2R /=.
   (do 2 case F.toX) => //= x1; lra.
+have Hia := a_in_Ia.
+have Hib := b_in_Ib.
 pose iv := interpolation sin (scheby_nodes (D2R a) (D2R b) n.+1).
+have F5 i :
+    (scheby_coef_list (D2R a) (D2R b) sin n.+1)`_i \contained_in
+     nth I0 P i.
+  have [nLi|iLn] := leqP n.+1 i.
+    rewrite /scheby_coef_list !nth_default //.
+    - by apply: I.fromZ_correct.
+    - by rewrite size_map size_iota.
+    by rewrite sP.
+  suff -> :
+     (scheby_coef_list (D2R a) (D2R b) sin n.+1)`_i = 
+      sdsprod_coef (D2R a) (D2R b)
+        (interpolation sin (scheby_nodes (D2R a) (D2R b) n.+1)) n i.
+    by apply: Hi.
+  rewrite sdsprod_coef_interpolation_pT //.
+  rewrite /scheby_coef_list [LHS](nth_map 0%nat) ?size_iota ?nth_iota //.
+  congr (_ * _)%R.
+  apply: eq_bigr => z _.
+  congr (_ * _); last by apply: Tvalue_list_correct.
+  rewrite svalue_list_correct //.
+  by rewrite (nth_map 0) // size_cheby_nodes.
 have->: sin x = (iv.[x] + (ierror sin  (scheby_nodes
            (D2R a)
            (D2R b) n.+1) x))%R.
   by rewrite /ierror -/iv; lra.
 apply: add_correct.
-  rewrite -[iv]scheby_coef_list_spec.
+  rewrite -[iv]scheby_coef_list_spec //.
   apply: IsCshaw_correct => //.
-  - by rewrite size_scheby_coef_list.
-  - move=> i.
-    have [nLi|iLn] := leqP n.+1 i.
-      rewrite /scheby_coef_list !nth_default //.
-      - by apply: I.fromZ_correct.
-      - by rewrite size_map size_iota.
-      by rewrite sP.
-      suff -> : (scheby_coef_list (D2R a) (D2R b) sin n.+1)`_i = 
-               sdsprod_coef (D2R a) (D2R b)
-                 (interpolation sin (scheby_nodes (D2R a) (D2R b) n.+1)) n i.
-        by apply: Hi.
-      rewrite sdsprod_coef_interpolation_pT //.
-      rewrite /scheby_coef_list [LHS](nth_map 0%nat) ?size_iota ?nth_iota //.
-      congr (_ * _)%R.
-      apply: eq_bigr => z _.
-      congr (_ * _); last by apply: Tvalue_list_correct.
-      rewrite svalue_list_correct //.
-      by rewrite (nth_map 0) // size_cheby_nodes.
-  - by apply: a_in_Ia.
-  - by apply: b_in_Ib.
-  by rewrite eq_sym.
+  by rewrite size_scheby_coef_list.
 rewrite /sin_error.
 have [/csign_correct H|_] := boolP (csign _).
   apply: Rabs_join.
@@ -1275,59 +1262,17 @@ have [/csign_correct H|_] := boolP (csign _).
     right.
     apply/abs_correct/sub_correct.
       by apply/sin_correct/b_in_Ib.
-  rewrite -scheby_coef_list_spec.
+    rewrite -scheby_coef_list_spec //.
+    apply: IsCshaw_correct => //.
+    by rewrite sP size_scheby_coef_list.
+  apply: I.join_correct.
+  left.
+  apply/abs_correct/sub_correct.
+    by apply/sin_correct/a_in_Ia.
+  rewrite -scheby_coef_list_spec //.
   apply: IsCshaw_correct => //.
-  - by rewrite sP size_scheby_coef_list.
-  - move=> i.
-    have [nLi|iLn] := leqP n.+1 i.
-      rewrite /scheby_coef_list !nth_default //.
-      - by apply: I.fromZ_correct.
-      - by rewrite size_map size_iota.
-      by rewrite sP.
-      suff -> : (scheby_coef_list (D2R a) (D2R b) sin n.+1)`_i = 
-               sdsprod_coef (D2R a) (D2R b)
-                 (interpolation sin (scheby_nodes (D2R a) (D2R b) n.+1)) n i.
-        by apply: Hi.
-      rewrite sdsprod_coef_interpolation_pT //.
-      rewrite /scheby_coef_list [LHS](nth_map 0%nat) ?size_iota ?nth_iota //.
-      congr (_ * _)%R.
-      apply: eq_bigr => z _.
-      congr (_ * _); last by apply: Tvalue_list_correct.
-      rewrite svalue_list_correct //.
-      by rewrite (nth_map 0) // size_cheby_nodes.
-  - by apply: b_in_Ib.
-  - by apply: a_in_Ia.
-  - by apply: b_in_Ib.
-  by rewrite eq_sym.
-    apply: I.join_correct.
-    left.
-    apply/abs_correct/sub_correct.
-      by apply/sin_correct/a_in_Ia.
-  rewrite -scheby_coef_list_spec.
-  apply: IsCshaw_correct => //.
-  - by rewrite sP size_scheby_coef_list.
-  - move=> i.
-    have [nLi|iLn] := leqP n.+1 i.
-      rewrite /scheby_coef_list !nth_default //.
-      - by apply: I.fromZ_correct.
-      - by rewrite size_map size_iota.
-      by rewrite sP.
-      suff -> : (scheby_coef_list (D2R a) (D2R b) sin n.+1)`_i = 
-               sdsprod_coef (D2R a) (D2R b)
-                 (interpolation sin (scheby_nodes (D2R a) (D2R b) n.+1)) n i.
-        by apply: Hi.
-      rewrite sdsprod_coef_interpolation_pT //.
-      rewrite /scheby_coef_list [LHS](nth_map 0%nat) ?size_iota ?nth_iota //.
-      congr (_ * _)%R.
-      apply: eq_bigr => z _.
-      congr (_ * _); last by apply: Tvalue_list_correct.
-      rewrite svalue_list_correct //.
-      by rewrite (nth_map 0) // size_cheby_nodes.
-  - by apply: a_in_Ia.
-  - by apply: a_in_Ia.
-  - by apply: b_in_Ib.
-  by rewrite eq_sym.
-  apply: Rabs_join.
+  by rewrite sP size_scheby_coef_list.
+apply: Rabs_join.
 set u := ierror _ _ _.
 pose e : R := (expn 2 n.+1.*2.-1 * n.+1 `!) %:R.
 pose v := ((D2R b - D2R a)^+ n.+1).
@@ -1348,15 +1293,13 @@ apply: div_correct.
   rewrite /v expr_Rexp znE.
   apply: power_pos_correct => //.
   apply: sub_correct => //.
-  - apply: b_in_Ib.
-  - apply: a_in_Ia.
   apply: Rabs_I01_max.
   - suff: (D2R a) \contained_in Iab by apply.
     by apply: in_Iab; lra.
   - move=> y YC.
     apply: abs_correct.
   rewrite b1E.
-  by apply: (Igamma_correct n.+1).
+  by apply: (Ibgamma_correct n.+1).
 move=> z Hz.
   rewrite Rabs_mult Rabs_div; try lra.
   rewrite (Rabs_pos_eq v); try lra.
@@ -1387,6 +1330,8 @@ apply: mul_correct.
 - by apply: Ifact_correct.
 by case: is_zero_spec => //; lra.
 Qed.
+
+Check sin_error_correct.
 
 End CMSin.
 
@@ -1433,4 +1378,3 @@ Definition ob :=
 Definition error :=
   Eval vm_compute in  sin_error prec a b ob coefs zn z2n n.+1.
 Print error.
-

@@ -430,6 +430,15 @@ rewrite  S_INR [_.+1%:R](natrD _ 1) IH -[1%:R]/1.
 by rewrite addrC.
 Qed.
 
+Lemma Z_of_nat_gt0 n: (0 < n)%nat -> (0 < Z.of_nat n)%Z.
+Proof. by case: n. Qed.
+
+Lemma IZR_Zof_nat n : IZR (Z.of_nat n) = n%:R.
+Proof. by rewrite -INR_IZR_INZ natr_INR. Qed.
+
+Lemma expr_Rexp a1 b1 : (a1 ^+ b1)%RR = (a1 ^ b1)%R.
+Proof.  by elim: b1 => //= n <-; rewrite exprS. Qed.
+
 End ssreal_struct.
 
 (* More theorems to make Reals and ssreflect work together *)

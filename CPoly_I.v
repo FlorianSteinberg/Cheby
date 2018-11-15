@@ -658,7 +658,7 @@ Definition Icheby_coefs vn vl1 vl2 :=
   if res is a :: res1 then (div a I2) :: res1
   else res.
 
-Lemma size_Icheby_coefs_correct vn vl1 vl2 :
+Lemma size_Icheby_coefs vn vl1 vl2 :
   size (Icheby_coefs vn vl1 vl2) = size vl2.
 Proof.
 rewrite /Icheby_coefs.
@@ -941,15 +941,14 @@ Qed.
 
 End Ischeby_coefs.
 
-Record cms (a : D) (b : D) := CMS { 
-  f : R -> R;
+Record cms := CMS { 
   P : seq ID; 
   Delta : ID
  }.
 
-Definition cms_correct a b (c : cms a b) :=
-  let:  CMS f P Delta  := c in 
-  forall x, (D2R x) \contained_in I.bnd a b ->
+Definition cms_correct a b f (c : cms) :=
+  let:  CMS P Delta  := c in 
+  forall x, (D2R a <= D2R x <= D2R b)%R ->
    f (D2R x)  \contained_in add (IsCshaw (I.bnd a a) (I.bnd b b) P (I.bnd x x)) Delta.
 
 
@@ -1195,8 +1194,8 @@ Lemma sin_error_correct b1 P n zn z2n x :
    	sdsprod_coef (D2R a) (D2R b)
     (interpolation sin (scheby_nodes (D2R a) (D2R b) n.+1)) n j \contained_in 
              (nth I0 P j)) ->
-   (D2R a <= x <= D2R b)%R -> 
-   sin x \contained_in (I.add prec (IsCshaw Ia Ib P Iab)
+   (D2R a <= D2R x <= D2R b)%R -> 
+   sin (D2R x) \contained_in (I.add prec (IsCshaw Ia Ib P (I.bnd x x))
                                     (sin_error b1 P zn z2n n.+1)).
 Proof.
 move=> b1E znE z2nE aLb sP Hi xB.
@@ -1206,9 +1205,8 @@ have F1 : (D2R a < D2R b)%R.
   by case: Rcompare_spec.
 have F2 : D2R a != D2R b by apply/eqP; lra.
 have F3 : D2R b != D2R a by rewrite eq_sym.
-have F4 : x \contained_in Iab.
-  move: xB F1; rewrite /D2R /=.
-  (do 2 case F.toX) => //= x1; lra.
+have F4 : D2R x \contained_in Iab.
+  by apply: in_Iab.
 have Hia := a_in_Ia.
 have Hib := b_in_Ib.
 pose iv := interpolation sin (scheby_nodes (D2R a) (D2R b) n.+1).
@@ -1232,14 +1230,15 @@ have F5 i :
   congr (_ * _); last by apply: Tvalue_list_correct.
   rewrite svalue_list_correct //.
   by rewrite (nth_map 0) // size_cheby_nodes.
-have->: sin x = (iv.[x] + (ierror sin  (scheby_nodes
+have->: sin (D2R x) = (iv.[D2R x] + (ierror sin  (scheby_nodes
            (D2R a)
-           (D2R b) n.+1) x))%R.
+           (D2R b) n.+1) (D2R x)))%R.
   by rewrite /ierror -/iv; lra.
 apply: add_correct.
   rewrite -[iv]scheby_coef_list_spec //.
   apply: IsCshaw_correct => //.
-  by rewrite size_scheby_coef_list.
+    by rewrite size_scheby_coef_list.
+  by rewrite /D2R /=; case: F.toX  => //= r; lra.
 rewrite /sin_error.
 have [/csign_correct H|_] := boolP (csign _).
   apply: Rabs_join.
@@ -1331,7 +1330,34 @@ apply: mul_correct.
 by case: is_zero_spec => //; lra.
 Qed.
 
-Check sin_error_correct.
+
+Definition sin_cms n b1 vn zn z2n vl2 vl3 :=
+  let P := Icheby_coefs (I.sin prec) vn vl3 vl2 in
+  CMS P (sin_error b1 P zn z2n n.+1).
+
+Lemma sin_cms_correct n b1 vn v2n zn z2n vl2 vl3 :    
+  F.cmp a b = Xlt ->
+  b1 = odd n ->
+  INR n.+1 \contained_in vn ->
+  (2 * INR n.+1) \contained_in v2n ->
+  zn = Pos.of_nat n.+1 ->
+  z2n = Pos.of_nat n.*2.+1 ->
+  vl2 = ITvalues n.+1 (nseq n.+1 I1) (Icheby_nodes n.+1 v2n) ->
+  vl3 = Ischeby_nodes a b n.+1 v2n ->
+  cms_correct a b sin (sin_cms n b1 vn zn z2n vl2 vl3).
+Proof.
+move=> aLb b1E vnE v2nE znE z2nE vl2E vl3E.
+rewrite /cms_correct /sin_cms => x xI.
+apply: sin_error_correct => //.
+  by rewrite size_Icheby_coefs vl2E size_ITvalue.
+move=> j jLn.
+apply: Ischeby_coefs_correct => //.
+- by apply: env.
+- by left.
+- by apply: v2nE.
+- by apply: vl2E.
+by apply: vl3E.
+Qed.
 
 End CMSin.
 
@@ -1348,16 +1374,21 @@ Definition I1 := I.fromZ 1.
 Definition I2 := I.fromZ 2.
 Definition prec := 50%bigZ.
 Definition n := 25%nat.
-Definition zn := Pos.of_nat n.+1.
-Definition z2n := (2 * zn)%positive.
-Definition vn := I.fromZ (Zpos zn).
-Definition v2n := I.fromZ (Zpos z2n).
+Definition zn := 
+  Eval vm_compute in Pos.of_nat n.+1.
+Definition z2n := 
+  Eval vm_compute in (2 * zn)%positive.
+Definition vn := 
+  Eval vm_compute in I.fromZ (Zpos zn).
+Definition v2n := 
+  Eval vm_compute in I.fromZ (Zpos z2n).
 Definition a := I.lower I1.
 Definition b := I.upper I2.
 
 Time
 Definition l1 :=
   Eval vm_compute in nseq n.+1 I1.
+
 Time
 Definition vl1 := 
   Eval vm_compute in Icheby_nodes prec n.+1 v2n.
@@ -1367,6 +1398,7 @@ Definition vl2 :=
 Time
 Definition vl3 := 
   Eval vm_compute in Ischeby_nodes prec a b n.+1 v2n.
+
 Time
 Definition coefs :=
   Eval vm_compute in 
@@ -1375,6 +1407,10 @@ Definition coefs :=
 Definition ob :=
   Eval vm_compute in odd n.
 
-Definition error :=
-  Eval vm_compute in  sin_error prec a b ob coefs zn z2n n.+1.
-Print error.
+Time
+Definition scms :=
+  Eval vm_compute in
+  sin_cms prec a b n ob vn zn z2n vl2 vl3.
+
+Compute Delta scms.
+

@@ -1,8 +1,8 @@
 From mathcomp Require Import all_ssreflect all_algebra.
-Require Import Rstruct Reals Psatz under.
+Require Import String Rstruct Reals Psatz under.
 Require Import Poly_complements CPoly CPoly_exec CPoly_interpolation.
 Require Import Coquelicot.Coquelicot.
-Require Import sine_interpolation cos_interpolation.
+Require Import sine_interpolation cos_interpolation exp_interpolation.
 Set Implicit Arguments.
 Unset Strict Implicit.
 Import Prenex Implicits.
@@ -115,6 +115,10 @@ Proof. by apply I.sin_correct. Qed.
 Lemma cos_correct x I:
 	x \contained_in I -> (cos x) \contained_in (I.cos prec I).
 Proof. by apply I.cos_correct. Qed.
+
+Lemma exp_correct x I:
+	x \contained_in I -> (exp x) \contained_in (I.exp prec I).
+Proof. by apply I.exp_correct. Qed.
 
 Lemma atan_correct x I:
 	x \contained_in I -> (atan x) \contained_in (I.atan prec I).
@@ -1583,6 +1587,118 @@ apply: Ischeby_coefs_correct => //.
 by apply: vl3E.
 Qed.
 
+Lemma exp_env: I.exp prec \is_envelope_of exp.
+Proof. exact: exp_correct. Qed.
+
+(*****************************************************************************)
+(* Error of exp                                                              *)
+(*****************************************************************************)
+
+Definition exp_error P :=
+  let Ida := I.abs (I.sub prec (I.exp prec Ia) (IsCshaw Ia Ib P Ia)) in
+  let Idb := I.abs (I.sub prec (I.exp prec Ib) (IsCshaw Ia Ib P Ib)) in
+  let Ic := I.mul prec I01 (I.join Ida Idb) in
+  I.join (I.neg Ic) Ic.
+
+Lemma exp_error_correct P n x :
+ (F.cmp a b = Xlt) ->
+ (size P = n.+1) ->
+ (forall j, (j < n.+1)%nat ->
+   	sdsprod_coef (D2R a) (D2R b)
+    (interpolation exp (scheby_nodes (D2R a) (D2R b) n.+1)) n j \contained_in 
+             (nth I0 P j)) ->
+   (D2R a <= D2R x <= D2R b)%R -> 
+   exp (D2R x) \contained_in (I.add prec (IsCshaw Ia Ib P (I.bnd x x))
+                                    (exp_error P)).
+Proof.
+move=> aLb sP Hi xB.
+have F1 : (D2R a < D2R b)%R.
+  have := F.cmp_correct a b; rewrite aLb.
+  rewrite /D2R; case: F.toX; case: F.toX =>  //= r1 r2.
+  by case: Rcompare_spec.
+have F2 : D2R a != D2R b by apply/eqP; lra.
+have F3 : D2R b != D2R a by rewrite eq_sym.
+have F4 : D2R x \contained_in Iab.
+  by apply: in_Iab.
+have Hia := a_in_Ia.
+have Hib := b_in_Ib.
+pose iv := interpolation exp (scheby_nodes (D2R a) (D2R b) n.+1).
+have F5 i :
+    (scheby_coef_list (D2R a) (D2R b) exp n.+1)`_i \contained_in
+     nth I0 P i.
+  have [nLi|iLn] := leqP n.+1 i.
+    rewrite /scheby_coef_list !nth_default //.
+    - by apply: I.fromZ_correct.
+    - by rewrite size_map size_iota.
+    by rewrite sP.
+  suff -> :
+     (scheby_coef_list (D2R a) (D2R b) exp n.+1)`_i = 
+      sdsprod_coef (D2R a) (D2R b)
+        (interpolation exp (scheby_nodes (D2R a) (D2R b) n.+1)) n i.
+    by apply: Hi.
+  rewrite sdsprod_coef_interpolation_pT //.
+  rewrite /scheby_coef_list [LHS](nth_map 0%nat) ?size_iota ?nth_iota //.
+  congr (_ * _)%R.
+  apply: eq_bigr => z _.
+  congr (_ * _); last by apply: Tvalue_list_correct.
+  rewrite svalue_list_correct //.
+  by rewrite (nth_map 0) // size_cheby_nodes.
+have->: exp (D2R x) = (iv.[D2R x] + (ierror exp (scheby_nodes
+           (D2R a)
+           (D2R b) n.+1) (D2R x)))%R.
+  by rewrite /ierror -/iv; lra.
+apply: add_correct.
+  rewrite -[iv]scheby_coef_list_spec //.
+  apply: IsCshaw_correct => //.
+    by rewrite size_scheby_coef_list.
+  by rewrite /D2R /=; case: F.toX  => //= r; lra.
+rewrite /exp_error.
+apply: Rabs_join.
+apply: I01_correct.
+  split; first by split_Rabs; lra.
+  by apply: exp_scheby_ge.
+rewrite /Rmax; case: Rle_dec => _.
+  apply: I.join_correct.
+  right.
+  apply/abs_correct/sub_correct.
+    by apply/exp_correct/b_in_Ib.
+  rewrite -scheby_coef_list_spec //.
+  apply: IsCshaw_correct => //.
+  by rewrite sP size_scheby_coef_list.
+apply: I.join_correct.
+left.
+apply/abs_correct/sub_correct.
+  by apply/exp_correct/a_in_Ia.
+rewrite -scheby_coef_list_spec //.
+apply: IsCshaw_correct => //.
+by rewrite sP size_scheby_coef_list.
+Qed.
+
+Definition exp_cms vn vl2 vl3 :=
+  let P := Icheby_coefs (I.exp prec) vn vl3 vl2 in
+  CMS P (exp_error P).
+
+Lemma exp_cms_correct n vn v2n vl2 vl3 :    
+  F.cmp a b = Xlt ->
+  INR n.+1 \contained_in vn ->
+  (2 * INR n.+1) \contained_in v2n ->
+  vl2 = ITvalues n.+1 (nseq n.+1 I1) (Icheby_nodes n.+1 v2n) ->
+  vl3 = Ischeby_nodes a b n.+1 v2n ->
+  cms_correct a b exp (exp_cms vn vl2 vl3).
+Proof.
+move=> aLb vnE v2nE vl2E vl3E.
+rewrite /cms_correct /exp_cms => x xI.
+apply: exp_error_correct => //.
+  by rewrite size_Icheby_coefs vl2E size_ITvalue.
+move=> j jLn.
+apply: Ischeby_coefs_correct => //.
+- by apply: exp_env.
+- by left.
+- by apply: v2nE.
+- by apply: vl2E.
+by apply: vl3E.
+Qed.
+
 End CMSin.
 
 End CPoly_interval.
@@ -1636,6 +1752,7 @@ Definition scms :=
   Eval vm_compute in
   sin_cms prec a b n ob vn zn z2n vl2 vl3.
 
+Compute "Delta sin"%string.
 Compute Delta scms.
 
 Time
@@ -1643,5 +1760,15 @@ Definition ccms :=
   Eval vm_compute in
   cos_cms prec a b n ob vn zn z2n vl2 vl3.
 
+Compute "Delta cos"%string.
 Compute Delta ccms.
+
+Time
+Definition ecms :=
+  Eval vm_compute in
+  exp_cms prec a b vn vl2 vl3.
+
+Compute "Delta exp"%string.
+Compute Delta ecms.
+
 

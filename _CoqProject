@@ -8,6 +8,7 @@ seq_base.v
 CPoly.v
 CPoly_trigo.v
 sine_interpolation.v
+cos_interpolation.v
 CPoly_interpolation.v
 Poly_exec.v
 CPoly_exec.v

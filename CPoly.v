@@ -638,7 +638,7 @@ Lemma horner_pTab_b a b n :
 	b != a -> ('T^(a,b)_n).[b] = ('T_n).[1].
 Proof. by move => ineq; rewrite /pTab horner_comp Tabb. Qed.
 
-Definition CPolyab a b l := \sum_(i < (size l)) l`_i *: 'T^(a,b)_i.
+Definition CPolyab a b l : {poly R} := \sum_(i < (size l)) l`_i *: 'T^(a,b)_i.
 
 End pTab.
 

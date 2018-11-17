@@ -950,11 +950,16 @@ Record cms := CMS {
   Delta : ID
  }.
 
-Definition cms_correct a b f (c : cms) :=
+Definition cms_correct n a b f (c : cms) :=
   let:  CMS P Delta  := c in 
-  forall x, (D2R a <= D2R x <= D2R b)%R ->
-   f (D2R x)  \contained_in add (IsCshaw (I.bnd a a) (I.bnd b b) P (I.bnd x x)) Delta.
-
+  size P = n.+1 /\
+  exists p : seq R, 
+   [/\ size p = n.+1, 
+       forall i, p`_i \contained_in nth I0 P i &
+     forall x, (D2R a <= x <= D2R b)%R ->
+     exists d : R,
+       d \contained_in Delta /\ 
+       f x = ((CPolyab (D2R a) (D2R b) p).[x] + d)%R].
 
 (*****************************************************************************)
 (* Chebyshev coefficient on [a; b] for real numbers                          *)
@@ -1174,78 +1179,66 @@ Qed.
 
 Definition sin_error (b1 : bool) P zn z2n nn :=
   let v := Ibsin b1 Iab in
-  if csign v then
-    let Ida := I.abs (I.sub prec (I.sin prec Ia) (IsCshaw Ia Ib P Ia)) in
-    let Idb := I.abs (I.sub prec (I.sin prec Ib) (IsCshaw Ia Ib P Ib)) in
-    let Ic := I.mul prec I01 (I.join Ida Idb) in
-    I.join (I.neg Ic) Ic
-  else
-    let Ic := I.div prec
-              (I.mul prec (I.power_pos prec (I.sub prec Ib Ia) zn) 
-                          (I.mul prec I01 (I.abs (Ibsin (~~b1) Iab))))
-              (I.mul prec (I.power_pos prec I2 z2n) (Ifact nn))
-     in 
-     I.join (I.neg Ic) Ic.
+  let Ic := 
+    if csign v then
+      let Ida := I.abs (I.sub prec (I.sin prec Ia) (IsCshaw Ia Ib P Ia)) in
+      let Idb := I.abs (I.sub prec (I.sin prec Ib) (IsCshaw Ia Ib P Ib)) in
+      I.mul prec I01 (I.join Ida Idb)
+    else
+      I.div prec
+        (I.mul prec (I.power_pos prec (I.sub prec Ib Ia) zn) 
+                    (I.mul prec I01 (I.abs (Ibsin (~~b1) Iab))))
+       (I.mul prec (I.power_pos prec I2 z2n) (Ifact nn))
+   in  I.join (I.neg Ic) Ic.
 
+Definition sin_cms n b1 vn zn z2n vl2 vl3 :=
+  let P := Icheby_coefs (I.sin prec) vn vl3 vl2 in
+  CMS P (sin_error b1 P zn z2n n.+1).
 
-Lemma sin_error_correct b1 P n zn z2n x :
+Lemma sin_cms_correct n b1 vn v2n zn z2n vl2 vl3 :    
+  F.cmp a b = Xlt ->
   b1 = odd n ->
+  INR n.+1 \contained_in vn ->
+  (2 * INR n.+1) \contained_in v2n ->
   zn = Pos.of_nat n.+1 ->
-  z2n = Pos.of_nat (n.*2.+1) ->
- (F.cmp a b = Xlt) ->
- (size P = n.+1) ->
- (forall j, (j < n.+1)%nat ->
-   	sdsprod_coef (D2R a) (D2R b)
-    (interpolation sin (scheby_nodes (D2R a) (D2R b) n.+1)) n j \contained_in 
-             (nth I0 P j)) ->
-   (D2R a <= D2R x <= D2R b)%R -> 
-   sin (D2R x) \contained_in (I.add prec (IsCshaw Ia Ib P (I.bnd x x))
-                                    (sin_error b1 P zn z2n n.+1)).
+  z2n = Pos.of_nat n.*2.+1 ->
+  vl2 = ITvalues n.+1 (nseq n.+1 I1) (Icheby_nodes n.+1 v2n) ->
+  vl3 = Ischeby_nodes a b n.+1 v2n ->
+  cms_correct n a b sin (sin_cms n b1 vn zn z2n vl2 vl3).
 Proof.
-move=> b1E znE z2nE aLb sP Hi xB.
+move=> aLb b1E vnE v2nE znE z2nE vl2E vl3E.
 have F1 : (D2R a < D2R b)%R.
   have := F.cmp_correct a b; rewrite aLb.
   rewrite /D2R; case: F.toX; case: F.toX =>  //= r1 r2.
   by case: Rcompare_spec.
 have F2 : D2R a != D2R b by apply/eqP; lra.
 have F3 : D2R b != D2R a by rewrite eq_sym.
-have F4 : D2R x \contained_in Iab.
-  by apply: in_Iab.
 have Hia := a_in_Ia.
 have Hib := b_in_Ib.
 pose iv := interpolation sin (scheby_nodes (D2R a) (D2R b) n.+1).
-have F5 i :
-    (scheby_coef_list (D2R a) (D2R b) sin n.+1)`_i \contained_in
-     nth I0 P i.
+rewrite /cms_correct /sin_cms; split.
+  by rewrite size_Icheby_coefs vl2E size_ITvalue.
+pose p := scheby_coef_list (D2R a) (D2R b) sin n.+1.
+have Hp i : p`_i \contained_in nth I0 (Icheby_coefs (I.sin prec) vn vl3 vl2) i.
   have [nLi|iLn] := leqP n.+1 i.
     rewrite /scheby_coef_list !nth_default //.
     - by apply: I.fromZ_correct.
     - by rewrite size_map size_iota.
-    by rewrite sP.
-  suff -> :
-     (scheby_coef_list (D2R a) (D2R b) sin n.+1)`_i = 
-      sdsprod_coef (D2R a) (D2R b)
-        (interpolation sin (scheby_nodes (D2R a) (D2R b) n.+1)) n i.
-    by apply: Hi.
-  rewrite sdsprod_coef_interpolation_pT //.
-  rewrite /scheby_coef_list [LHS](nth_map 0%nat) ?size_iota ?nth_iota //.
-  congr (_ * _)%R.
-  apply: eq_bigr => z _.
-  congr (_ * _); last by apply: Tvalue_list_correct.
-  rewrite svalue_list_correct //.
-  by rewrite (nth_map 0) // size_cheby_nodes.
-have->: sin (D2R x) = (iv.[D2R x] + (ierror sin  (scheby_nodes
-           (D2R a)
-           (D2R b) n.+1) (D2R x)))%R.
-  by rewrite /ierror -/iv; lra.
-apply: add_correct.
-  rewrite -[iv]scheby_coef_list_spec //.
-  apply: IsCshaw_correct => //.
-    by rewrite size_scheby_coef_list.
-  by rewrite /D2R /=; case: F.toX  => //= r; lra.
-rewrite /sin_error.
+    by rewrite size_Icheby_coefs vl2E size_ITvalue.
+  rewrite (nth_map 0%nat) ?size_iota // nth_iota // add0n.
+  rewrite sdsprod_coefs //.
+  apply: Ischeby_coefs_correct => //.
+  - by apply: sin_env.
+  - by left.
+  - by apply: v2nE.
+  - by apply: vl2E.
+  by apply: vl3E.
+exists p; split => // [|x Hx].
+  by rewrite size_scheby_coef_list.
+exists (sin x - (CPolyab (D2R a) (D2R b) p).[x])%R; split; last by lra.
+  rewrite scheby_coef_list_spec //.
+apply: Rabs_join.
 have [/csign_correct H|_] := boolP (csign _).
-  apply: Rabs_join.
   apply: I01_correct.
     split; first by split_Rabs; lra.
     apply: sin_scheby_ge => //.
@@ -1267,16 +1260,15 @@ have [/csign_correct H|_] := boolP (csign _).
       by apply/sin_correct/b_in_Ib.
     rewrite -scheby_coef_list_spec //.
     apply: IsCshaw_correct => //.
-    by rewrite sP size_scheby_coef_list.
+    by rewrite size_Icheby_coefs size_scheby_coef_list vl2E size_ITvalue.
   apply: I.join_correct.
   left.
   apply/abs_correct/sub_correct.
     by apply/sin_correct/a_in_Ia.
   rewrite -scheby_coef_list_spec //.
   apply: IsCshaw_correct => //.
-  by rewrite sP size_scheby_coef_list.
-apply: Rabs_join.
-set u := ierror _ _ _.
+  by rewrite size_Icheby_coefs size_scheby_coef_list vl2E size_ITvalue.
+set u := (_ - _)%R.
 pose e : R := (expn 2 n.+1.*2.-1 * n.+1 `!) %:R.
 pose v := ((D2R b - D2R a)^+ n.+1).
 have vP : (0 < v)%R.
@@ -1332,35 +1324,6 @@ apply: mul_correct.
 by apply: Ifact_correct.
 Qed.
 
-
-Definition sin_cms n b1 vn zn z2n vl2 vl3 :=
-  let P := Icheby_coefs (I.sin prec) vn vl3 vl2 in
-  CMS P (sin_error b1 P zn z2n n.+1).
-
-Lemma sin_cms_correct n b1 vn v2n zn z2n vl2 vl3 :    
-  F.cmp a b = Xlt ->
-  b1 = odd n ->
-  INR n.+1 \contained_in vn ->
-  (2 * INR n.+1) \contained_in v2n ->
-  zn = Pos.of_nat n.+1 ->
-  z2n = Pos.of_nat n.*2.+1 ->
-  vl2 = ITvalues n.+1 (nseq n.+1 I1) (Icheby_nodes n.+1 v2n) ->
-  vl3 = Ischeby_nodes a b n.+1 v2n ->
-  cms_correct a b sin (sin_cms n b1 vn zn z2n vl2 vl3).
-Proof.
-move=> aLb b1E vnE v2nE znE z2nE vl2E vl3E.
-rewrite /cms_correct /sin_cms => x xI.
-apply: sin_error_correct => //.
-  by rewrite size_Icheby_coefs vl2E size_ITvalue.
-move=> j jLn.
-apply: Ischeby_coefs_correct => //.
-- by apply: sin_env.
-- by left.
-- by apply: v2nE.
-- by apply: vl2E.
-by apply: vl3E.
-Qed.
-
 (*****************************************************************************)
 (* Derivative of cos for interval arithmetic                                 *)
 (*****************************************************************************)
@@ -1398,90 +1361,78 @@ Qed.
 
 Definition cos_error (b1 : bool) P zn z2n nn :=
   let v := Ibcos b1 Iab in
-  if csign v then
-    let Ida := I.abs (I.sub prec (I.cos prec Ia) (IsCshaw Ia Ib P Ia)) in
-    let Idb := I.abs (I.sub prec (I.cos prec Ib) (IsCshaw Ia Ib P Ib)) in
-    let Ic := I.mul prec I01 (I.join Ida Idb) in
-    I.join (I.neg Ic) Ic
-  else
-    let Ic := I.div prec
-              (I.mul prec (I.power_pos prec (I.sub prec Ib Ia) zn) 
-                          (I.mul prec I01 (I.abs (Ibcos (~~b1) Iab))))
-              (I.mul prec (I.power_pos prec I2 z2n) (Ifact nn))
-     in 
-     I.join (I.neg Ic) Ic.
+  let Ic := 
+    if csign v then
+      let Ida := I.abs (I.sub prec (I.cos prec Ia) (IsCshaw Ia Ib P Ia)) in
+      let Idb := I.abs (I.sub prec (I.cos prec Ib) (IsCshaw Ia Ib P Ib)) in
+      I.mul prec I01 (I.join Ida Idb) 
+    else
+      I.div prec
+         (I.mul prec (I.power_pos prec (I.sub prec Ib Ia) zn) 
+                     (I.mul prec I01 (I.abs (Ibcos (~~b1) Iab))))
+         (I.mul prec (I.power_pos prec I2 z2n) (Ifact nn))
+   in I.join (I.neg Ic) Ic.
 
+Definition cos_cms n b1 vn zn z2n vl2 vl3 :=
+  let P := Icheby_coefs (I.cos prec) vn vl3 vl2 in
+  CMS P (cos_error b1 P zn z2n n.+1).
 
-Lemma cos_error_correct b1 P n zn z2n x :
+Lemma cos_cms_correct n b1 vn v2n zn z2n vl2 vl3 :    
+  F.cmp a b = Xlt ->
   b1 = odd n ->
+  INR n.+1 \contained_in vn ->
+  (2 * INR n.+1) \contained_in v2n ->
   zn = Pos.of_nat n.+1 ->
-  z2n = Pos.of_nat (n.*2.+1) ->
- (F.cmp a b = Xlt) ->
- (size P = n.+1) ->
- (forall j, (j < n.+1)%nat ->
-   	sdsprod_coef (D2R a) (D2R b)
-    (interpolation cos (scheby_nodes (D2R a) (D2R b) n.+1)) n j \contained_in 
-             (nth I0 P j)) ->
-   (D2R a <= D2R x <= D2R b)%R -> 
-   cos (D2R x) \contained_in (I.add prec (IsCshaw Ia Ib P (I.bnd x x))
-                                    (cos_error b1 P zn z2n n.+1)).
+  z2n = Pos.of_nat n.*2.+1 ->
+  vl2 = ITvalues n.+1 (nseq n.+1 I1) (Icheby_nodes n.+1 v2n) ->
+  vl3 = Ischeby_nodes a b n.+1 v2n ->
+  cms_correct n a b cos (cos_cms n b1 vn zn z2n vl2 vl3).
 Proof.
-move=> b1E znE z2nE aLb sP Hi xB.
+move=> aLb b1E vnE v2nE znE z2nE vl2E vl3E.
 have F1 : (D2R a < D2R b)%R.
   have := F.cmp_correct a b; rewrite aLb.
   rewrite /D2R; case: F.toX; case: F.toX =>  //= r1 r2.
   by case: Rcompare_spec.
 have F2 : D2R a != D2R b by apply/eqP; lra.
 have F3 : D2R b != D2R a by rewrite eq_sym.
-have F4 : D2R x \contained_in Iab.
-  by apply: in_Iab.
 have Hia := a_in_Ia.
 have Hib := b_in_Ib.
-pose iv := interpolation cos (scheby_nodes (D2R a) (D2R b) n.+1).
-have F5 i :
-    (scheby_coef_list (D2R a) (D2R b) cos n.+1)`_i \contained_in
-     nth I0 P i.
+pose iv := interpolation sin (scheby_nodes (D2R a) (D2R b) n.+1).
+rewrite /cms_correct /cos_cms; split.
+  by rewrite size_Icheby_coefs vl2E size_ITvalue.
+pose p := scheby_coef_list (D2R a) (D2R b) cos n.+1.
+have Hp i : p`_i \contained_in nth I0 (Icheby_coefs (I.cos prec) vn vl3 vl2) i.
   have [nLi|iLn] := leqP n.+1 i.
     rewrite /scheby_coef_list !nth_default //.
     - by apply: I.fromZ_correct.
     - by rewrite size_map size_iota.
-    by rewrite sP.
-  suff -> :
-     (scheby_coef_list (D2R a) (D2R b) cos n.+1)`_i = 
-      sdsprod_coef (D2R a) (D2R b)
-        (interpolation cos (scheby_nodes (D2R a) (D2R b) n.+1)) n i.
-    by apply: Hi.
-  rewrite sdsprod_coef_interpolation_pT //.
-  rewrite /scheby_coef_list [LHS](nth_map 0%nat) ?size_iota ?nth_iota //.
-  congr (_ * _)%R.
-  apply: eq_bigr => z _.
-  congr (_ * _); last by apply: Tvalue_list_correct.
-  rewrite svalue_list_correct //.
-  by rewrite (nth_map 0) // size_cheby_nodes.
-have->: cos (D2R x) = (iv.[D2R x] + (ierror cos (scheby_nodes
-           (D2R a)
-           (D2R b) n.+1) (D2R x)))%R.
-  by rewrite /ierror -/iv; lra.
-apply: add_correct.
-  rewrite -[iv]scheby_coef_list_spec //.
-  apply: IsCshaw_correct => //.
-    by rewrite size_scheby_coef_list.
-  by rewrite /D2R /=; case: F.toX  => //= r; lra.
-rewrite /cos_error.
+    by rewrite size_Icheby_coefs vl2E size_ITvalue.
+  rewrite (nth_map 0%nat) ?size_iota // nth_iota // add0n.
+  rewrite sdsprod_coefs //.
+  apply: Ischeby_coefs_correct => //.
+  - by apply: cos_env.
+  - by left.
+  - by apply: v2nE.
+  - by apply: vl2E.
+  by apply: vl3E.
+exists p; split => // [|x Hx].
+  by rewrite size_scheby_coef_list.
+exists (cos x - (CPolyab (D2R a) (D2R b) p).[x])%R; split; last by lra.
+  rewrite scheby_coef_list_spec //.
+apply: Rabs_join.
 have [/csign_correct H|_] := boolP (csign _).
-  apply: Rabs_join.
   apply: I01_correct.
     split; first by split_Rabs; lra.
     apply: cos_scheby_ge => //.
     case: H => H.
       right => x1 /in_Iab Hx1.
       apply: H.
-      rewrite /Ibcos b1E; case: odd.
+      rewrite /Ibsin b1E; case: odd.
         by apply: sin_correct.
       by apply: cos_correct.
     left => x1 /in_Iab Hx1.
     apply: H.
-    rewrite /Ibcos b1E; case: odd.
+    rewrite /Ibsin b1E; case: odd.
       by apply: sin_correct.
     by apply: cos_correct.
   rewrite /Rmax; case: Rle_dec => _.
@@ -1491,16 +1442,15 @@ have [/csign_correct H|_] := boolP (csign _).
       by apply/cos_correct/b_in_Ib.
     rewrite -scheby_coef_list_spec //.
     apply: IsCshaw_correct => //.
-    by rewrite sP size_scheby_coef_list.
+    by rewrite size_Icheby_coefs size_scheby_coef_list vl2E size_ITvalue.
   apply: I.join_correct.
   left.
   apply/abs_correct/sub_correct.
     by apply/cos_correct/a_in_Ia.
   rewrite -scheby_coef_list_spec //.
   apply: IsCshaw_correct => //.
-  by rewrite sP size_scheby_coef_list.
-apply: Rabs_join.
-set u := ierror _ _ _.
+  by rewrite size_Icheby_coefs size_scheby_coef_list vl2E size_ITvalue.
+set u := (_ - _)%R.
 pose e : R := (expn 2 n.+1.*2.-1 * n.+1 `!) %:R.
 pose v := ((D2R b - D2R a)^+ n.+1).
 have vP : (0 < v)%R.
@@ -1516,7 +1466,7 @@ have -> : Rabs u = ((v * Rabs (u / v * e)) / e)%R.
   rewrite (Rabs_pos_eq e); try lra.
   by field; lra.
 apply: div_correct; last by case: is_zero_spec => //; lra.
-  apply: mul_correct.
+ apply: mul_correct.
     rewrite /v expr_Rexp znE.
     apply: power_pos_correct => //.
     by apply: sub_correct.
@@ -1542,49 +1492,19 @@ apply: div_correct; last by case: is_zero_spec => //; lra.
   case: (odd n).
     rewrite -!expr_Rexp signr_odd -signr_odd expr_Rexp.
     case: odd => /=.
-      by rewrite !(Ropp_mult_distr_l_reverse, Ropp_mult_distr_r_reverse)
-                  Ropp_involutive !Rmult_1_l.
+      by rewrite !(Ropp_mult_distr_l_reverse, Ropp_mult_distr_r_reverse) Ropp_involutive !Rmult_1_l.
     by rewrite !Rmult_1_l.
   rewrite -!expr_Rexp signr_odd -signr_odd expr_Rexp.
   case: odd => /=.
-    by rewrite !(Ropp_mult_distr_l_reverse, Ropp_mult_distr_r_reverse) 
-                !Ropp_involutive !Rmult_1_l.
-  by rewrite !(Ropp_mult_distr_l_reverse, Ropp_mult_distr_r_reverse) 
-              !Ropp_involutive !Rmult_1_l.
+    by rewrite !(Ropp_mult_distr_l_reverse, Ropp_mult_distr_r_reverse) !Ropp_involutive !Rmult_1_l.
+  rewrite expr0 !(Rmult_1_l, Rmult_1_r).
+  by rewrite -Ropp_mult_distr_l -Ropp_mult_distr_r Rmult_1_l Ropp_involutive.
 rewrite [e]natr_INR mult_INR.
 apply: mul_correct.
-- rewrite -pow_expn pow_INR z2nE.
+  rewrite -pow_expn pow_INR z2nE.
   apply: power_pos_correct => //.
   by rewrite /= F.fromZ_correct; lra.
 by apply: Ifact_correct.
-Qed.
-
-Definition cos_cms n b1 vn zn z2n vl2 vl3 :=
-  let P := Icheby_coefs (I.cos prec) vn vl3 vl2 in
-  CMS P (cos_error b1 P zn z2n n.+1).
-
-Lemma cos_cms_correct n b1 vn v2n zn z2n vl2 vl3 :    
-  F.cmp a b = Xlt ->
-  b1 = odd n ->
-  INR n.+1 \contained_in vn ->
-  (2 * INR n.+1) \contained_in v2n ->
-  zn = Pos.of_nat n.+1 ->
-  z2n = Pos.of_nat n.*2.+1 ->
-  vl2 = ITvalues n.+1 (nseq n.+1 I1) (Icheby_nodes n.+1 v2n) ->
-  vl3 = Ischeby_nodes a b n.+1 v2n ->
-  cms_correct a b cos (cos_cms n b1 vn zn z2n vl2 vl3).
-Proof.
-move=> aLb b1E vnE v2nE znE z2nE vl2E vl3E.
-rewrite /cms_correct /cos_cms => x xI.
-apply: cos_error_correct => //.
-  by rewrite size_Icheby_coefs vl2E size_ITvalue.
-move=> j jLn.
-apply: Ischeby_coefs_correct => //.
-- by apply: cos_env.
-- by left.
-- by apply: v2nE.
-- by apply: vl2E.
-by apply: vl3E.
 Qed.
 
 Lemma exp_env: I.exp prec \is_envelope_of exp.
@@ -1600,80 +1520,6 @@ Definition exp_error P :=
   let Ic := I.mul prec I01 (I.join Ida Idb) in
   I.join (I.neg Ic) Ic.
 
-Lemma exp_error_correct P n x :
- (F.cmp a b = Xlt) ->
- (size P = n.+1) ->
- (forall j, (j < n.+1)%nat ->
-   	sdsprod_coef (D2R a) (D2R b)
-    (interpolation exp (scheby_nodes (D2R a) (D2R b) n.+1)) n j \contained_in 
-             (nth I0 P j)) ->
-   (D2R a <= D2R x <= D2R b)%R -> 
-   exp (D2R x) \contained_in (I.add prec (IsCshaw Ia Ib P (I.bnd x x))
-                                    (exp_error P)).
-Proof.
-move=> aLb sP Hi xB.
-have F1 : (D2R a < D2R b)%R.
-  have := F.cmp_correct a b; rewrite aLb.
-  rewrite /D2R; case: F.toX; case: F.toX =>  //= r1 r2.
-  by case: Rcompare_spec.
-have F2 : D2R a != D2R b by apply/eqP; lra.
-have F3 : D2R b != D2R a by rewrite eq_sym.
-have F4 : D2R x \contained_in Iab.
-  by apply: in_Iab.
-have Hia := a_in_Ia.
-have Hib := b_in_Ib.
-pose iv := interpolation exp (scheby_nodes (D2R a) (D2R b) n.+1).
-have F5 i :
-    (scheby_coef_list (D2R a) (D2R b) exp n.+1)`_i \contained_in
-     nth I0 P i.
-  have [nLi|iLn] := leqP n.+1 i.
-    rewrite /scheby_coef_list !nth_default //.
-    - by apply: I.fromZ_correct.
-    - by rewrite size_map size_iota.
-    by rewrite sP.
-  suff -> :
-     (scheby_coef_list (D2R a) (D2R b) exp n.+1)`_i = 
-      sdsprod_coef (D2R a) (D2R b)
-        (interpolation exp (scheby_nodes (D2R a) (D2R b) n.+1)) n i.
-    by apply: Hi.
-  rewrite sdsprod_coef_interpolation_pT //.
-  rewrite /scheby_coef_list [LHS](nth_map 0%nat) ?size_iota ?nth_iota //.
-  congr (_ * _)%R.
-  apply: eq_bigr => z _.
-  congr (_ * _); last by apply: Tvalue_list_correct.
-  rewrite svalue_list_correct //.
-  by rewrite (nth_map 0) // size_cheby_nodes.
-have->: exp (D2R x) = (iv.[D2R x] + (ierror exp (scheby_nodes
-           (D2R a)
-           (D2R b) n.+1) (D2R x)))%R.
-  by rewrite /ierror -/iv; lra.
-apply: add_correct.
-  rewrite -[iv]scheby_coef_list_spec //.
-  apply: IsCshaw_correct => //.
-    by rewrite size_scheby_coef_list.
-  by rewrite /D2R /=; case: F.toX  => //= r; lra.
-rewrite /exp_error.
-apply: Rabs_join.
-apply: I01_correct.
-  split; first by split_Rabs; lra.
-  by apply: exp_scheby_ge.
-rewrite /Rmax; case: Rle_dec => _.
-  apply: I.join_correct.
-  right.
-  apply/abs_correct/sub_correct.
-    by apply/exp_correct/b_in_Ib.
-  rewrite -scheby_coef_list_spec //.
-  apply: IsCshaw_correct => //.
-  by rewrite sP size_scheby_coef_list.
-apply: I.join_correct.
-left.
-apply/abs_correct/sub_correct.
-  by apply/exp_correct/a_in_Ia.
-rewrite -scheby_coef_list_spec //.
-apply: IsCshaw_correct => //.
-by rewrite sP size_scheby_coef_list.
-Qed.
-
 Definition exp_cms vn vl2 vl3 :=
   let P := Icheby_coefs (I.exp prec) vn vl3 vl2 in
   CMS P (exp_error P).
@@ -1684,19 +1530,58 @@ Lemma exp_cms_correct n vn v2n vl2 vl3 :
   (2 * INR n.+1) \contained_in v2n ->
   vl2 = ITvalues n.+1 (nseq n.+1 I1) (Icheby_nodes n.+1 v2n) ->
   vl3 = Ischeby_nodes a b n.+1 v2n ->
-  cms_correct a b exp (exp_cms vn vl2 vl3).
+  cms_correct n a b exp (exp_cms vn vl2 vl3).
 Proof.
 move=> aLb vnE v2nE vl2E vl3E.
-rewrite /cms_correct /exp_cms => x xI.
-apply: exp_error_correct => //.
+have F1 : (D2R a < D2R b)%R.
+  have := F.cmp_correct a b; rewrite aLb.
+  rewrite /D2R; case: F.toX; case: F.toX =>  //= r1 r2.
+  by case: Rcompare_spec.
+have F2 : D2R a != D2R b by apply/eqP; lra.
+have F3 : D2R b != D2R a by rewrite eq_sym.
+have Hia := a_in_Ia.
+have Hib := b_in_Ib.
+pose iv := interpolation exp (scheby_nodes (D2R a) (D2R b) n.+1).
+rewrite /cms_correct /exp_cms; split.
   by rewrite size_Icheby_coefs vl2E size_ITvalue.
-move=> j jLn.
-apply: Ischeby_coefs_correct => //.
-- by apply: exp_env.
-- by left.
-- by apply: v2nE.
-- by apply: vl2E.
-by apply: vl3E.
+pose p := scheby_coef_list (D2R a) (D2R b) exp n.+1.
+have Hp i : p`_i \contained_in nth I0 (Icheby_coefs (I.exp prec) vn vl3 vl2) i.
+  have [nLi|iLn] := leqP n.+1 i.
+    rewrite /scheby_coef_list !nth_default //.
+    - by apply: I.fromZ_correct.
+    - by rewrite size_map size_iota.
+    by rewrite size_Icheby_coefs vl2E size_ITvalue.
+  rewrite (nth_map 0%nat) ?size_iota // nth_iota // add0n.
+  rewrite sdsprod_coefs //.
+  apply: Ischeby_coefs_correct => //.
+  - by apply: exp_env.
+  - by left.
+  - by apply: v2nE.
+  - by apply: vl2E.
+  by apply: vl3E.
+exists p; split => // [|x Hx].
+  by rewrite size_scheby_coef_list.
+exists (exp x - (CPolyab (D2R a) (D2R b) p).[x])%R; split; last by lra.
+  rewrite scheby_coef_list_spec //.
+apply: Rabs_join.
+apply: I01_correct.
+  split; first by split_Rabs; lra.
+  apply: exp_scheby_ge => //.
+  rewrite /Rmax; case: Rle_dec => _.
+  apply: I.join_correct.
+  right.
+  apply/abs_correct/sub_correct.
+    by apply/exp_correct/b_in_Ib.
+  rewrite -scheby_coef_list_spec //.
+  apply: IsCshaw_correct => //.
+  by rewrite size_Icheby_coefs size_scheby_coef_list vl2E size_ITvalue.
+apply: I.join_correct.
+left.
+apply/abs_correct/sub_correct.
+  by apply/exp_correct/a_in_Ia.
+rewrite -scheby_coef_list_spec //.
+apply: IsCshaw_correct => //.
+by rewrite size_Icheby_coefs size_scheby_coef_list vl2E size_ITvalue.
 Qed.
 
 End CMSin.

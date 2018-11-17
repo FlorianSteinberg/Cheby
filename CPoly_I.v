@@ -956,14 +956,118 @@ Definition cms_correct n a b f (c : cms) :=
   exists p : seq R, 
    [/\ size p = n.+1, 
        forall i, p`_i \contained_in nth I0 P i &
-     forall x, (D2R a <= x <= D2R b)%R ->
+     forall x, x \contained_in I.bnd a b ->
      exists d : R,
        d \contained_in Delta /\ 
        f x = ((CPolyab (D2R a) (D2R b) p).[x] + d)%R].
 
+Lemma cms_correct_eval n a b f c x X :
+  let:  CMS P Delta  := c in 
+  F.cmp a b = Xlt ->
+  cms_correct n a b f c -> 
+  (x \contained_in X) -> (I.subset X (I.bnd a b)) ->
+  f x \contained_in add (IsCshaw (I.bnd a a) (I.bnd b b) P X) Delta.
+Proof.
+case: c => P Delta aLb; case => SP [p [Sp pIP fE]] xIX XS.
+have F1 : (D2R a < D2R b)%R.
+  have := F.cmp_correct a b; rewrite aLb.
+  rewrite /D2R; case: F.toX; case: F.toX =>  //= r1 r2.
+  by case: Rcompare_spec.
+have F2 : D2R a != D2R b by apply/eqP; lra.
+have F3 : D2R b != D2R a by rewrite eq_sym.
+have [] := fE x.
+  have := subset_contains _ _ (I.subset_correct _ _ XS).
+  by apply.
+move=> y [Hy ->].
+apply: add_correct => //.
+apply: IsCshaw_correct => //.
+- by rewrite SP.
+- by rewrite /D2R /=; case: F.toX  => //= r; lra.
+by rewrite /D2R /=; case: F.toX  => //= r; lra.
+Qed.
+
+Lemma cms_correct_ext n a b f g c :
+  (forall x, x \contained_in I.bnd a b -> f x = g x) ->
+  cms_correct n a b g c ->  cms_correct n a b f c.
+Proof.
+case: c=> P Delta H [SP [p [H1p H2p H3p]]].
+split => //.
+exists p; split => // x Hx.
+have [d [Hd HHd]] := H3p x Hx; exists d; split => //.
+by rewrite H.
+Qed.
+
 (*****************************************************************************)
-(* Chebyshev coefficient on [a; b] for real numbers                          *)
+(* Constant Chebyshev model                                                  *)
 (*****************************************************************************)
+
+Definition const_cms n x := CMS (x :: nseq n I0) I0.
+
+Lemma const_cms_correct n a b x X :
+   x \contained_in X ->
+   cms_correct n a b (fun _ => x) (const_cms n X).
+Proof.
+split; first by rewrite /= size_nseq.
+exists (x :: nseq n 0); split => //.
+- by rewrite /= size_nseq.
+- move=> [|i] /=.
+    by rewrite /D2R; case: F.toX => //= r; lra.
+  by rewrite !nth_nseq; case: leqP => _; apply: I.fromZ_correct.
+move=> y Hy; exists 0; split; first by apply: I.fromZ_correct.
+rewrite /CPolyab /= big_ord_recl big1 => [|i Hi] /=.
+  by rewrite !hornerE horner_comp pT0 hornerE mulr1.
+by rewrite nth_nseq if_same scale0r.
+Qed.
+
+Definition constZ_cms n z := const_cms n (I.fromZ z).
+
+Lemma constZ_cms_correct n a b z :
+   cms_correct n a b (fun _ => (IZR z)) (constZ_cms n z).
+Proof. by apply/const_cms_correct/I.fromZ_correct. Qed.
+
+
+(*****************************************************************************)
+(* Variable Chebyshev model                                                  *)
+(*****************************************************************************)
+
+Definition var_cms a b n := 
+  let Ia := I.bnd a a in
+  let Ib := I.bnd b b in
+   CMS (I.scale2 (add Ia Ib) (F.ZtoS (-1)) ::
+        I.scale2 (sub Ib Ia) (F.ZtoS (-1)):: nseq n.-1 I0) I0.
+
+Lemma var_cms_correct n a b :
+   F.cmp a b = Xlt ->
+   cms_correct n.+1 a b (fun x => x) (var_cms a b n.+1).
+Proof.
+move=> aLb.
+have F1 : (D2R a < D2R b)%R.
+  have := F.cmp_correct a b; rewrite aLb.
+  rewrite /D2R; case: F.toX; case: F.toX =>  //= r1 r2.
+  by case: Rcompare_spec.
+have F2 : D2R a != D2R b by apply/eqP; lra.
+have F3 : D2R b != D2R a by rewrite eq_sym.
+split; first by rewrite /= size_nseq.
+have F x : (x / 2 = x * powerRZ 2 (-1))%R.
+  by rewrite /=; field.
+exists ((D2R a + D2R b) / 2 :: (D2R b - D2R a) / 2 :: nseq n 0)%R; split => //.
+- by rewrite /= size_nseq.
+- move=> [|[|i]].
+  - rewrite F. 
+    by apply/scale2_correct/add_correct;
+       rewrite /D2R /=; case: F.toX  => //= r; lra.
+  - rewrite !F.
+    by apply/scale2_correct/sub_correct;
+       rewrite /D2R /=; case: F.toX  => //= r; lra.
+  rewrite [_ `_ _]nth_nseq [nth _ _ _]nth_nseq !if_same.
+  by apply: (I.fromZ_correct 0).
+move=> y Hy; exists 0; split; first by apply: I.fromZ_correct.
+rewrite /CPolyab /= !big_ord_recl big1 => [|i Hi] /=.
+  rewrite !hornerE !horner_comp pT0 pT1 !hornerE /=.
+  toR; rewrite /Rinvx ifT; last by apply/eqP; have/eqP:= F2; lra.
+  by field; have/eqP:= F2; lra.
+by rewrite nth_nseq if_same scale0r.
+Qed.
 
 Section CMSin.
 
@@ -1237,6 +1341,9 @@ exists p; split => // [|x Hx].
   by rewrite size_scheby_coef_list.
 exists (sin x - (CPolyab (D2R a) (D2R b) p).[x])%R; split; last by lra.
   rewrite scheby_coef_list_spec //.
+have Ix : (D2R a <= x <= D2R b)%R.
+  have := aLb; rewrite F.cmp_correct.
+  by have := Hx; rewrite /D2R /=; (do 2 case: F.toX).
 apply: Rabs_join.
 have [/csign_correct H|_] := boolP (csign _).
   apply: I01_correct.
@@ -1419,6 +1526,9 @@ exists p; split => // [|x Hx].
   by rewrite size_scheby_coef_list.
 exists (cos x - (CPolyab (D2R a) (D2R b) p).[x])%R; split; last by lra.
   rewrite scheby_coef_list_spec //.
+have Ix : (D2R a <= x <= D2R b)%R.
+  have := aLb; rewrite F.cmp_correct.
+  by have := Hx; rewrite /D2R /=; (do 2 case: F.toX).
 apply: Rabs_join.
 have [/csign_correct H|_] := boolP (csign _).
   apply: I01_correct.
@@ -1563,6 +1673,9 @@ exists p; split => // [|x Hx].
   by rewrite size_scheby_coef_list.
 exists (exp x - (CPolyab (D2R a) (D2R b) p).[x])%R; split; last by lra.
   rewrite scheby_coef_list_spec //.
+have Ix : (D2R a <= x <= D2R b)%R.
+  have := aLb; rewrite F.cmp_correct.
+  by have := Hx; rewrite /D2R /=; (do 2 case: F.toX).
 apply: Rabs_join.
 apply: I01_correct.
   split; first by split_Rabs; lra.

@@ -1069,6 +1069,135 @@ rewrite /CPolyab /= !big_ord_recl big1 => [|i Hi] /=.
 by rewrite nth_nseq if_same scale0r.
 Qed.
 
+(*****************************************************************************)
+(* Opposite Chebyshev model                                                  *)
+(*****************************************************************************)
+
+Lemma CPolyabN (R: fieldType) a b (p : seq R) :
+  (CPolyab a b [seq - i | i <- p] = - (CPolyab a b p)).
+Proof.
+rewrite /CPolyab size_map -sumrN.
+apply: eq_bigr => i _.
+by rewrite (nth_map 0) // scaleNr.
+Qed.
+
+Definition opp_cms (c : cms) :=
+  let: CMS P Delta := c in
+  CMS [seq I.neg i | i <- P] (I.neg Delta).
+
+Lemma opp_cms_correct n a b c f :
+   cms_correct n a b f c -> 
+   cms_correct n a b (fun x => -(f x))%R (opp_cms c).
+Proof.
+case: c => [P Delta] [Sp [p [H1p H2p H3p]]].
+split; first by rewrite size_map.
+exists [seq - i | i <- p]; split; first by rewrite size_map.
+  move=> i.
+  have [nLi|iLn] := leqP n.+1 i.
+    rewrite !nth_default ?(size_map, Sp, H1p) //.
+    by apply: I.fromZ_correct.
+  rewrite (nth_map I0) ?Sp // ?(nth_map 0%R) ?H1p //.
+  by apply: neg_correct.
+move=> x /H3p [d [H1d H2d]]; exists (- d); split => //.
+  by apply: neg_correct.
+by rewrite CPolyabN H2d !hornerE; toR; lra.
+Qed.
+
+
+(*****************************************************************************)
+(* Addition Chebyshev model                                                  *)
+(*****************************************************************************)
+
+Lemma CPolyabD (R: fieldType) a b (p q : seq R) :
+  size p = size q ->
+  (CPolyab a b [seq i.1 + i.2 | i <- (zip p q)] = 
+     CPolyab a b p + CPolyab a b q).
+Proof.
+move=> Hs.
+rewrite /CPolyab size_map size1_zip // Hs ?leqnn // -big_split.
+apply: eq_bigr => i _.
+by rewrite (nth_map 0) ?size2_zip ?Hs // scalerDl nth_zip.
+Qed.
+
+(* Could be optimized removing the zip *)
+Definition add_cms (c1 c2 : cms) :=
+  let: CMS P1 Delta1 := c1 in
+  let: CMS P2 Delta2 := c2 in
+  CMS [seq (add i.1 i.2) | i <- (zip P1 P2)]  (add Delta1 Delta2).
+
+Lemma add_cms_correct n a b c1 c2 f1 f2 :
+   cms_correct n a b f1 c1 -> cms_correct n a b f2 c2 ->
+   cms_correct n a b (fun x => f1 x + f2 x)%R (add_cms c1 c2).
+Proof.
+case: c1 => [P1 Delta1] [Sp1 [p1 [H1p1 H2p1 H3p1]]].
+case: c2 => [P2 Delta2] [Sp2 [p2 [H1p2 H2p2 H3p2]]].
+split; first by rewrite size_map size1_zip ?Sp1 ?Sp2.
+exists [seq i.1 + i.2 | i <- (zip p1 p2)]; split.
+- by rewrite size_map size1_zip // H1p1 H1p2.
+- move=> i.
+  have [nLi|iLn] := leqP n.+1 i.
+    rewrite !nth_default ?(size_map, size1_zip, Sp1, H1p1, Sp2, H1p2) //.
+    by apply: I.fromZ_correct.
+  rewrite (nth_map 0) ?size1_zip ?H1p1 ?H1p2 //.
+  rewrite (nth_map (I0,I0)) ?size1_zip ?Sp1 ?Sp2 //.
+  rewrite !nth_zip ?H1p1 ?H1p2 ?Sp1 ?Sp2 //=.
+  by apply: add_correct.
+move=> x Hx.
+have  [d1 [H1d1 H2d1]] := H3p1 _ Hx.
+have  [d2 [H1d2 H2d2]] := H3p2 _ Hx.
+exists (d1 + d2); split => //.
+  by apply: add_correct.
+rewrite CPolyabD ?H1p1 ?H1p2 //.
+by rewrite H2d1 H2d2 hornerE; toR; lra.
+Qed.
+
+(*****************************************************************************)
+(* Subtraction Chebyshev model                                               *)
+(*****************************************************************************)
+
+Lemma CPolyabB (R: fieldType) a b (p q : seq R) :
+  size p = size q ->
+  (CPolyab a b [seq i.1 - i.2 | i <- (zip p q)] = 
+     CPolyab a b p - CPolyab a b q).
+Proof.
+move=> Hs.
+rewrite /CPolyab size_map size1_zip // Hs ?leqnn // -sumrB.
+apply: eq_bigr => i _.
+by rewrite (nth_map 0) ?size2_zip ?Hs // scalerBl nth_zip.
+Qed.
+
+(* Could be optimized removing the zip *)
+Definition sub_cms (c1 c2 : cms) :=
+  let: CMS P1 Delta1 := c1 in
+  let: CMS P2 Delta2 := c2 in
+  CMS [seq (sub i.1 i.2) | i <- (zip P1 P2)]  (sub Delta1 Delta2).
+
+Lemma sub_cms_correct n a b c1 c2 f1 f2 :
+   cms_correct n a b f1 c1 -> cms_correct n a b f2 c2 ->
+   cms_correct n a b (fun x => f1 x - f2 x)%R (sub_cms c1 c2).
+Proof.
+case: c1 => [P1 Delta1] [Sp1 [p1 [H1p1 H2p1 H3p1]]].
+case: c2 => [P2 Delta2] [Sp2 [p2 [H1p2 H2p2 H3p2]]].
+split; first by rewrite size_map size1_zip ?Sp1 ?Sp2.
+exists [seq i.1 - i.2 | i <- (zip p1 p2)]; split.
+- by rewrite size_map size1_zip // H1p1 H1p2.
+- move=> i.
+  have [nLi|iLn] := leqP n.+1 i.
+    rewrite !nth_default ?(size_map, size1_zip, Sp1, H1p1, Sp2, H1p2) //.
+    by apply: I.fromZ_correct.
+  rewrite (nth_map 0) ?size1_zip ?H1p1 ?H1p2 //.
+  rewrite (nth_map (I0,I0)) ?size1_zip ?Sp1 ?Sp2 //.
+  rewrite !nth_zip ?H1p1 ?H1p2 ?Sp1 ?Sp2 //=.
+  by apply: sub_correct.
+move=> x Hx.
+have  [d1 [H1d1 H2d1]] := H3p1 _ Hx.
+have  [d2 [H1d2 H2d2]] := H3p2 _ Hx.
+exists (d1 - d2); split => //.
+  by apply: sub_correct.
+rewrite CPolyabB ?H1p1 ?H1p2 //.
+by rewrite H2d1 H2d2 !hornerE; toR; lra.
+Qed.
+
 Section CMSin.
 
 Context (a b : D) (annan : F.toX a <> Xnan) (bnnan : F.toX b <> Xnan).

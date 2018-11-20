@@ -640,6 +640,36 @@ Proof. by move => ineq; rewrite /pTab horner_comp Tabb. Qed.
 
 Definition CPolyab a b l : {poly R} := \sum_(i < (size l)) l`_i *: 'T^(a,b)_i.
 
+Lemma CPolyabN a b p :
+  (CPolyab a b [seq - i | i <- p] = - (CPolyab a b p)).
+Proof.
+rewrite /CPolyab size_map -sumrN.
+apply: eq_bigr => i _.
+by rewrite (nth_map 0) // scaleNr.
+Qed.
+
+Lemma CPolyabD a b p q :
+  size p = size q ->
+  (CPolyab a b [seq i.1 + i.2 | i <- (zip p q)] = 
+     CPolyab a b p + CPolyab a b q).
+Proof.
+move=> Hs.
+rewrite /CPolyab size_map size1_zip // Hs ?leqnn // -big_split.
+apply: eq_bigr => i _.
+by rewrite (nth_map 0) ?size2_zip ?Hs // scalerDl nth_zip.
+Qed.
+
+Lemma CPolyabB a b p q :
+  size p = size q ->
+  (CPolyab a b [seq i.1 - i.2 | i <- (zip p q)] = 
+     CPolyab a b p - CPolyab a b q).
+Proof.
+move=> Hs.
+rewrite /CPolyab size_map size1_zip // Hs ?leqnn // -sumrB.
+apply: eq_bigr => i _.
+by rewrite (nth_map 0) ?size2_zip ?Hs // scalerBl nth_zip.
+Qed.
+
 End pTab.
 
 Notation "''T^(' a ',' b ')_' n" := (pTab a b n)

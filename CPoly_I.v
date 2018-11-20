@@ -1073,14 +1073,6 @@ Qed.
 (* Opposite Chebyshev model                                                  *)
 (*****************************************************************************)
 
-Lemma CPolyabN (R: fieldType) a b (p : seq R) :
-  (CPolyab a b [seq - i | i <- p] = - (CPolyab a b p)).
-Proof.
-rewrite /CPolyab size_map -sumrN.
-apply: eq_bigr => i _.
-by rewrite (nth_map 0) // scaleNr.
-Qed.
-
 Definition opp_cms (c : cms) :=
   let: CMS P Delta := c in
   CMS [seq I.neg i | i <- P] (I.neg Delta).
@@ -1107,17 +1099,6 @@ Qed.
 (*****************************************************************************)
 (* Addition Chebyshev model                                                  *)
 (*****************************************************************************)
-
-Lemma CPolyabD (R: fieldType) a b (p q : seq R) :
-  size p = size q ->
-  (CPolyab a b [seq i.1 + i.2 | i <- (zip p q)] = 
-     CPolyab a b p + CPolyab a b q).
-Proof.
-move=> Hs.
-rewrite /CPolyab size_map size1_zip // Hs ?leqnn // -big_split.
-apply: eq_bigr => i _.
-by rewrite (nth_map 0) ?size2_zip ?Hs // scalerDl nth_zip.
-Qed.
 
 (* Could be optimized removing the zip *)
 Definition add_cms (c1 c2 : cms) :=
@@ -1154,17 +1135,6 @@ Qed.
 (*****************************************************************************)
 (* Subtraction Chebyshev model                                               *)
 (*****************************************************************************)
-
-Lemma CPolyabB (R: fieldType) a b (p q : seq R) :
-  size p = size q ->
-  (CPolyab a b [seq i.1 - i.2 | i <- (zip p q)] = 
-     CPolyab a b p - CPolyab a b q).
-Proof.
-move=> Hs.
-rewrite /CPolyab size_map size1_zip // Hs ?leqnn // -sumrB.
-apply: eq_bigr => i _.
-by rewrite (nth_map 0) ?size2_zip ?Hs // scalerBl nth_zip.
-Qed.
 
 (* Could be optimized removing the zip *)
 Definition sub_cms (c1 c2 : cms) :=

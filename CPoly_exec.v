@@ -433,6 +433,110 @@ elim l => [ | a k ih]; first by rewrite CPoly_nil.
 rewrite P2CP_cons add_Cpoly_spec CPolyC/= cons_poly_def.
 by rewrite Cmulx_spec => //; rewrite ih commr_polyX addrC.
 Qed.
+
+Fixpoint abs_mul_CPoly (R : fieldType) n (a : R) acc l := 
+ if n is n1.+1 then
+   if l is b :: l1 then abs_mul_CPoly n1 a ((a * b) / 2%:R :: acc) l1
+   else (ncons n.+1 0 acc)
+ else  add_Cpoly (0 :: acc) [seq (a * i) / 2%:R| i <- l].
+
+Lemma CPoly_rcons (R1 : ringType) (a : R1) l : 
+  CPoly (rcons l a) = CPoly l + a *: 'T_(size l).
+Proof.
+rewrite /CPoly size_rcons big_ord_recr /=.
+congr (_ + _).
+  apply: eq_bigr => i _.
+  by rewrite nth_rcons ltn_ord.
+by rewrite nth_rcons ltnn eqxx.
+Qed. 
+
+Lemma CPoly_ncons0 (R1 : ringType) n  (a : R1) l : 
+  CPoly (ncons n 0 (a :: l)) = CPoly (ncons n.+1 0 l) + a *: 'T_n.
+Proof.
+rewrite /CPoly !size_ncons addSnnS.
+have Li : (n < n + (size l).+1)%nat by rewrite -addSnnS leq_addr.
+rewrite [in RHS](bigD1 (Ordinal Li)) //=.
+rewrite [_ `_n](_ : _ = 0) ?scale0r ?add0r; last first.
+  by rewrite (nth_ncons _ n.+1) leqnn.
+rewrite addrC (bigD1 (Ordinal Li)) //=.
+congr (_ + _).
+  by rewrite nth_ncons ltnn subnn.
+apply: eq_bigr => i Hi.
+rewrite nth_ncons (nth_ncons _ n.+1).
+rewrite [(_ < _.+1)%nat]leq_eqVlt ltnS /=.
+rewrite [_ == _](negPf Hi).
+case: leqP => //=.
+rewrite leq_eqVlt eq_sym  [_ == _](negPf Hi) /= -subn_gt0.
+by rewrite subnS; case: subn.
+Qed.
+
+Lemma abs_mul_CPoly_correct (R1 : fieldType) n (a : R1) acc l :
+  CPoly (abs_mul_CPoly n a acc l) =
+  CPoly (ncons n.+1 0 acc) +
+  \sum_(j < size l) ((a * l`_j) / 2%:R) *: 
+      'T_(absn n j)%nat.
+Proof.
+elim: n acc l => [acc l| n1 IH ac l].
+  rewrite /abs_mul_CPoly add_Cpoly_spec.
+  congr (_ + _). 
+  rewrite /CPoly size_map //.
+  apply: eq_bigr => i _.
+  by rewrite (nth_map 0) // abs0n.
+rewrite /abs_mul_CPoly.
+case: l => [|b l1].
+  by rewrite big_ord0 addr0.
+by rewrite IH CPoly_ncons0 -!addrA big_ord_recl absn0.
+Qed.
+  
+Definition add_mul_CPoly (R : fieldType) n (a : R) l := 
+  ncons n 0 [seq (a * i) / 2%:R| i <- l].
+
+Fixpoint mul_rec_CPoly (R : fieldType) n (l1 l2 : seq R) := 
+  if l1 is a :: l3 then
+    let v1 := abs_mul_CPoly n a [::] l2 in
+    let v2 := add_mul_CPoly n a l2 in
+    add_Cpoly (add_Cpoly v1 v2) (mul_rec_CPoly n.+1 l3 l2)
+  else [::].
+
+Lemma mul_rec_CPoly_correct (R1 : fieldType) n (l1 l2 : seq R1) :
+  (2%:R != 0 :> R1)%R ->
+  CPoly (mul_rec_CPoly n l1 l2) =  
+  CPoly (ncons n 0 l1) * CPoly l2.
+Proof.
+move=> TNZ.
+elim: l1 n => [n|a l1 IH n] /=.
+  rewrite [CPoly _]big_ord0 [CPoly _]big1 ?mul0r // => i _.
+  by rewrite nth_ncons nth_nil if_same scale0r.
+rewrite !add_Cpoly_spec IH abs_mul_CPoly_correct.
+rewrite /add_mul_CPoly CPoly_ncons0 mulrDl.
+rewrite [CPoly _]big1 => [|i _]; last first.
+  by rewrite nth_ncons nth_nil if_same scale0r.
+rewrite add0r [RHS]addrC.
+congr (_ + _).
+rewrite [CPoly _](_ : _ = \sum_(j < size l2)
+                               (a * l2`_j / 2%:R) *: 'T_(n + j)).
+  rewrite -big_split /= mulr_sumr.
+  apply: eq_bigr => i _.
+  rewrite -scalerDr addrC addnC -mul_pT -!scalerAl -!scalerAr !scalerA.
+  by rewrite divfK // ['T_ _ * _]mulrC.
+rewrite /CPoly size_ncons size_map.
+rewrite big_split_ord /= big1 ?add0r => [|i _]; last first.
+  by rewrite nth_ncons ltn_ord scale0r.
+apply: eq_bigr => i _.
+rewrite nth_ncons ifN; first by rewrite addnC addnK (nth_map 0).
+by rewrite -ltnNge ltnS leq_addr.
+Qed.
+
+Definition mul_CPoly (R : fieldType) (l1 l2 : seq R) :=
+   mul_rec_CPoly 0 l1 l2.
+
+Lemma mul_CPoly_correct (R1 : fieldType) (l1 l2 : seq R1) :
+  (2%:R != 0 :> R1)%R ->
+  CPoly (mul_CPoly l1 l2) =  
+  CPoly l1 * CPoly l2.
+Proof. by move=> TNZ; rewrite [LHS]mul_rec_CPoly_correct. Qed.
+
+
 End P2CP.
 
 (* T_0(x)	=	1 *)

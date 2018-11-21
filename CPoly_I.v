@@ -1073,9 +1073,28 @@ Qed.
 (* Opposite Chebyshev model                                                  *)
 (*****************************************************************************)
 
+Definition Iopp_Cpoly l := [seq I.neg i | i <- l].
+
+Lemma size_Iopp_Cpoly P : size (Iopp_Cpoly P) = size P.
+Proof. by rewrite size_map. Qed.
+
+Notation "l '\lcontained_in' L" :=
+ (forall i,  l`_i \contained_in nth I0 L i) (at level 20).
+
+Lemma Iopp_Cpoly_correct p1 P1 :
+  size p1 = size P1 -> 
+  p1 \lcontained_in P1 ->
+  opp_Cpoly p1 \lcontained_in Iopp_Cpoly P1.
+Proof.
+elim: p1 P1 => [[|A P1]| a p1 IH [|b p2] Sp1 H1 [|i]] //.
+  by apply: neg_correct (H1 0%nat).
+apply: IH; first by case: Sp1.
+by move=> i1; apply: (H1 i1.+1).
+Qed.
+
 Definition opp_cms (c : cms) :=
   let: CMS P Delta := c in
-  CMS [seq I.neg i | i <- P] (I.neg Delta).
+  CMS (Iopp_Cpoly P) (I.neg Delta).
 
 Lemma opp_cms_correct n a b c f :
    cms_correct n a b f c -> 
@@ -1083,28 +1102,55 @@ Lemma opp_cms_correct n a b c f :
 Proof.
 case: c => [P Delta] [Sp [p [H1p H2p H3p]]].
 split; first by rewrite size_map.
-exists [seq - i | i <- p]; split; first by rewrite size_map.
-  move=> i.
-  have [nLi|iLn] := leqP n.+1 i.
-    rewrite !nth_default ?(size_map, Sp, H1p) //.
-    by apply: I.fromZ_correct.
-  rewrite (nth_map I0) ?Sp // ?(nth_map 0%R) ?H1p //.
-  by apply: neg_correct.
+exists (opp_Cpoly p); split; first by rewrite size_map.
+  by apply: Iopp_Cpoly_correct; rewrite ?Sp.
 move=> x /H3p [d [H1d H2d]]; exists (- d); split => //.
   by apply: neg_correct.
-by rewrite CPolyabN H2d !hornerE; toR; lra.
+rewrite horner_CPolyab opp_Cpoly_spec hornerE -horner_CPolyab.
+rewrite H2d; toR; lra.
 Qed.
-
 
 (*****************************************************************************)
 (* Addition Chebyshev model                                                  *)
 (*****************************************************************************)
 
+Fixpoint Iadd_Cpoly l1 l2 := 
+  if l1 is a :: l3 then
+    if l2 is b :: l4 then add a b :: Iadd_Cpoly l3 l4
+    else l1
+  else l2.
+
+Lemma size_Iadd_Cpoly P1 P2 : 
+  size (Iadd_Cpoly P1 P2) = maxn (size P1) (size P2).
+Proof.
+elim: P1 P2 => [P2|a P1 IH [|b P2]] /=; first by rewrite max0n.
+  by rewrite maxn0.
+by rewrite IH maxnSS.
+Qed.
+
+Notation "l '\lcontained_in' L" :=
+ (forall i,  l`_i \contained_in nth I0 L i) (at level 20).
+
+Lemma Iadd_Cpoly_correct  p1 p2 P1 P2 :
+  size p1 = size P1 -> size p2 = size P2 ->
+  p1 \lcontained_in P1 ->
+  p2 \lcontained_in P2 ->
+  add_Cpoly p1 p2 \lcontained_in Iadd_Cpoly P1 P2.
+Proof.
+elim: p1 p2 P1 P2 => [[|b p2] [|A P1] [|B P2]|
+                      a p1 IH [|b p2] [|A P1] [|B P2] Sp1 Sp2 H1 H2 [|i]] //.
+- by apply: add_correct (H1 0%nat) (H2 0%nat).
+apply: IH; first by case: Sp1.
+- by case: Sp2.
+- by move=> i1; apply: (H1 i1.+1).
+by move=> i1; apply: (H2 i1.+1).
+Qed.
+
 (* Could be optimized removing the zip *)
 Definition add_cms (c1 c2 : cms) :=
   let: CMS P1 Delta1 := c1 in
   let: CMS P2 Delta2 := c2 in
-  CMS [seq (add i.1 i.2) | i <- (zip P1 P2)]  (add Delta1 Delta2).
+  CMS (Iadd_Cpoly P1 P2) (add Delta1 Delta2).
 
 Lemma add_cms_correct n a b c1 c2 f1 f2 :
    cms_correct n a b f1 c1 -> cms_correct n a b f2 c2 ->
@@ -1112,23 +1158,19 @@ Lemma add_cms_correct n a b c1 c2 f1 f2 :
 Proof.
 case: c1 => [P1 Delta1] [Sp1 [p1 [H1p1 H2p1 H3p1]]].
 case: c2 => [P2 Delta2] [Sp2 [p2 [H1p2 H2p2 H3p2]]].
-split; first by rewrite size_map size1_zip ?Sp1 ?Sp2.
-exists [seq i.1 + i.2 | i <- (zip p1 p2)]; split.
-- by rewrite size_map size1_zip // H1p1 H1p2.
-- move=> i.
-  have [nLi|iLn] := leqP n.+1 i.
-    rewrite !nth_default ?(size_map, size1_zip, Sp1, H1p1, Sp2, H1p2) //.
-    by apply: I.fromZ_correct.
-  rewrite (nth_map 0) ?size1_zip ?H1p1 ?H1p2 //.
-  rewrite (nth_map (I0,I0)) ?size1_zip ?Sp1 ?Sp2 //.
-  rewrite !nth_zip ?H1p1 ?H1p2 ?Sp1 ?Sp2 //=.
-  by apply: add_correct.
+split; first by rewrite size_Iadd_Cpoly Sp1 Sp2 maxnn.
+exists (add_Cpoly p1 p2); split.
+- by rewrite size_add_Cpoly H1p1 H1p2 maxnn.
+- apply: Iadd_Cpoly_correct => //.
+    by rewrite H1p1 Sp1.
+  by rewrite H1p2 Sp2.
 move=> x Hx.
 have  [d1 [H1d1 H2d1]] := H3p1 _ Hx.
 have  [d2 [H1d2 H2d2]] := H3p2 _ Hx.
 exists (d1 + d2); split => //.
   by apply: add_correct.
-rewrite CPolyabD ?H1p1 ?H1p2 //.
+rewrite horner_CPolyab add_Cpoly_spec hornerE.
+rewrite -!horner_CPolyab ?H1p1 ?H1p2 //.
 by rewrite H2d1 H2d2 hornerE; toR; lra.
 Qed.
 
@@ -1136,11 +1178,43 @@ Qed.
 (* Subtraction Chebyshev model                                               *)
 (*****************************************************************************)
 
-(* Could be optimized removing the zip *)
+Fixpoint Isub_Cpoly l1 l2 := 
+  if l1 is a :: l3 then
+    if l2 is b :: l4 then sub a b :: Isub_Cpoly l3 l4
+    else l1
+  else [seq I.neg i | i <- l2].
+
+Lemma size_Isub_Cpoly P1 P2 : 
+  size (Isub_Cpoly P1 P2) = maxn (size P1) (size P2).
+Proof.
+elim: P1 P2 => [P2|a P1 IH [|b P2]] /=; first by rewrite size_map max0n.
+  by rewrite maxn0.
+by rewrite IH maxnSS.
+Qed.
+
+Lemma Isub_Cpoly_correct  p1 p2 P1 P2 :
+  size p1 = size P1 -> size p2 = size P2 ->
+  p1 \lcontained_in P1 ->
+  p2 \lcontained_in P2 ->
+  sub_Cpoly p1 p2 \lcontained_in Isub_Cpoly P1 P2.
+Proof.
+elim: p1 p2 P1 P2 => [[|b p2] [|A P1] [|B P2]|
+                      a p1 IH [|b p2] [|A P1] [|B P2] Sp1 Sp2 H1 H2 [|i]] //.
+- move=> _ Sp2 _ H [|i] /=.
+    by apply/neg_correct/(H 0%nat).
+- apply: Iopp_Cpoly_correct; first by case: Sp2.
+  by move=> i1; apply: (H i1.+1).
+- by apply: sub_correct (H1 0%nat) (H2 0%nat).
+apply: IH; first by case: Sp1.
+- by case: Sp2.
+- by move=> i1; apply: (H1 i1.+1).
+by move=> i1; apply: (H2 i1.+1).
+Qed.
+
 Definition sub_cms (c1 c2 : cms) :=
   let: CMS P1 Delta1 := c1 in
   let: CMS P2 Delta2 := c2 in
-  CMS [seq (sub i.1 i.2) | i <- (zip P1 P2)]  (sub Delta1 Delta2).
+  CMS (Isub_Cpoly P1 P2) (sub Delta1 Delta2).
 
 Lemma sub_cms_correct n a b c1 c2 f1 f2 :
    cms_correct n a b f1 c1 -> cms_correct n a b f2 c2 ->
@@ -1148,24 +1222,295 @@ Lemma sub_cms_correct n a b c1 c2 f1 f2 :
 Proof.
 case: c1 => [P1 Delta1] [Sp1 [p1 [H1p1 H2p1 H3p1]]].
 case: c2 => [P2 Delta2] [Sp2 [p2 [H1p2 H2p2 H3p2]]].
-split; first by rewrite size_map size1_zip ?Sp1 ?Sp2.
-exists [seq i.1 - i.2 | i <- (zip p1 p2)]; split.
-- by rewrite size_map size1_zip // H1p1 H1p2.
-- move=> i.
-  have [nLi|iLn] := leqP n.+1 i.
-    rewrite !nth_default ?(size_map, size1_zip, Sp1, H1p1, Sp2, H1p2) //.
-    by apply: I.fromZ_correct.
-  rewrite (nth_map 0) ?size1_zip ?H1p1 ?H1p2 //.
-  rewrite (nth_map (I0,I0)) ?size1_zip ?Sp1 ?Sp2 //.
-  rewrite !nth_zip ?H1p1 ?H1p2 ?Sp1 ?Sp2 //=.
-  by apply: sub_correct.
+split; first by rewrite size_Isub_Cpoly ?Sp1 ?Sp2 maxnn.
+exists (sub_Cpoly p1 p2); split.
+- by rewrite size_sub_Cpoly H1p1 H1p2 maxnn.
+- by apply: Isub_Cpoly_correct; rewrite ?Sp1 ?Sp2.
 move=> x Hx.
 have  [d1 [H1d1 H2d1]] := H3p1 _ Hx.
 have  [d2 [H1d2 H2d2]] := H3p2 _ Hx.
 exists (d1 - d2); split => //.
   by apply: sub_correct.
-rewrite CPolyabB ?H1p1 ?H1p2 //.
-by rewrite H2d1 H2d2 !hornerE; toR; lra.
+rewrite horner_CPolyab sub_Cpoly_spec hornerD hornerN ?H1p1 ?H1p2 //. 
+rewrite -!horner_CPolyab H2d1 H2d2 !hornerE /=; toR; lra.
+Qed.
+
+(*****************************************************************************)
+(* Multiplication Chebyshev model                                            *)
+(*****************************************************************************)
+
+
+Fixpoint Iabs_mul_Cpoly n (a : ID) acc l := 
+ if n is n1.+1 then
+   if l is b :: l1 then Iabs_mul_Cpoly n1 a ((I.scale2 (mul a b) (F.ZtoS (-1))) :: acc) l1
+   else (ncons n.+1 I0 acc)
+ else  Iadd_Cpoly (I0 :: acc) [seq (I.scale2 (mul a i) (F.ZtoS (-1))) | i <- l].
+
+Lemma size_Iabs_mul_Cpoly n (a : R) A acc Acc l L : 
+  size acc = size Acc -> size l = size L ->
+  size (Iabs_mul_Cpoly n A Acc L) = size (abs_mul_Cpoly n a acc l).
+Proof.
+elim: n acc Acc l L => [acc Acc l L H1 H2|n IH acc Acc [|b l] [|B L] H1 H2 //].
+- by rewrite size_Iadd_Cpoly size_add_Cpoly /= !size_map H1 H2.
+- by rewrite !size_ncons H1.
+apply: IH => //=; first by rewrite H1.
+by case: H2.
+Qed.
+
+Lemma Iabs_mul_Cpoly_correct n a A acc Acc l L : 
+  size acc = size Acc -> size l = size L ->
+  a \contained_in A -> acc \lcontained_in Acc -> l \lcontained_in L ->
+  abs_mul_Cpoly n a acc l \lcontained_in Iabs_mul_Cpoly n A Acc L.
+Proof.
+elim: n acc Acc l L => [acc Acc [|b l] [|B L] H1 H2 H3 H4 H5 i|
+                        n IH acc Acc [|b l] [|B L] H1 H2 H3 H4 H5 i] //.
+- apply: Iadd_Cpoly_correct => //=; first by rewrite H1.
+  move=> [|i1]; first by apply: I.fromZ_correct.
+  by apply: H4.
+- apply: Iadd_Cpoly_correct => //=.
+  - by rewrite H1.
+  - by rewrite !size_map.
+  - move=> [|i1]; first by apply: I.fromZ_correct.
+    by apply: H4.
+  move=> i1.
+  have [lLi1|i1Ll] := leqP (size l).+1 i1.
+    rewrite /= !nth_default ?size_map -?H2//.
+    - by apply: I.fromZ_correct.
+    - by rewrite /= size_map.
+    by rewrite /= size_map; case: H2 => <-. 
+  pose f b :=  a * b / 2%:R.
+  have /=-> := @nth_map _ 0 _ 0 f _ (_ :: _) => //.
+  pose F b := I.scale2 (mul A b) (F.ZtoS (-1)).
+  have /=-> := @nth_map _ I0 _ I0 F _ (_ :: _); last first.
+    by case: H2 => <-.
+  rewrite (_ :  f _ = (a * (b :: l)`_i1) * powerRZ 2 (-1)); last first.
+    rewrite /f /=; toR; rewrite /Rinvx ifT; first by field.
+    by apply/eqP; lra.
+  by apply/scale2_correct/mul_correct.
+- rewrite !nth_ncons; case: leqP => _ //.
+  by apply: I.fromZ_correct.
+apply: IH => //=.
+- by rewrite H1.
+- by case: H2.
+- move=> [|i1].
+    rewrite (_ : _ / _ = (a * b) * powerRZ 2 (-1)); last first.
+      rewrite /=; toR; rewrite /Rinvx ifT; first by field.
+      by apply/eqP; lra.
+    apply/scale2_correct/mul_correct => //.
+    by apply: H5 0%nat.
+  by apply: H4 i1.
+by move=> i1; apply: H5 i1.+1.
+Qed.
+
+Definition Iadd_mul_Cpoly n (a : ID) l := 
+  ncons n I0 [seq I.scale2 (mul a i) (F.ZtoS (-1))| i <- l].
+
+Lemma size_Iadd_mul_Cpoly n (a : R) A l L : 
+  size l = size L ->
+  size (Iadd_mul_Cpoly n A L) = size (add_mul_Cpoly n a l).
+Proof.
+by move=> H; rewrite !size_ncons !size_map H.
+Qed.
+
+Lemma Iadd_mul_Cpoly_correct n a A l L : 
+  size l = size L ->
+  a \contained_in A -> l \lcontained_in L ->
+  add_mul_Cpoly n a l \lcontained_in Iadd_mul_Cpoly n A L.
+Proof.
+move=> Hs Ha Hl i.
+rewrite !nth_ncons; case: leqP => H; last by apply: I.fromZ_correct.
+have [lLi1|i1Ll] := leqP (size l) (i - n)%nat.
+  rewrite !nth_default ?size_map -?Hs //.
+  by apply: I.fromZ_correct.
+rewrite (nth_map 0) // (nth_map I0) -?Hs //.
+rewrite (_ : _ / _ = (a * l`_(i - n)) * powerRZ 2 (-1)); last first.
+  rewrite /=; toR; rewrite /Rinvx ifT; first by field.
+  by apply/eqP; lra.
+by apply/scale2_correct/mul_correct.
+Qed.
+
+Fixpoint Imul_rec_Cpoly n l1 l2 := 
+  if l1 is a :: l3 then
+    let v1 := Iabs_mul_Cpoly n a [::] l2 in
+    let v2 := Iadd_mul_Cpoly n a l2 in
+    Iadd_Cpoly (Iadd_Cpoly v1 v2) (Imul_rec_Cpoly n.+1 l3 l2)
+  else [::].
+
+Lemma size_Imul_rec_Cpoly n (l1 : seq R) l2 L1 L2 : 
+  size l1 = size L1 -> size l2 = size L2 ->
+  size (Imul_rec_Cpoly n L1 L2) = size (mul_rec_Cpoly n l1 l2).
+Proof.
+elim: l1 L1 n => [[|]|a l1 IH [|A L1] n // [H1] H2] //=.
+rewrite !size_Iadd_Cpoly !size_add_Cpoly.
+rewrite (@size_Iabs_mul_Cpoly _ a _ [::] _ l2) //.
+rewrite (@size_Iadd_mul_Cpoly _ a _ l2) //.
+by rewrite IH.
+Qed.
+
+Lemma Imul_rec_Cpoly_correct n p1 p2 P1 P2 :
+  size p1 = size P1 -> size p2 = size P2 ->
+  p1 \lcontained_in P1 ->
+  p2 \lcontained_in P2 ->
+  mul_rec_Cpoly n p1 p2 \lcontained_in Imul_rec_Cpoly n P1 P2.
+Proof.
+elim: p1 p2 P1 P2 n => [p2 [|A P1] P2 n |
+                      a p1 IH p2 [|A P1] P2 n // [Sp1] Sp2 H1 H2] //.
+apply: Iadd_Cpoly_correct => //.
+- rewrite size_add_Cpoly size_Iadd_Cpoly.
+  congr (maxn _ _).
+    by apply/sym_equal/size_Iabs_mul_Cpoly.
+  by apply/sym_equal/size_Iadd_mul_Cpoly.
+apply/sym_equal/size_Imul_rec_Cpoly => //.
+  apply: Iadd_Cpoly_correct.
+  - by apply/sym_equal/size_Iabs_mul_Cpoly.
+  - by apply/sym_equal/size_Iadd_mul_Cpoly.
+  - apply: Iabs_mul_Cpoly_correct => //.
+      by apply: H1 0%nat.
+    by move=> i; rewrite !nth_nil; apply: I.fromZ_correct.
+  apply: Iadd_mul_Cpoly_correct => //.
+  by apply: H1 0%nat.
+apply: IH => //.
+by move=> i; apply: H1 i.+1.
+Qed.
+
+Definition Imul_Cpoly (l1 l2 : seq ID) := Imul_rec_Cpoly 0 l1 l2.
+
+Lemma size_Imul_Cpoly (l1 : seq R) l2 L1 L2 : 
+  size l1 = size L1 -> size l2 = size L2 ->
+  size (Imul_Cpoly L1 L2) = size (mul_Cpoly l1 l2).
+Proof. exact: size_Imul_rec_Cpoly. Qed.
+
+Lemma Imul_Cpoly_correct p1 p2 P1 P2 :
+  size p1 = size P1 -> size p2 = size P2 ->
+  p1 \lcontained_in P1 ->
+  p2 \lcontained_in P2 ->
+  mul_Cpoly p1 p2 \lcontained_in Imul_Cpoly P1 P2.
+Proof. exact: Imul_rec_Cpoly_correct. Qed.
+
+Fixpoint Isplit_Cpoly n l :=
+  if n is n1.+1 then 
+    if l is a :: l1 then let: (l2,l3) := Isplit_Cpoly n1 l1 in (a :: l2, I0 :: l3)
+    else (nseq n I0, [::])
+  else ([::], l).
+
+Lemma size_Isplit_Cpoly1 n l : size (Isplit_Cpoly n l).1 = n.
+Proof.
+elim: n l => //= n IH [|a l] /=; first by rewrite size_nseq.
+by case: Isplit_Cpoly (IH l) => /= l1 _ ->.
+Qed.
+
+Lemma size_Isplit_Cpoly2 n (l : seq R) L : 
+ size l = size L ->
+ size (Isplit_Cpoly n L).2 = size (split_Cpoly n l).2.
+Proof.
+elim: n l L => //= n IH [|a l] [|A L] //= [H].
+by have := IH l L; case: Isplit_Cpoly => L1 L2; case: split_Cpoly => l1 l2 /= ->.
+Qed.
+
+Lemma Isplit_Cpoly_correct1 n (p : seq R) P :
+  size p = size P -> 
+  p \lcontained_in P ->
+  (split_Cpoly n p).1 \lcontained_in (Isplit_Cpoly n P).1.
+Proof.
+elim: n p P => [p P _ _| n IH [|a p] [|A P] H1 H2] //=.
+- by move=> i; rewrite !nth_nil; apply: I.fromZ_correct.
+- move=> i; rewrite !(@nth_nseq _ _ n.+1) !if_same.
+  by apply: I.fromZ_correct.
+case: H1 => /IH; case: split_Cpoly => p1 p2; case: Isplit_Cpoly => P1 P2 /= H [|i].
+  by apply: H2 0%nat.
+apply: H => i1.
+by apply: H2 i1.+1.
+Qed.
+
+Lemma Isplit_Cpoly_correct2 n (p : seq R) P :
+  size p = size P -> 
+  p \lcontained_in P ->
+  (split_Cpoly n p).2 \lcontained_in (Isplit_Cpoly n P).2.
+Proof.
+elim: n p P => [p P _ _| n IH [|a p] [|A P] H1 H2] //=.
+case: H1 => /IH; case: split_Cpoly => p1 p2; case: Isplit_Cpoly => P1 P2 /= H [|i].
+  by apply: I.fromZ_correct.
+apply: H => i1.
+by apply: H2 i1.+1.
+Qed.
+
+Definition mul_cms n a b (c1 c2 : cms) :=
+  let: CMS P1 Delta1 := c1 in
+  let: CMS P2 Delta2 := c2 in
+  let: P3 := Imul_Cpoly P1 P2 in
+  let: (P4, P5) := Isplit_Cpoly n.+1 P3 in
+  let Ia := I.bnd a a in
+  let Ib := I.bnd b b in
+  let Iab := I.bnd a b in
+  let Delta3 := IsCshaw Ia Ib P1 Iab in
+  let Delta4 := IsCshaw Ia Ib P2 Iab in
+  let Delta5 := IsCshaw Ia Ib P5 Iab in
+  CMS P4 (add Delta5 (add (mul Delta1 Delta4)
+                     (add (mul Delta2 Delta3)
+                          (mul Delta1 Delta2)))).
+
+Lemma mul_cms_correct n a b c1 c2 f1 f2 :
+   F.cmp a b = Xlt ->
+   cms_correct n a b f1 c1 -> cms_correct n a b f2 c2 ->
+   cms_correct n a b (fun x => f1 x * f2 x)%R (mul_cms n a b c1 c2).
+Proof.
+move=> aLb.
+have a_in_Ia : D2R a \contained_in I.bnd a a.
+  by rewrite /D2R /=; case: F.toX  => //= r; lra.
+have b_in_Ib : D2R b \contained_in I.bnd b b.
+  by rewrite /D2R /=; case: F.toX  => //= r; lra.
+case: c1 => [P1 Delta1] [Sp1 [p1 [H1p1 H2p1 H3p1]]].
+case: c2 => [P2 Delta2] [Sp2 [p2 [H1p2 H2p2 H3p2]]].
+have F1 : (D2R a < D2R b)%R.
+  have := F.cmp_correct a b; rewrite aLb.
+  rewrite /D2R; case: F.toX; case: F.toX =>  //= r1 r2.
+  by case: Rcompare_spec.
+have F2 : D2R a != D2R b by apply/eqP; lra.
+have F3 : D2R b != D2R a by rewrite eq_sym.
+rewrite /cms_correct /mul_cms.
+case E : Isplit_Cpoly => [P4 P5].
+split.
+  by rewrite -[P4]/(P4,P5).1 -E size_Isplit_Cpoly1.
+pose p := mul_Cpoly p1 p2.
+exists (split_Cpoly n.+1 p).1.
+split => //.
+- by rewrite split_Cpoly_size1.
+- rewrite -[P4]/(P4, P5).1 -E.
+  apply: Isplit_Cpoly_correct1.
+  by rewrite (@size_Imul_Cpoly p1 p2) ?Sp1 ?Sp2.
+- by apply: Imul_Cpoly_correct; rewrite ?Sp1 ?Sp2.
+move=> x xIab.
+have [d1 [H1d1 H2d1]] := H3p1 _ xIab.
+have [d2 [H1d2 H2d2]] := H3p2 _ xIab.
+pose sp := split_Cpoly n.+1 p.
+pose Cp := CPolyab (D2R a) (D2R b).
+exists ((Cp sp.2).[x] + d1 * (Cp p2).[x] +
+           d2 * (Cp p1).[x] + d1 * d2).
+split.
+  rewrite -!addrA.
+  apply: add_correct.
+    apply: IsCshaw_correct => //.
+      rewrite -[P5]/(P4, P5).2 -E (@size_Isplit_Cpoly2 n.+1 p) //.
+      by rewrite (@size_Imul_Cpoly p1 p2) ?Sp1 ?Sp2.
+    rewrite -[P5]/(P4, P5).2 -E.
+    apply: Isplit_Cpoly_correct2 => //.
+      by rewrite (@size_Imul_Cpoly p1 p2) ?Sp1 ?Sp2.
+    by apply: Imul_Cpoly_correct; rewrite ?Sp1 ?Sp2.
+  apply: add_correct.
+    apply: mul_correct => //.
+    by apply: IsCshaw_correct; rewrite ?Sp1 ?Sp2.
+  apply: add_correct.
+    apply: mul_correct => //.
+    by apply: IsCshaw_correct; rewrite ?Sp1 ?Sp2.
+  by apply: mul_correct.
+rewrite /Cp H2d1 H2d2 /p /sp -addrA.
+set x1 := _.[_]; set x2 := _.[_].
+set x3 := _.[_]; set x4 := _.[_].
+suff F : x1 * x2 = x3 + x4.
+  by move: F; toR => F; ring[F].
+rewrite /x1 /x2 /x3 /x4 !horner_CPolyab.
+rewrite -hornerM -hornerD -horner_split_Cpoly mul_Cpoly_correct //.
+by apply/eqP; toR; lra.
 Qed.
 
 Section CMSin.
@@ -1865,7 +2210,11 @@ Definition ecms :=
   Eval vm_compute in
   exp_cms prec a b vn vl2 vl3.
 
-Compute "Delta exp"%string.
-Compute Delta ecms.
+Time
+Definition eccms :=
+  Eval vm_compute in mul_cms prec n a b ccms ecms.
+
+Compute "Delta exp * cos"%string.
+Compute Delta eccms.
 
 

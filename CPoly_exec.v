@@ -117,7 +117,32 @@ End CSHAW.
 
 Section CP2P.
 Variable (R: ringType).
+
+Definition opp_Cpoly := lopp_poly.
+
+Lemma size_opp_Cpoly (l : seq R) : size (opp_Cpoly l) = size l.
+Proof. by elim: l => //= a l ->. Qed.
+
+Lemma opp_Cpoly_spec (l : seq R): CPoly (opp_Cpoly l) = -(CPoly l). 
+Proof.
+rewrite -sumrN.
+under eq_bigr ? rewrite -coef_Poly.
+rewrite polybase_widen; last exact: size_Poly.
+rewrite lopp_poly_spec.
+rewrite -(@polybase_widen _ _ _ (size l)).
+  by apply: eq_bigr => i _; rewrite coefN coef_Poly scaleNr.
+by rewrite size_opp size_Poly.
+Qed.
+
 Definition add_Cpoly := ladd_poly.
+
+Lemma size_add_Cpoly (l1 l2 : seq R) : 
+  size (add_Cpoly l1 l2) = maxn (size l1) (size l2).
+Proof.
+elim: l1 l2 => [l2|a l1 IH [|b l2]] /=; first by rewrite max0n.
+  by rewrite maxn0.
+by rewrite IH maxnSS.
+Qed.
 
 Lemma add_Cpoly_spec (l k: seq R):
 	CPoly (add_Cpoly l k) = (CPoly l) + (CPoly k).
@@ -132,6 +157,32 @@ congr (_ + _).
 	by under eq_bigr ? rewrite !coef_Poly.
 rewrite -(@polybase_widen _ _ _ (size k)); last exact: size_Poly.
 by under eq_bigr ? rewrite !coef_Poly.
+Qed.
+
+Definition sub_Cpoly := lsub_poly.
+
+Lemma size_sub_Cpoly (l1 l2 : seq R) : 
+  size (sub_Cpoly l1 l2) = maxn (size l1) (size l2).
+Proof.
+elim: l1 l2 => [l2|a l1 IH [|b l2]] /=; first by rewrite size_map max0n.
+  by rewrite maxn0.
+by rewrite IH maxnSS.
+Qed.
+
+Lemma sub_Cpoly_spec (l k: seq R):
+	CPoly (sub_Cpoly l k) = (CPoly l) - (CPoly k).
+Proof.
+rewrite /sub_Cpoly /CPoly.
+under eq_bigr ? rewrite -coef_Poly.
+rewrite polybase_widen; last exact: size_Poly.
+rewrite lsub_poly_spec sumrA.
+congr (_ + _).
+	rewrite -(@polybase_widen _ _ _ (size l)); last exact: size_Poly.
+  by under eq_bigr ? rewrite !coef_Poly.
+rewrite -sumrN.
+rewrite -(@polybase_widen _ _ _ (size k)).
+   by apply: eq_bigr => i _; rewrite coefN coef_Poly scaleNr.
+by rewrite size_opp; exact: size_Poly.
 Qed.
 
 Fixpoint CP2P_rec l (p1 p2 : seq R) :=
@@ -250,7 +301,6 @@ rewrite /CPoly => lr2.
 pose f (i: 'I_(size l)) := (Poly l)`_i  *: 'T_i.
 rewrite (eq_bigr f) {}/f => [ | i _]; last by rewrite coef_Poly.
 rewrite polybase_widen; last exact: size_Poly.
-Locate size_sum_pT.
 by rewrite size_sum_pT.
 Qed.
 
@@ -434,9 +484,9 @@ rewrite P2CP_cons add_Cpoly_spec CPolyC/= cons_poly_def.
 by rewrite Cmulx_spec => //; rewrite ih commr_polyX addrC.
 Qed.
 
-Fixpoint abs_mul_CPoly (R : fieldType) n (a : R) acc l := 
+Fixpoint abs_mul_Cpoly (R : fieldType) n (a : R) acc l := 
  if n is n1.+1 then
-   if l is b :: l1 then abs_mul_CPoly n1 a ((a * b) / 2%:R :: acc) l1
+   if l is b :: l1 then abs_mul_Cpoly n1 a ((a * b) / 2%:R :: acc) l1
    else (ncons n.+1 0 acc)
  else  add_Cpoly (0 :: acc) [seq (a * i) / 2%:R| i <- l].
 
@@ -470,45 +520,45 @@ rewrite leq_eqVlt eq_sym  [_ == _](negPf Hi) /= -subn_gt0.
 by rewrite subnS; case: subn.
 Qed.
 
-Lemma abs_mul_CPoly_correct (R1 : fieldType) n (a : R1) acc l :
-  CPoly (abs_mul_CPoly n a acc l) =
+Lemma abs_mul_Cpoly_correct (R1 : fieldType) n (a : R1) acc l :
+  CPoly (abs_mul_Cpoly n a acc l) =
   CPoly (ncons n.+1 0 acc) +
   \sum_(j < size l) ((a * l`_j) / 2%:R) *: 
       'T_(absn n j)%nat.
 Proof.
 elim: n acc l => [acc l| n1 IH ac l].
-  rewrite /abs_mul_CPoly add_Cpoly_spec.
+  rewrite /abs_mul_Cpoly add_Cpoly_spec.
   congr (_ + _). 
   rewrite /CPoly size_map //.
   apply: eq_bigr => i _.
   by rewrite (nth_map 0) // abs0n.
-rewrite /abs_mul_CPoly.
+rewrite /abs_mul_Cpoly.
 case: l => [|b l1].
   by rewrite big_ord0 addr0.
 by rewrite IH CPoly_ncons0 -!addrA big_ord_recl absn0.
 Qed.
   
-Definition add_mul_CPoly (R : fieldType) n (a : R) l := 
+Definition add_mul_Cpoly (R : fieldType) n (a : R) l := 
   ncons n 0 [seq (a * i) / 2%:R| i <- l].
 
-Fixpoint mul_rec_CPoly (R : fieldType) n (l1 l2 : seq R) := 
+Fixpoint mul_rec_Cpoly (R : fieldType) n (l1 l2 : seq R) := 
   if l1 is a :: l3 then
-    let v1 := abs_mul_CPoly n a [::] l2 in
-    let v2 := add_mul_CPoly n a l2 in
-    add_Cpoly (add_Cpoly v1 v2) (mul_rec_CPoly n.+1 l3 l2)
+    let v1 := abs_mul_Cpoly n a [::] l2 in
+    let v2 := add_mul_Cpoly n a l2 in
+    add_Cpoly (add_Cpoly v1 v2) (mul_rec_Cpoly n.+1 l3 l2)
   else [::].
 
-Lemma mul_rec_CPoly_correct (R1 : fieldType) n (l1 l2 : seq R1) :
+Lemma mul_rec_Cpoly_correct (R1 : fieldType) n (l1 l2 : seq R1) :
   (2%:R != 0 :> R1)%R ->
-  CPoly (mul_rec_CPoly n l1 l2) =  
+  CPoly (mul_rec_Cpoly n l1 l2) =  
   CPoly (ncons n 0 l1) * CPoly l2.
 Proof.
 move=> TNZ.
 elim: l1 n => [n|a l1 IH n] /=.
   rewrite [CPoly _]big_ord0 [CPoly _]big1 ?mul0r // => i _.
   by rewrite nth_ncons nth_nil if_same scale0r.
-rewrite !add_Cpoly_spec IH abs_mul_CPoly_correct.
-rewrite /add_mul_CPoly CPoly_ncons0 mulrDl.
+rewrite !add_Cpoly_spec IH abs_mul_Cpoly_correct.
+rewrite /add_mul_Cpoly CPoly_ncons0 mulrDl.
 rewrite [CPoly _]big1 => [|i _]; last first.
   by rewrite nth_ncons nth_nil if_same scale0r.
 rewrite add0r [RHS]addrC.
@@ -527,17 +577,60 @@ rewrite nth_ncons ifN; first by rewrite addnC addnK (nth_map 0).
 by rewrite -ltnNge ltnS leq_addr.
 Qed.
 
-Definition mul_CPoly (R : fieldType) (l1 l2 : seq R) :=
-   mul_rec_CPoly 0 l1 l2.
+Definition mul_Cpoly (R : fieldType) (l1 l2 : seq R) :=
+   mul_rec_Cpoly 0 l1 l2.
 
-Lemma mul_CPoly_correct (R1 : fieldType) (l1 l2 : seq R1) :
+Lemma mul_Cpoly_correct (R1 : fieldType) (l1 l2 : seq R1) :
   (2%:R != 0 :> R1)%R ->
-  CPoly (mul_CPoly l1 l2) =  
+  CPoly (mul_Cpoly l1 l2) =  
   CPoly l1 * CPoly l2.
-Proof. by move=> TNZ; rewrite [LHS]mul_rec_CPoly_correct. Qed.
+Proof. by move=> TNZ; rewrite [LHS]mul_rec_Cpoly_correct. Qed.
 
+Fixpoint split_Cpoly n (l : seq R) :=
+  if n is n1.+1 then 
+    if l is a :: l1 then let: (l2,l3) := split_Cpoly n1 l1 in (a :: l2, 0 :: l3)
+    else (nseq n 0, [::])
+  else ([::], l).
+
+Lemma split_Cpoly_size1 n l : size (split_Cpoly n l).1 = n.
+Proof.
+elim: n l => //= n IH [|a l] /=; first by rewrite size_nseq.
+by case: split_Cpoly (IH l) => /= l1 _ ->.
+Qed.
+
+Lemma horner_split_Cpoly n (p : seq R) :
+   CPoly p = CPoly (split_Cpoly n p).1 + CPoly (split_Cpoly n p).2.
+Proof.
+suff /(_ 0%nat) : forall k,
+  \sum_(i < size p) p`_i *: 'T_(k + i) =
+   \sum_(i < size (split_Cpoly n p).1) (split_Cpoly n p).1`_i *: 'T_(k + i) +
+  \sum_(i < size (split_Cpoly n p).2) (split_Cpoly n p).2`_i *: 'T_(k + i).
+  by apply.
+elim: n p => [p k |n IH [|a p] k] /=; first by rewrite big_ord0 add0r.
+  rewrite !big_ord0 big1 ?add0r // => i _.
+  by rewrite (@nth_nseq _ _ n.+1) if_same scale0r.
+rewrite big_ord_recl /= addn0.
+have := IH p k.+1; case: split_Cpoly => p1 p2 /= {IH}IH.
+rewrite !big_ord_recl /= scale0r add0r addn0 -addrA.
+congr (_ + _).
+apply: etrans.
+  by apply: eq_bigr => i _; rewrite /bump /= -addSnnS.
+by rewrite IH; congr (_ + _);  apply: eq_bigr => i _; rewrite /bump /= -addSnnS.
+Qed.
 
 End P2CP.
+
+Lemma horner_CPolyab (R : fieldType) (p : seq R) (a b x : R) :
+   (CPolyab a b p).[x] = (CPoly p).[(Tab a b).[x]].
+Proof.
+rewrite [LHS]horner_sum [RHS]horner_sum.
+apply: eq_bigr => i _; rewrite !hornerE horner_pTab.
+congr (_ * _.[_]).
+rewrite [_ * x]mulrC mulrA -mulrDl opprD addrA.
+by rewrite mulr2n mulrDr mulr1.
+Qed.
+
+
 
 (* T_0(x)	=	1 *)
 (* T_1(x)	=	x	 *)
@@ -548,7 +641,6 @@ End P2CP.
 (* T_6(x)	=	32 x^6 - 48 x^4 + 18 x^2 - 1 *)
 
 Definition t0 := [:: ratz (Posz 1)].
-Print t0.
 Definition t1 := [:: 0; ratz (Posz 1)].
 Definition t2 := [:: ratz (-(Posz 1)); 0; ratz (Posz 2)].
 Definition t3 := [:: 0; ratz (- (Posz 3)); 0; ratz (Posz 4)].

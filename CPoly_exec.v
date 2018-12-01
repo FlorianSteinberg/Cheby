@@ -54,7 +54,7 @@ Qed.
 Fixpoint Cb l (x : R) :=
  if l is a :: l' then
    let t := Cb l' x in
-   let a1 := a + t.1 * x *+ 2 - t.2 in
+   let a1 := a + t.1 * x - t.2 in
    (a1, t.1) else (0, 0).
 
 Lemma Cb_nil (r: R):
@@ -83,7 +83,8 @@ rewrite {}H1 size_poly0; case: eqP => // /subr0_eq/IH<-.
 by case: eqP => // /subr0_eq <-.
 Qed.
 
-Definition Cshaw (L: seq R) x := (Cb L x).1 - (Cb L x).2 * x.
+Definition Cshaw (L: seq R) (x : R) := 
+  let: (x1, x2) := Cb L (x *+ 2) in x1 - x2 * x.
 
 Lemma Cshaw_spec (k : seq R) r :
    Cshaw k r = (CPoly k).[r].
@@ -91,9 +92,9 @@ Proof.
 rewrite /Cshaw /CPoly.
 rewrite horner_sum; under eq_bigr ? rewrite hornerZ.
 elim: {k}S {-2}k (leqnn (size k).+1) => // n IH [|a [|b k]] H.
-- by rewrite big_ord0 !rm0.
+- by rewrite big_ord0 /= !rm0.
 - by rewrite /= !rm0 big_ord_recr big_ord0 /= pT0 hornerC rm1 rm0.
-have /IH/eqP : (size (b :: k) < n)%N by rewrite -ltnS.
+have /IH/=/eqP : (size (b :: k) < n)%N by rewrite -ltnS.
   rewrite [size _]/= big_ord_recl. 
   rewrite [_ * _ + _]addrC -subr_eq eq_sym.
   pose f (i : 'I_(size k)) := k`_i * ('T_i.+1).[r].
@@ -108,10 +109,10 @@ rewrite !lift0 sumrB ![_ `_ _]/= -mulr_suml H1 -IH; last first.
   by rewrite -ltnS (ltn_trans _ H).
 rewrite pT0 pT1 !hornerE /=.
 (* This should be ring *)
-set u := Cb _ _.
+case: (Cb _ _) => u1 u2 /=.
 rewrite !mulr2n !(mulrDl, mulrDr, opprB, opprD, mulNr ) -!addrA.
 do 40 (congr (_ + _); [idtac] || rewrite [RHS]addrC -![in RHS]addrA).
-by rewrite addrA subrK.
+by rewrite opprK addrC addrK.
 Qed.
 End CSHAW.
 

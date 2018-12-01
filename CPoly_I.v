@@ -135,11 +135,11 @@ Section ICshaw.
 Fixpoint ICb q (x : ID) : ID * ID :=
  if q is a :: q' then
    let t := ICb q' x in
-   let a1 := sub (add a (scl2 (mul (fst t) x))) (snd t) in
+   let a1 := sub (add a (mul (fst t) x)) (snd t) in
    (a1, (fst t)) else (I0, I0).
 
 Definition ICshaw p x := 
-  let: (i1, i2) := ICb p x in sub i1 (mul i2 x).
+  let: (i1, i2) := ICb p (scl2 x) in sub i1 (mul i2 x).
 
 Lemma ICb_crct (p: seq R) (pI: seq ID) (x: R) (I: ID):
 	(forall i, (p`_i) \contained_in (nth I0 pI i)) -> x \contained_in I  -> size p = size pI ->
@@ -155,7 +155,7 @@ case: (ih p) => // [i | | ih1 ih2 ].
 split => //.
 apply sub_correct => //.
 apply add_correct; first exact: (prp 0%nat).
-by apply /scl2_correct /mul_correct.
+by apply: mul_correct.
 Qed.
 
 Lemma ICshaw_correct (p: seq R) (pI: seq ID) (x: R) (J: ID):
@@ -169,8 +169,8 @@ case: pI p prp => [p prp eq | I pI p prp eq].
 	rewrite /Cshaw /= /ICshaw/ICb.
 	apply sub_correct; first exact I00.
 	by apply mul_correct; first exact I00.
-have := ICb_crct prp xJ eq.
-rewrite /Cshaw/ICshaw; case: ICb => i j [H1 H2].
+have := ICb_crct prp (scl2_correct xJ) eq.
+rewrite /Cshaw/ICshaw; case: Cb => i1 j1; case: ICb => I1 J1 [H1 H2].
 apply sub_correct => //.
 by apply mul_correct.
 Qed.

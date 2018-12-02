@@ -186,6 +186,23 @@ rewrite -(@polybase_widen _ _ _ (size k)).
 by rewrite size_opp; exact: size_Poly.
 Qed.
 
+Definition scl2_Cpoly (l : seq R) := [seq i *+ 2 | i <- l]. 
+
+Lemma size_scl2_Cpoly l : size (scl2_Cpoly l) = size l.
+Proof. by rewrite size_map. Qed.
+
+Lemma scl2_Cpoly_spec (l : seq R):
+  CPoly (scl2_Cpoly l) = CPoly l *+ 2.
+Proof.
+rewrite -sumrMnl.
+under eq_bigr ? rewrite -coef_Poly.
+rewrite polybase_widen; last exact: size_Poly.
+rewrite -(@polybase_widen _ _ _ (size l)).
+  apply: eq_bigr => i _.
+  by rewrite coef_Poly (nth_map 0) // scalerMnl.
+by rewrite -[size l]size_scl2_Cpoly size_Poly.
+Qed.
+
 Fixpoint CP2P_rec l (p1 p2 : seq R) :=
 match l with
 |  a :: l =>
@@ -618,6 +635,7 @@ apply: etrans.
   by apply: eq_bigr => i _; rewrite /bump /= -addSnnS.
 by rewrite IH; congr (_ + _);  apply: eq_bigr => i _; rewrite /bump /= -addSnnS.
 Qed.
+
 
 End P2CP.
 

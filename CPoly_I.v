@@ -62,6 +62,14 @@ Lemma add_correct x y I J:
 	x \contained_in I -> y \contained_in J -> (x + y) \contained_in (add I J).
 Proof. by apply I.add_correct. Qed.
 
+Lemma inv_correct x I:
+	x \contained_in I -> is_zero x = false -> (/ x) \contained_in (I.inv prec I).
+Proof.
+move=> xI xZ.
+have /= := I.inv_correct prec I (Xreal x) xI.
+by rewrite /Xinv' xZ.
+Qed.
+
 Lemma div_correct x y I J:
 	x \contained_in I -> y \contained_in J -> is_zero y = false -> (x / y) \contained_in (div I J).
 Proof.
@@ -998,6 +1006,27 @@ by rewrite H.
 Qed.
 
 (*****************************************************************************)
+(* Error Chebyshev model                                                     *)
+(*****************************************************************************)
+
+Definition error_cms n := CMS (nseq n.+1 I0) (I.bnd F.nan F.nan).
+
+Lemma error_cms_correct n a b f :
+   cms_correct n a b f (error_cms n).
+Proof.
+split; first by rewrite /= size_nseq.
+exists (nseq n.+1 0); split => //.
+- by rewrite /= size_nseq.
+- move=> [|i]; first by rewrite /= F.fromZ_correct; toR; lra.
+  by rewrite !nth_nseq; case: leqP => _; apply: I.fromZ_correct.
+move=> y Hy; exists (f y); split.
+  by split; rewrite F.nan_correct.
+rewrite horner_CPolyab [CPoly _]big1 ?hornerE // => i _.
+rewrite nth_nseq ifT ?scale0r //.
+by have := ltn_ord i; rewrite {2}size_nseq.
+Qed.
+
+(*****************************************************************************)
 (* Constant Chebyshev model                                                  *)
 (*****************************************************************************)
 
@@ -1146,7 +1175,6 @@ apply: IH; first by case: Sp1.
 by move=> i1; apply: (H2 i1.+1).
 Qed.
 
-(* Could be optimized removing the zip *)
 Definition add_cms (c1 c2 : cms) :=
   let: CMS P1 Delta1 := c1 in
   let: CMS P2 Delta2 := c2 in
@@ -1511,6 +1539,253 @@ suff F : x1 * x2 = x3 + x4.
 rewrite /x1 /x2 /x3 /x4 !horner_CPolyab.
 rewrite -hornerM -hornerD -horner_split_Cpoly mul_Cpoly_correct //.
 by apply/eqP; toR; lra.
+Qed.
+
+(*****************************************************************************)
+(* Scale 2  Chebyshev model                                                  *)
+(*****************************************************************************)
+
+Definition Iscl2_Cpoly l := [seq scl2 i | i <- l]. 
+
+Lemma size_Iscl2_Cpoly P : size (Iscl2_Cpoly P) = size P.
+Proof. by rewrite size_map. Qed.
+
+Lemma Iscl2_Cpoly_correct  p P :
+  size p = size P -> p \lcontained_in P ->
+  scl2_Cpoly p \lcontained_in Iscl2_Cpoly P.
+Proof.
+elim: p P => [[|A P1] | a p1 IH [|A P1] Sp H [|i]] //=.
+  by apply: scl2_correct (H 0%nat).
+apply: IH; first by case: Sp.
+by move=> i1; apply: (H i1.+1).
+Qed.
+
+Definition scl2_cms (c: cms) :=
+  let: CMS P Delta := c in
+  CMS (Iscl2_Cpoly P) (scl2 Delta).
+
+Lemma scl2_cms_correct n a b c f :
+   cms_correct n a b f c -> 
+   cms_correct n a b (fun x => f x *+ 2)%R (scl2_cms c).
+Proof.
+case: c => [P Delta] [Sp [p [H1p H2p H3p]]].
+split; first by rewrite size_Iscl2_Cpoly Sp.
+exists (scl2_Cpoly p); split.
+- by rewrite size_scl2_Cpoly H1p.
+- by apply: Iscl2_Cpoly_correct; rewrite // H1p Sp.
+move=> x Hx.
+have  [d [H1d H2d]] := H3p _ Hx.
+exists (d *+ 2); split => //.
+  by apply: scl2_correct.
+rewrite horner_CPolyab scl2_Cpoly_spec hornerE hornerMn /=.
+rewrite -!horner_CPolyab ?H1p //.
+by rewrite H2d mulrnDl [d *+ 2]mulr2n addrA.
+Qed.
+
+(*****************************************************************************)
+(* Composition Chebyshev model                                               *)
+(*****************************************************************************)
+
+Section ICb.
+
+Variable n : nat.
+Variables a b : D.
+
+Fixpoint ICb_cms (q : seq ID) (x : cms) : (cms * cms) :=
+ if q is c :: q' then
+   let t := ICb_cms q' x in
+   let a1 := sub_cms (add_cms (const_cms n c) (mul_cms n a b (fst t) x)) (snd t) in
+   (a1, (fst t)) else 
+   let cm := const_cms n I0 in (cm,cm).
+
+Lemma ICb_cms_correct p P f c :
+   F.cmp a b = Xlt ->
+   p \lcontained_in P ->
+   size p = size P ->
+   cms_correct n a b f c -> 
+   cms_correct n a b (fun x => (Cb p (f x)).1) (ICb_cms P c).1 
+  /\ 
+   cms_correct n a b (fun x => (Cb p (f x)).2) (ICb_cms P c).2.
+Proof.
+move=> aLb.
+case: c => [P1 Delta1].
+elim: p P => [[|//] _ _ H|a1 p IH [|A1 P] // H Hs Hc].
+by split; apply/const_cms_correct/I.fromZ_correct.
+case: (IH P) => [i|||IH1 IH2] //; first by apply: H i.+1.
+  by case: Hs.
+split => //.
+apply: sub_cms_correct => //.
+apply: add_cms_correct.
+  by apply/const_cms_correct/(H 0%nat).
+by apply: mul_cms_correct.
+Qed.
+
+Definition ICshaw_cms p x := 
+  let: (i1, i2) := ICb_cms p (scl2_cms x) in sub_cms i1 (mul_cms n a b i2 x).
+
+Lemma ICshaw_cms_correct p P f c :
+   F.cmp a b = Xlt ->
+   p \lcontained_in P ->
+   size p = size P ->
+   cms_correct n a b f c -> 
+   cms_correct n a b ((Cshaw p) \o f) (ICshaw_cms P c).
+Proof.
+move=> aLb Hp Hs Hc.
+have [H1 H2] := ICb_cms_correct aLb Hp Hs (scl2_cms_correct Hc).
+pose k x := (Cb p (f x *+ 2)).1 - (Cb p (f x *+ 2)).2 * f x.
+apply: (@cms_correct_ext _ _ _ _ k) => [x Hx |].
+  by rewrite /Cshaw /k /=; case: Cb.
+rewrite /k /ICshaw_cms.
+case: ICb_cms H1 H2 => I1 I2 H1 H2.
+apply: sub_cms_correct => //.
+by apply: mul_cms_correct.
+Qed.
+
+Definition IsCshaw_cms c d p x := 
+  let C := I.bnd c c in
+  let D := I.bnd d d in
+  let cm := I.inv prec (sub D C) in
+  let cm1 := scl2 cm in
+  let cm2 := mul (add C D) cm in
+  let x1 := sub_cms (mul_cms n a b (const_cms n cm1) x) (const_cms n cm2) in
+  ICshaw_cms p x1.
+
+Lemma IsCshaw_cms_correct c d p P f cm :
+   F.cmp a b = Xlt ->
+   F.cmp c d = Xlt ->
+   (forall x, x \contained_in I.bnd a b -> f x \contained_in (I.bnd c d)) ->
+   p \lcontained_in P ->
+   size p = size P ->
+   cms_correct n a b f cm -> 
+   cms_correct n a b (fun x => (CPolyab (D2R c) (D2R d) p).[f x]) (IsCshaw_cms c d P cm).
+Proof.
+move=> aLd cLd HI Hp Hs Hc.
+have F1 : (D2R c < D2R d)%R.
+  have := F.cmp_correct c d; rewrite cLd.
+  rewrite /D2R; case: F.toX; case: F.toX =>  //= r1 r2.
+  by case: Rcompare_spec.
+have F2 : D2R c != D2R d by apply/eqP; lra.
+apply: cms_correct_ext => [x Hx|].
+  rewrite horner_CPolyab //.
+pose k := (Cshaw p) \o (fun x => (Tab (D2R c) (D2R d)).[f x]).
+apply: (@cms_correct_ext _ _ _ _ k) => [x Hx|] //.
+  by rewrite /k /= Cshaw_spec //.
+apply: ICshaw_cms_correct => //.
+apply: cms_correct_ext => [x Hx|].
+  rewrite !hornerE mulNr (_ : 1 + 1 = 2%:R); last by toR; ring.
+  by rewrite [_/_]mulr_natl.
+have Fc : D2R c \contained_in I.bnd c c.
+  by rewrite /D2R /=; case: F.toX  => //= r; lra.
+have Fb : D2R d \contained_in I.bnd d d.
+  by rewrite /D2R /=; case: F.toX  => //= r; lra.
+have FF : (D2R d - D2R c)^-1 \contained_in
+             I.inv prec (sub (I.bnd d d) (I.bnd c c)).
+  rewrite /GRing.inv [_ _  (_ - _)]/= /Rinvx.
+  rewrite ifT; last by rewrite subr_eq0 eq_sym.
+  apply: inv_correct; first by apply: sub_correct.
+  case: is_zero_spec => // /eqP.
+  by rewrite subr_eq0 eq_sym (negPf F2).
+apply: sub_cms_correct.
+  apply: mul_cms_correct => //.
+  apply: const_cms_correct.
+  by apply: scl2_correct.
+apply: const_cms_correct.
+apply: mul_correct => //.
+by apply: add_correct.
+Qed.
+
+End ICb.
+
+Definition eval_cms a b (c : cms) := 
+  let: CMS P Delta := c in 
+  add (IsCshaw (I.bnd a a) (I.bnd b b) P (I.bnd a b)) Delta.
+
+Lemma eval_cms_correct n a b f c x :
+   F.cmp a b = Xlt ->
+   cms_correct n a b f c ->
+   x \contained_in I.bnd a b -> f x \contained_in eval_cms a b c.
+Proof.
+move=> aLb.
+have F1 : (D2R a < D2R b)%R.
+  have := F.cmp_correct a b; rewrite aLb.
+  rewrite /D2R; case: F.toX; case: F.toX =>  //= r1 r2.
+  by case: Rcompare_spec.
+have F2 : D2R a != D2R b by apply/eqP; lra.
+case: c => P Delta [Hs [p [H1p H2p H3p]]] Hx.
+have [d [H1d ->]] := H3p _ Hx.
+apply: add_correct => //.
+have->: (CPolyab (D2R a) (D2R b) p).[x] =  
+        (\sum_(i < n.+1) p`_i *: 'T^(D2R a, D2R b)_i).[x].
+  rewrite horner_CPolyab !horner_sum H1p.
+  apply: eq_bigr => i _.
+  rewrite [LHS]hornerE [RHS]hornerE; congr (_ * _).
+  rewrite horner_pTab; congr (_.[_]).
+  rewrite !hornerE -mulr_natl natr_INR //=.
+  have F : D2R b + - D2R a != 0.
+    have := (@subr_eq0 _ (D2R b) (D2R a)).
+    by toR => ->; rewrite eq_sym. 
+  toR; rewrite /Rinvx ifT //.
+  by field; apply/eqP.
+apply: IsCshaw_correct => //.
+  by rewrite /D2R /=; case: F.toX  => //= r; lra.
+by rewrite /D2R /=; case: F.toX  => //= r; lra.
+Qed.
+
+(* Should be something simpler *)
+Lemma eval_cms_subset n a b c d f cm x :
+   F.cmp a b = Xlt ->
+   F.cmp c d = Xlt ->
+   cms_correct n a b f cm ->
+   I.subset (eval_cms a b cm) (I.bnd c d) ->
+   x \contained_in I.bnd a b -> f x \contained_in (I.bnd c d).
+Proof.
+move=> aLb cLd Hc /I.subset_correct Hi Hx.
+have := eval_cms_correct aLb Hc Hx.
+case: eval_cms Hi => //= l u.
+have := F.cmp_correct c d; rewrite cLd.
+case: F.toX => // cr; case: F.toX => // dr.
+case El : (F.toX l) => [|xl] /=.
+  case Eu : (F.toX u) => [|xu] //=.
+    by move=> _ [_ []].
+  by move=> _ [].
+case: Rcompare_spec => //=.
+rewrite /le_lower /le_upper /=.
+case Eu : (F.toX u) => [|xu] //=.
+  by move=> _ _ [].
+by lra.
+Qed.
+
+Definition comp_cms n a b c d (c1 c2 : cms) :=
+  let: CMS P2 Delta2 := c2 in
+  let: CMS P  Delta := IsCshaw_cms n a b c d P2 c1 in
+  CMS P (add Delta Delta2).
+
+Lemma comp_cms_correct n a b c d f1 f2 c1 c2 :
+   F.cmp a b = Xlt ->
+   F.cmp c d = Xlt ->
+   I.subset (eval_cms a b c1) (I.bnd c d) ->
+   cms_correct n a b f1 c1 -> 
+   cms_correct n c d f2 c2 -> 
+   cms_correct n a b (f2 \o f1) (comp_cms n a b c d c1 c2).
+Proof.
+move=> aLb cLd.
+case: c2 => [P2 Delta2] Hs Hc1 [Sp2 [p2 [H1p2 H2p2 H3p2]]].
+have Hsp2 : size p2 = size P2 by rewrite Sp2 H1p2.
+have F x: 
+  x \contained_in I.bnd a b -> f1 x \contained_in I.bnd c d.
+  move=> Hx.
+  by apply: eval_cms_subset Hc1 Hs Hx.
+have := IsCshaw_cms_correct aLb cLd F H2p2 Hsp2 Hc1.
+rewrite /comp_cms.
+case: IsCshaw_cms => P3 Delta3 [H1P3 [p3 [H1p3 H2p3 H3p3]]].
+split => //.
+exists p3; split => // x Hx.
+have [d3 [H1d3 H2d3]] := H3p3 x Hx.
+have F1 : (f1 x) \contained_in I.bnd c d.
+  by apply: eval_cms_subset Hc1 _ _.
+have [d2 [H1d2 H2d2]] := H3p2 _ F1.
+exists (d3 + d2); split; first by apply: add_correct.
+rewrite [_ x]H2d2 H2d3; toR; ring.
 Qed.
 
 Section CMSin.

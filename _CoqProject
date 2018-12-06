@@ -10,6 +10,8 @@ CPoly_trigo.v
 sine_interpolation.v
 cos_interpolation.v
 exp_interpolation.v
+inv_interpolation.v
+ln_interpolation.v
 CPoly_interpolation.v
 Poly_exec.v
 CPoly_exec.v

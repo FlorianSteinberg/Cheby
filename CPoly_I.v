@@ -3065,13 +3065,19 @@ Notation " 'cos(x)'" := (fcos) (at level 10) : fexpr_scope .
 Notation " 'cos(' e ')'" := (fcomp fcos e) 
   (format " 'cos(' e ')' " ) : fexpr_scope.
 
-Definition I1 := I.fromZ 1.
-Definition I2 := I.fromZ 2.
-Definition prec := 20%bigZ.
-Definition n := 1%nat.
-Definition a := I.lower I1.
-Definition b := I.upper I2.
-Definition Iab := I.join I1 I2.
+(* Where we evaluate *) 
+Definition Ia := I.fromZ 10.
+Definition Ib := I.fromZ 11.
+Definition a := I.lower Ia.
+Definition b := I.upper Ib.
+Definition Iab := I.join Ia Ib.
+
+(* The precision *)
+Definition prec := 10%bigZ.
+
+(* The real degree of the polynomial *)
+Definition n := 2%nat.
+Definition ob :=   Eval vm_compute in odd n.
 Definition zn := 
   Eval vm_compute in Pos.of_nat n.+1.
 Definition z2n := 
@@ -3081,26 +3087,27 @@ Definition vn :=
 Definition v2n := 
   Eval vm_compute in I.fromZ (Zpos z2n).
 
-Time
-Definition l1 :=
-  Eval vm_compute in nseq n.+1 I1.
 
+(* List of n+1 1 *)
+Time
+Definition l1 := Eval vm_compute in nseq n.+1 I1.
+
+(* Chebyshev nodes in [-1, 1] *)
 Time
 Definition vl1 := 
   Eval vm_compute in Icheby_nodes prec n.+1 v2n.
+
+(* Values of the Chebyshev polynomials at th Chebyshev nodes *)
 Time
 Definition vl2 :=
   Eval vm_compute in ITvalues prec n.+1 l1 vl1.
+
+(* Chebyshev nodes in [a, b] *)
 Time
 Definition vl3 := 
   Eval vm_compute in Ischeby_nodes prec a b n.+1 v2n.
 
-Definition ob :=
-  Eval vm_compute in odd n.
-
-
-Check fexpr_cms_correct.
-
+(* sin *)
 Time
 Definition scms :=
   Eval vm_compute in
@@ -3109,6 +3116,7 @@ Definition scms :=
 Compute "Delta sin"%string.
 Compute Delta scms.
 
+(* cos *)
 Time
 Definition ccms :=
   Eval vm_compute in
@@ -3117,11 +3125,16 @@ Definition ccms :=
 Compute "Delta cos"%string.
 Compute Delta ccms.
 
+(* Exp *)
 Time
 Definition ecms :=
   Eval vm_compute in
   fexpr_cms prec n ob vn zn z2n a b vl1 vl2 vl3 (exp(x))%fexpr.
 
+Compute "Delta exp"%string.
+Compute Delta ecms.
+
+(* exp * cos *)
 Time
 Definition eccms :=
   Eval vm_compute in 
@@ -3130,6 +3143,8 @@ Definition eccms :=
 Compute "Delta exp * cos"%string.
 Compute Delta eccms.
 
+
+(* ln *)
 Time
 Definition lccms :=
   Eval vm_compute in 
@@ -3137,5 +3152,14 @@ Definition lccms :=
 
 Compute "Delta ln"%string.
 Compute Delta lccms.
+
+(* exp(cos(x)) *)
+Time
+Definition le1cms :=
+  Eval vm_compute in 
+  fexpr_cms prec n ob vn zn z2n a b vl1 vl2 vl3 (exp(cos(x)))%fexpr.
+
+Compute "Delta  exp(cos x)"%string.
+Compute eval_cms prec a b (le1cms) (Iab).
 
 

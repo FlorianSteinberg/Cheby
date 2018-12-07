@@ -2229,6 +2229,72 @@ Qed.
 
 End CMSin.
 
+Section CMNorm.
+
+Variable (a b : D).
+
+Definition D2I d := I.bnd d d.
+
+Definition norm_cms c :=
+  let: CMS P1 Delta1 := c in
+  let: P2 := [seq (D2I (I.midpoint i)) | i <- P1] in
+  let  c1 := CMS (Isub_Cpoly P1 P2) Delta1 in
+  CMS P2 (eval_cms a b c1 (I.bnd a b)).
+ 
+Lemma norm_cms_correct n c f :
+   F.cmp a b = Xlt ->
+   cms_correct n a b f c -> cms_correct n a b f (norm_cms c).
+Proof.
+move=> aLb.
+case: c => [] P1 Delta1 [SP1 [p [H1p H2p H3]]].
+split; first by rewrite size_map.
+exists [seq D2R (I.midpoint i) | i <- P1].
+split; first by rewrite size_map.
+  move=> i; have := H2p i.
+  have [nLi|iLn] := leqP n.+1 i.
+    by rewrite !nth_default ?size_map ?SP1 ?H1p.
+  rewrite !(nth_map I0) ?SP1 // => Hn.
+  have : exists p, contains (I.convert (nth I0 P1 i)) p.
+    by exists (Xreal p`_i).
+  move=> /(I.midpoint_correct _) [H1 H2].
+  rewrite /= /D2R H1 /=; lra.
+move=> x Hx.
+have [d [H1d H2d]] := H3 x Hx.
+set P2 := [seq _ | i <- _].
+set P3 := [seq _ | i <- _].
+exists (f x - (CPolyab (D2R a) (D2R b) P3).[x])%R.
+split; last by rewrite H2d; lra.
+rewrite H2d.
+pose g x := ((CPolyab (D2R a) (D2R b) p).[x] + d -
+             (CPolyab (D2R a) (D2R b) P3).[x])%R.
+apply: (@eval_cms_correct _ _ _ g) => //; last first.
+  rewrite /= !F.cmp_correct !F.real_correct ; case: F.toX => //=.
+    by case: F.toX => //= r; case: Rcompare_spec => //; lra.
+  move=> r; case: Rcompare_spec => //; try lra.
+  by move=> _; case: F.toX => //= r1; case: Rcompare_spec => //; lra.
+split.
+  by rewrite size_Isub_Cpoly size_map SP1 maxnn.
+exists (sub_Cpoly p P3).
+split.
+- by rewrite size_sub_Cpoly size_map H1p SP1 maxnn.
+- apply: Isub_Cpoly_correct => //.
+  - by rewrite SP1.
+  - by rewrite !size_map.
+  move=> j.
+  have [nLj|jLn] := leqP n.+1 j.
+    rewrite !nth_default ?size_map ?SP1 ?H1p //.
+    by apply: I.fromZ_correct.
+  rewrite !(nth_map I0) ?SP1 // /D2R /D2I /=.
+  by case: F.toX => //= r; lra.
+move=> x1 Hx1.
+exists (g x1 - (CPolyab (D2R a) (D2R b) (sub_Cpoly p P3)).[x1])%R.
+split; last by lra.
+rewrite /g !horner_CPolyab sub_Cpoly_spec.
+rewrite (_ : _ - _ = d)%R // 2!hornerE; toR; lra.
+Qed.
+
+End CMNorm.
+
 Section CMCos.
 
 Variable (a b : D).
@@ -3034,7 +3100,6 @@ End CPoly_interval.
 
 End CPoly_interval.
 
-
 Delimit Scope fexpr_scope with fexpr.
 
 Module V := CPoly_interval SFBI2.
@@ -3066,17 +3131,18 @@ Notation " 'cos(' e ')'" := (fcomp fcos e)
   (format " 'cos(' e ')' " ) : fexpr_scope.
 
 (* Where we evaluate *) 
-Definition Ia := I.fromZ 10.
-Definition Ib := I.fromZ 11.
+Definition Ia := I.fromZ (10).
+Definition Ib := I.fromZ (11).
 Definition a := I.lower Ia.
 Definition b := I.upper Ib.
 Definition Iab := I.join Ia Ib.
 
+
 (* The precision *)
-Definition prec := 10%bigZ.
+Definition prec := 50%bigZ.
 
 (* The real degree of the polynomial *)
-Definition n := 2%nat.
+Definition n := 100%nat.
 Definition ob :=   Eval vm_compute in odd n.
 Definition zn := 
   Eval vm_compute in Pos.of_nat n.+1.
@@ -3107,6 +3173,26 @@ Time
 Definition vl3 := 
   Eval vm_compute in Ischeby_nodes prec a b n.+1 v2n.
 
+Time
+Definition scms :=
+  Eval vm_compute in
+  fexpr_cms prec n ob vn zn z2n a b vl1 vl2 vl3 ('x)%fexpr.
+
+Compute eval_cms prec a b scms Iab.
+
+
+Time
+Definition ecms :=
+  Eval vm_compute in
+  fexpr_cms prec n ob vn zn z2n a b vl1 vl2 vl3 exp(ln(x))%fexpr.
+
+(* Compute norm_cms prec a b ecms. *)
+Compute eval_cms prec a b ecms (D2I a).
+
+Compute Delta ecms.
+
+
+
 (* sin *)
 Time
 Definition scms :=
@@ -3115,6 +3201,7 @@ Definition scms :=
 
 Compute "Delta sin"%string.
 Compute Delta scms.
+
 
 (* cos *)
 Time
@@ -3155,11 +3242,12 @@ Compute Delta lccms.
 
 (* exp(cos(x)) *)
 Time
-Definition le1cms :=
+Definition ec1cms :=
   Eval vm_compute in 
-  fexpr_cms prec n ob vn zn z2n a b vl1 vl2 vl3 (exp(cos(x)))%fexpr.
+  fexpr_cms prec n ob vn zn z2n a b vl1 vl2 vl3 ('x)%fexpr.
 
 Compute "Delta  exp(cos x)"%string.
-Compute eval_cms prec a b (le1cms) (Iab).
+Compute eval_cms prec a b (ec1cms) (Iab).
+Compute P ec1cms.
 
 

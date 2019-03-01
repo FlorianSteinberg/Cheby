@@ -148,6 +148,7 @@ Section ExtraDef.
 Definition I1 := I.fromZ 1.
 Definition I2 := I.fromZ 2.
 Definition I01 := I.bnd (F.fromZ 0) (F.fromZ 1).
+Definition Im11 := I.bnd (F.fromZ (-1)) (F.fromZ 1).
 
 Lemma I01_correct x z I :
    (0 <= x <= z)%R -> z \contained_in I -> x \contained_in I.mul prec I01 I.
@@ -1919,7 +1920,8 @@ Qed.
 
 End ICb.
 
-Definition eval_cms a b (c : cms) I := 
+
+Definition eval_shaw_cms a b (c : cms) I := 
   let: CMS P Delta := c in 
   add (IsCshaw (I.bnd a a) (I.bnd b b) P I) Delta.
 
@@ -1932,11 +1934,11 @@ move=> r; case: Rcompare_spec => //; lra.
 (move=> r1 r2; do 2 case: Rcompare_spec)=> //; lra.
 Qed.
 
-Lemma eval_cms_correct n a b f c i x :
+Lemma eval_shaw_cms_correct n a b f c i x :
    F.cmp a b = Xlt ->
    cms_correct n a b f c ->
    I.subset i (I.bnd a b) ->
-   x \contained_in i -> f x \contained_in eval_cms a b c i.
+   x \contained_in i -> f x \contained_in eval_shaw_cms a b c i.
 Proof.
 move=> aLb.
 have F1 : (D2R a < D2R b)%R.
@@ -1952,6 +1954,7 @@ have Hy : x \contained_in I.bnd a b.
      try (by move=> r1 r2; case: Rcompare_spec => //; lra);
      try (by move=> r1 r2 r3; case: Rcompare_spec => //; lra);
      try (by move=> r1 r2 r3 r4; do! case: Rcompare_spec => //; lra).
+Search _ (_ \contained_in _) (_ <= _)%R.
 have [d [H1d ->]] := H3p _ Hy.
 apply: add_correct => //.
 have->: (CPolyab (D2R a) (D2R b) p).[x] =  
@@ -1969,6 +1972,154 @@ have->: (CPolyab (D2R a) (D2R b) p).[x] =
 apply: IsCshaw_correct => //.
   by rewrite /D2R /=; case: F.toX  => //= r; lra.
 by rewrite /D2R /=; case: F.toX  => //= r; lra.
+Qed.
+
+(* Should be something simpler *)
+Lemma eval_shaw_cms_subset n a b c d f cm x :
+   F.cmp a b = Xlt ->
+   F.cmp c d = Xlt ->
+   cms_correct n a b f cm ->
+   I.subset (eval_shaw_cms a b cm (I.bnd a b)) (I.bnd c d) ->
+   x \contained_in I.bnd a b -> f x \contained_in (I.bnd c d).
+Proof.
+move=> aLb cLd Hc /I.subset_correct Hi Hx.
+have := eval_shaw_cms_correct aLb Hc (isubset_refl _) Hx.
+case: eval_shaw_cms Hi => //= l u.
+have := F.cmp_correct c d; rewrite cLd.
+case: F.toX => // cr; case: F.toX => // dr.
+case El : (F.toX l) => [|xl] /=.
+  case Eu : (F.toX u) => [|xu] //=.
+    by move=> _ [_ []].
+  by move=> _ [].
+case: Rcompare_spec => //=.
+rewrite /le_lower /le_upper /=.
+case Eu : (F.toX u) => [|xu] //=.
+  by move=> _ _ [].
+by lra.
+Qed.
+
+Definition eval_range_cms (c : cms) := 
+  let: CMS P Delta := c in 
+  add (if P is p :: P1 then
+        foldl (fun x y => add x (mul y Im11)) p P1 else I0)
+  Delta.
+
+Lemma eval_range_cms_correct n a b f c i x :
+   F.cmp a b = Xlt ->
+   cms_correct n a b f c ->
+   I.subset i (I.bnd a b) ->
+   x \contained_in i -> f x \contained_in eval_range_cms c.
+Proof.
+move=> aLb.
+have F1 : (D2R a < D2R b)%R.
+  have := F.cmp_correct a b; rewrite aLb.
+  rewrite /D2R; case: F.toX; case: F.toX =>  //= r1 r2.
+  by case: Rcompare_spec.
+have F2 : D2R a != D2R b by apply/eqP; lra.
+case: c => P Delta [Hs [p [H1p H2p H3p]]] Hi Hx.
+have Hy : x \contained_in I.bnd a b.
+  case: i Hi Hx; rewrite //= => l u.
+  rewrite !F.cmp_correct /= !F.real_correct.
+  (do 4! case: F.toX => //=);
+     try (by move=> r1 r2; case: Rcompare_spec => //; lra);
+     try (by move=> r1 r2 r3; case: Rcompare_spec => //; lra);
+     try (by move=> r1 r2 r3 r4; do! case: Rcompare_spec => //; lra).
+have [d [H1d ->]] := H3p _ Hy.
+rewrite /=.
+apply: add_correct => //.
+have->: (CPolyab (D2R a) (D2R b) p).[x] =  
+        (\sum_(i < n.+1) p`_i *: 'T^(D2R a, D2R b)_i).[x].
+  rewrite horner_CPolyab !horner_sum H1p.
+  apply: eq_bigr => j _.
+  rewrite [LHS]hornerE [RHS]hornerE; congr (_ * _).
+  rewrite horner_pTab; congr (_.[_]).
+  rewrite !hornerE -mulr_natl natr_INR //=.
+  have F : D2R b + - D2R a != 0.
+    have := (@subr_eq0 _ (D2R b) (D2R a)).
+    by toR => ->; rewrite eq_sym. 
+  toR; rewrite /Rinvx ifT //.
+  by field; apply/eqP.
+elim: n P Hs p H1p {H3p}H2p => [[|P []]  // _ [|p []] //= _ /(_ 0%N) /= pIP|].
+  by rewrite big_ord1 /= /pTab pT0 comp_polyC !hornerE.
+move=> n IH [|p1P [|p2 P]] // sP [|p1p p]  // sp pIp.
+rewrite [_ :: P]lastI big_ord_recr /=.
+rewrite (eq_bigr (fun i : 'I_n.+1 => 
+      (seq.belast p1p  p)`_i *: 'T^(D2R a,D2R b)_i)); last first.
+  move=> i1 _.
+  rewrite lastI nth_rcons size_belast ifT //.
+  by have := ltn_ord i1; rewrite -ltnS -sp.  
+rewrite foldl_rcons.
+rewrite hornerE.
+have sPn : size P = n.
+ by rewrite /= in sP; case: sP => ->.
+have spn : size p = n.+1.
+ by rewrite /= in sp; case: sp => ->.
+apply: add_correct; last first.
+  rewrite hornerE.
+  apply: mul_correct.
+    have /= := pIp n.+1.
+    by rewrite (last_nth I0) sPn.
+rewrite I.bnd_correct /= !F.fromZ_correct.
+  rewrite horner_comp -CPoly_trigo.pT_Cheby.
+    apply: COS_bound.
+  apply: Tab_bound => //.
+  move: Hy aLb.
+  rewrite F.cmp_correct.
+  rewrite I.bnd_correct /= /D2R.
+  by do 2 case: F.toX => //=.
+apply:  (IH (p1P :: (seq.belast p2 P))) => //=.
+- by rewrite size_belast sPn.
+- by rewrite size_belast spn.
+move=> j /=.
+case: (leqP n.+1 j) => [nLj|jLn].
+  rewrite !nth_default //.
+  - rewrite I.bnd_correct /= F.fromZ_correct; toR; lra.
+  - by rewrite size_belast spn.
+  by rewrite /= size_belast sPn.
+have /= := pIp j.
+rewrite [_ :: p]lastI [_ :: P]lastI /=.
+rewrite nth_rcons size_belast spn jLn.
+Search _ rcons (_ :: _).
+by rewrite -rcons_cons nth_rcons /= size_belast sPn jLn.
+Qed.
+
+(* Should be something simpler *)
+Lemma eval_range_cms_subset n a b c d f cm x :
+   F.cmp a b = Xlt ->
+   F.cmp c d = Xlt ->
+   cms_correct n a b f cm ->
+   I.subset (eval_range_cms cm) (I.bnd c d) ->
+   x \contained_in I.bnd a b -> f x \contained_in (I.bnd c d).
+Proof.
+move=> aLb cLd Hc /I.subset_correct Hi Hx.
+have := eval_range_cms_correct aLb Hc (isubset_refl _) Hx.
+case: eval_range_cms Hi => //= l u.
+have := F.cmp_correct c d; rewrite cLd.
+case: F.toX => // cr; case: F.toX => //= dr.
+case El : (F.toX l) => [|xl] /=.
+  case Eu : (F.toX u) => [|xu] //=.
+    by move=> _ [_ []].
+  by move=> _ [].
+case: Rcompare_spec => //=.
+rewrite /le_lower /le_upper /=.
+case Eu : (F.toX u) => [|xu] //=.
+  by move=> _ _ [].
+by lra.
+Qed.
+
+Definition eval_cms a b (c : cms) I := 
+  I.meet (eval_shaw_cms a b c I) (eval_range_cms c).
+
+Lemma eval_cms_correct n a b f c i x :
+   F.cmp a b = Xlt ->
+   cms_correct n a b f c ->
+   I.subset i (I.bnd a b) ->
+   x \contained_in i -> f x \contained_in eval_cms a b c i.
+Proof.
+move=> aLb cmsC iSab xIi.
+apply: I.meet_correct.
+  apply: eval_shaw_cms_correct cmsC _ _ => //.
+by apply: eval_range_cms_correct cmsC iSab _.
 Qed.
 
 (* Should be something simpler *)
@@ -2003,7 +2154,7 @@ Definition comp_cms n a b c d (c1 c2 : cms) :=
 Lemma comp_cms_correct n a b c d f1 f2 c1 c2 :
    F.cmp a b = Xlt ->
    F.cmp c d = Xlt ->
-   I.subset (eval_cms a b c1 (I.bnd a b)) (I.bnd c d) ->
+   I.subset (eval_range_cms c1) (I.bnd c d) ->
    cms_correct n a b f1 c1 -> 
    cms_correct n c d f2 c2 -> 
    cms_correct n a b (f2 \o f1) (comp_cms n a b c d c1 c2).
@@ -2014,7 +2165,7 @@ have Hsp2 : size p2 = size P2 by rewrite Sp2 H1p2.
 have F x: 
   x \contained_in I.bnd a b -> f1 x \contained_in I.bnd c d.
   move=> Hx.
-  by apply: eval_cms_subset Hc1 Hs Hx.
+  by apply: eval_range_cms_subset Hc1 Hs Hx.
 have := IsCshaw_cms_correct aLb cLd F H2p2 Hsp2 Hc1.
 rewrite /comp_cms.
 case: IsCshaw_cms => P3 Delta3 [H1P3 [p3 [H1p3 H2p3 H3p3]]].
@@ -2022,7 +2173,7 @@ split => //.
 exists p3; split => // x Hx.
 have [d3 [H1d3 H2d3]] := H3p3 x Hx.
 have F1 : (f1 x) \contained_in I.bnd c d.
-  by apply: eval_cms_subset Hc1 _ _.
+  by apply: eval_range_cms_subset Hc1 _ _.
 have [d2 [H1d2 H2d2]] := H3p2 _ F1.
 exists (d3 + d2); split; first by apply: add_correct.
 rewrite [_ x]H2d2 H2d3; toR; ring.
@@ -2239,7 +2390,7 @@ Definition norm_cms c :=
   let: CMS P1 Delta1 := c in
   let: P2 := [seq (D2I (I.midpoint i)) | i <- P1] in
   let  c1 := CMS (Isub_Cpoly P1 P2) Delta1 in
-  CMS P2 (eval_cms a b c1 (I.bnd a b)).
+  CMS P2 (eval_range_cms c1).
  
 Lemma norm_cms_correct n c f :
    F.cmp a b = Xlt ->
@@ -2267,11 +2418,8 @@ split; last by rewrite H2d; lra.
 rewrite H2d.
 pose g x := ((CPolyab (D2R a) (D2R b) p).[x] + d -
              (CPolyab (D2R a) (D2R b) P3).[x])%R.
-apply: (@eval_cms_correct _ _ _ g) => //; last first.
-  rewrite /= !F.cmp_correct !F.real_correct ; case: F.toX => //=.
-    by case: F.toX => //= r; case: Rcompare_spec => //; lra.
-  move=> r; case: Rcompare_spec => //; try lra.
-  by move=> _; case: F.toX => //= r1; case: Rcompare_spec => //; lra.
+apply: (@eval_range_cms_correct _ _ _ g) aLb _ _ Hx => //; last first.
+  by apply: isubset_refl.
 split.
   by rewrite size_Isub_Cpoly size_map SP1 maxnn.
 exists (sub_Cpoly p P3).
@@ -2796,7 +2944,7 @@ Variable (a b : D).
 (*****************************************************************************)
 
 Definition inv_cms n vn vl2 vl1 f_cms :=
-  let v := eval_cms a b f_cms (I.bnd a b) in
+  let v := eval_range_cms f_cms in
   if I.bounded v then  
     let c := I.lower v in 
     let d := I.upper v in
@@ -2827,11 +2975,11 @@ move=> aLb vnE v2nE vl2E vl1E Hf.
 rewrite /inv_cms.
 case E : I.bounded; last by apply: error_cms_correct.
 case E1 : F.cmp; try by apply: error_cms_correct.
-  pose k := (/(D2R (I.lower (eval_cms a b f_cms (I.bnd a b)))))%R.
+  pose k := (/(D2R (I.lower (eval_range_cms f_cms))))%R.
   apply: (@cms_correct_ext _ _ _ _ (fun _ => k)) => [x Hx|].
-    have := eval_cms_correct aLb Hf (isubset_refl _) Hx.
+    have := eval_range_cms_correct aLb Hf (isubset_refl _) Hx.
     rewrite /k.
-    case: eval_cms E E1 => //= u l.
+    case: eval_range_cms E E1 => //= u l.
     rewrite /D2R !F.real_correct F.cmp_correct; case: F.toX => [|xu] //=.
     case: F.toX => [|xl _] //.
     case: Rcompare_spec => // -> _ H.
@@ -2850,7 +2998,7 @@ case E1 : F.cmp; try by apply: error_cms_correct.
   move: E1 E2; rewrite F.cmp_correct; case: F.toX => //= r.
   case: (Rcompare_spec r 0) => //.
   apply: comp_cms_correct => //.
-  case: eval_cms E E1 => //= l u.
+  case: eval_range_cms E E1 => //= l u.
   rewrite !F.cmp_correct !F.real_correct.
   case: F.toX => // r; case: F.toX => //= r1.
   do 3 case: Rcompare_spec => //; lra.
@@ -3000,7 +3148,7 @@ match e with
             (fexpr_cms n b1 vn zn z2n a b vl1 vl2 vl3 e2)
 | fcomp e1 e2 => 
     let c2 := fexpr_cms n b1 vn zn z2n a b vl1 vl2 vl3 e2 in
-    let v := eval_cms a b c2 (I.bnd a b) in
+    let v := eval_range_cms c2 in
     if I.bounded v then  
       let c := I.lower v in 
       let d := I.upper v in
@@ -3060,16 +3208,16 @@ elim: e a b vl3 aLb vl3E.
     apply: cms_correct_ext.
       move=> x Hx.
       have F1 : fexpr_eval e2 x \contained_in 
-                    (eval_cms a b (fexpr_cms n.+1 b1 vn zn z2n a
-                                    b vl1 vl2 vl3 e2) (I.bnd a b)).
-        apply: eval_cms_correct => //.
+                    (eval_range_cms (fexpr_cms n.+1 b1 vn zn z2n a
+                                    b vl1 vl2 vl3 e2)).
+        apply: eval_range_cms_correct (aLb) _ _ Hx => //.
         apply: IH2 => //.
         rewrite /= !F.cmp_correct !F.real_correct.
         (do 2 case: F.toX) => //= r; case: Rcompare_spec => //; try lra.
         by move=> _ r1; case: Rcompare_spec => //; lra.
       rewrite /= (_ : fexpr_eval e2 x = D2R u); first by apply: refl_equal.
       rewrite {}/u /D2R.
-      case: eval_cms E E1 F1 => //= l u.
+      case: eval_range_cms E E1 F1 => //= l u.
       rewrite !F.real_correct !F.cmp_correct.
       by case: F.toX => // r1; case: F.toX => //= r2; 
          case: Rcompare_spec => //; lra.
@@ -3077,7 +3225,7 @@ elim: e a b vl3 aLb vl3E.
     apply: fexpr_ieval_correct.
     by rewrite /= /D2R; case: F.toX => //= r; lra.
   apply: comp_cms_correct => //.
-  - case: eval_cms E => //= [] l1 u1.
+  - case: eval_range_cms E => //= [] l1 u1.
     rewrite !F.real_correct !F.cmp_correct.
     by (do 2 case: F.toX) => //= r1 r2; do 2 case: Rcompare_spec => //; lra.
   - by apply: IH2.

@@ -24,7 +24,7 @@ Fact pT_key : unit. Proof. by []. Qed.
 Definition pT := locked_with pT_key pT_expanded_def.
 Canonical pT_unlockable := [unlockable fun pT].
 
-Notation "'T_ n" := (pT n) 
+Notation "'T_ n" := (pT n)
   (at level 3, n at level 2, format "''T_' n ").
 
 Lemma pT0 : 'T_0 = 1 :> {poly R}.
@@ -38,7 +38,7 @@ Qed.
 Lemma pTSS : forall n, 'T_n.+2 = 'X *+2 * 'T_n.+1 - 'T_n :> {poly R}.
 Proof. by move => n; rewrite unlock. Qed.
 
-Notation "'T_ n" := (pT n) 
+Notation "'T_ n" := (pT n)
   (at level 3, n at level 2, format "''T_' n ").
 
 Lemma horner1_pT n : ('T_n).[1: R] = 1.
@@ -64,7 +64,7 @@ Qed.
 
 Lemma commr_pT p n : GRing.comm p ('T_n).
 Proof.
-elim: n {-2}n (leqnn n)=> [[] // _ |n IH m]. 
+elim: n {-2}n (leqnn n)=> [[] // _ |n IH m].
   by rewrite pT0; apply: commr1.
 rewrite leq_eqVlt; case/orP=> [/eqP->|Hm]; last first.
   by apply: IH; rewrite -ltnS.
@@ -80,7 +80,7 @@ Definition pU := fix pU_rec (n : nat) {struct n} : {poly R} :=
     else 'X *+ 2
   else 1.
 
-Notation "'U_ n" := (pU n) 
+Notation "'U_ n" := (pU n)
   (at level 3, n at level 2, format "''U_' n ").
 
 Lemma pU0 : 'U_0 = 1.
@@ -165,7 +165,7 @@ move=> n; rewrite leq_eqVlt; case/orP=> [/eqP->|Hn]; last first.
   by apply: IH; rewrite -ltnS.
 case: m IH=> [_ i|m IH i].
   by rewrite coefMn coefX; case: i=> [|[|i]] //=;
-     rewrite ?mul0rn //= -mulr_natl mulr1 mul1r. 
+     rewrite ?mul0rn //= -mulr_natl mulr1 mul1r.
 rewrite pUSS coefB mulrnAl coefMn coefXM !IH //.
 case: i=> [|i].
   rewrite !addn0 mul0rn sub0r subn0 /=; case O1: (odd _).
@@ -182,7 +182,7 @@ rewrite ltnS.
 move: Hm; rewrite leq_eqVlt; case/orP=> [/eqP->|].
   by rewrite subnn leqnSn !mul1r !bin0 !muln1 subr0 -mulr_natl -natrM.
 rewrite ltnS leq_eqVlt; case/orP; [move/eqP->|move=>Him].
-  by rewrite leqnn subSnn !subn0 expr0 !bin0 
+  by rewrite leqnn subSnn !subn0 expr0 !bin0
              subr0 !mul1r !muln1 -mulr_natl -natrM expnS.
 rewrite leqNgt Him /= subSn; last by exact: ltnW.
 have->: ((m - i).+1./2 = (m - i)./2.+1).
@@ -197,7 +197,7 @@ set u := (m - i)./2.
 rewrite !subSS subSn.
   rewrite binS mulnDr mulrnDr mulrDr; congr (_ + _).
     by rewrite -mulrnAr -mulr_natl -natrM mulnA expnS.
-  by rewrite -mulN1r mulrA exprS. 
+  by rewrite -mulN1r mulrA exprS.
 apply: (leq_trans (half_leq (leq_subr i m))).
 by rewrite -{2}[m]odd_double_half -addnn addnA leq_addl.
 Qed.
@@ -214,7 +214,7 @@ Lemma coef_pT n i :
   ('T_n)`_i =
     if (n < i)%N || odd (n + i) then 0 : R else
     if n is 0 then 1 else
-    let k := (n - i)./2 in 
+    let k := (n - i)./2 in
     (-1) ^+ k * ((2^i * n * 'C(n-k,k)) %/ (n-k).*2)%:R.
 Proof.
 case: n => [|n]; first by rewrite pT0 coefC; case: i.
@@ -273,7 +273,7 @@ Qed.
 
 Lemma coef_pTK  n i :
    ~~ odd (n + i) -> (i <= n)%N ->
-  let k := (n - i)./2 in 
+  let k := (n - i)./2 in
   ('T_n)`_i *+ (n-k).*2 = (-1)^+k * (2^i * n * 'C(n-k,k))%:R :> R.
 Proof.
 move=> O1 L1; rewrite coef_pT; move/negPf: (O1)->.
@@ -288,7 +288,7 @@ case: i L1 O1 => [|i L1 O1].
   by rewrite -F mul1n mulKn //.
 set u := (n.+1 -i.+1)./2.
 have F: (n.+1 - i.+1 = u.*2)%N.
-  by rewrite-{1}[(n.+1 - i.+1)%N]odd_double_half 
+  by rewrite-{1}[(n.+1 - i.+1)%N]odd_double_half
              /u odd_sub // -odd_add (negPf O1).
 have->: (n.+1 - u = i.+1 + u)%N.
   rewrite -{1}(subnK L1) [(_ + i.+1)%N]addnC.
@@ -336,7 +336,7 @@ by rewrite opprB addrC addrA IH [_+1]addrC addrK.
 Qed.
 End Tcheby.
 
-Notation "'T_ n " := (pT _ n) 
+Notation "'T_ n " := (pT _ n)
   (at level 3, n at level 2, format "''T_' n").
 
 Lemma induc2 (P: nat -> Prop):
@@ -534,7 +534,7 @@ Qed.
 Lemma pT_mulX_weak n :  'X *+ 2 * 'T_n.+1 = 'T_n + 'T_n.+2 :> {poly R}.
 Proof. by rewrite pTSS addrCA subrr rm0. Qed.
 
-Lemma pT_mulX n : 
+Lemma pT_mulX n :
   (2%:R : R) \is a GRing.unit -> 'X * 'T_n.+1 = 2%:R ^-1 *: 'T_n + 2%:R ^-1 *: 'T_n.+2 :> {poly R}.
 Proof.
 move => I2; rewrite pTSS scalerDr addrCA scalerN subrr addr0.
@@ -569,20 +569,20 @@ Definition pTab a b n := 'T_n \Po (Tab a b).
 Notation "''T^(' a ',' b ')_' n" := (pTab a b n)
   (at level 3, n at level 2, format "''T^(' a ',' b ')_' n").
 
-Lemma size_pTab n a b :  
+Lemma size_pTab n a b :
    2%:R != 0 :> R -> a != b -> size ('T^(a,b)_n) = n.+1.
 Proof.
 move=> H aDb.
 have D :  b + - a != 0 by rewrite subr_eq0 eq_sym.
 have E : GRing.lreg ((1 + 1) / (b - a)).
   by apply/GRing.lregM; apply/lregP => //; apply: invr_neq0.
-rewrite size_comp_poly2 ?size_pT //; first by apply/lregP. 
+rewrite size_comp_poly2 ?size_pT //; first by apply/lregP.
 rewrite /Tab size_addl lreg_size ?size_polyX //.
 by rewrite size_polyC; case: (_ == _).
 Qed.
 
 (* The condition GRing.lreg (2%:R : R) is unnecessary but makes live easier *)
-Lemma coef_pTab n a b : 
+Lemma coef_pTab n a b :
   2%:R != 0 :> R -> 'T^(a, b)_n`_n = (2^n.*2.-1)%:R /(b - a)^+n.
 Proof.
 move=> H.
@@ -650,7 +650,7 @@ Qed.
 
 Lemma CPolyabD a b p q :
   size p = size q ->
-  (CPolyab a b [seq i.1 + i.2 | i <- (zip p q)] = 
+  (CPolyab a b [seq i.1 + i.2 | i <- (zip p q)] =
      CPolyab a b p + CPolyab a b q).
 Proof.
 move=> Hs.
@@ -661,7 +661,7 @@ Qed.
 
 Lemma CPolyabB a b p q :
   size p = size q ->
-  (CPolyab a b [seq i.1 - i.2 | i <- (zip p q)] = 
+  (CPolyab a b [seq i.1 - i.2 | i <- (zip p q)] =
      CPolyab a b p - CPolyab a b q).
 Proof.
 move=> Hs.
@@ -674,15 +674,3 @@ End pTab.
 
 Notation "''T^(' a ',' b ')_' n" := (pTab a b n)
   (at level 3, n at level 2, format "''T^(' a ',' b ')_' n").
-
-
-
-
-
-
-
-
-
-
-
-

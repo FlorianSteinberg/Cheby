@@ -1490,6 +1490,147 @@ rewrite horner_CPolyab sub_Cpoly_spec hornerD hornerN ?H1p1 ?H1p2 //.
 rewrite -!horner_CPolyab H2d1 H2d2 !hornerE /=; toR; lra.
 Qed.
 
+Definition eval_range_poly (P : seq ID) := 
+  if P is p :: P1 then
+        foldl (fun x y => add x (mul y Im11)) p P1 else I0.
+
+Lemma eval_range_poly_correct n p P x (a b : D) :
+       (F.cmp a b = Xlt)%R ->
+       size p = n ->
+       size P = n ->
+       p \lcontained_in P ->
+       x \contained_in (I.bnd a b)  ->
+       (\sum_(i < n) p`_i *: 'T^(D2R a, D2R b)_i).[x] \contained_in
+      eval_range_poly P.
+Proof.
+move=> aLb sp sP pIP xIab.
+have F1 : (D2R a < D2R b)%R.
+  have := F.cmp_correct a b; rewrite aLb.
+  rewrite /D2R; case: F.toX; case: F.toX =>  //= r1 r2.
+  by case: Rcompare_spec.
+rewrite /eval_range_poly.
+case: n P p sP sp pIP => [/= [] // [] // _ _ _ /=|].
+  by rewrite F.fromZ_correct /= big_ord0 hornerE; toR; lra.
+elim=> [ [//|p1 [|]//] [//|p1p [|]// _ _ pIP]|
+   n IH [|p1 [|p2 P]] // [|p1p [|p2p p]]// [] sP [] sp pIP].
+  rewrite /CPolyab big_ord1 /= !hornerE horner_comp pT0 hornerE mulr1.
+  by apply: (pIP 0%N).
+rewrite [_ :: P]lastI big_ord_recr /=.
+rewrite (eq_bigr (fun i : 'I_n.+1 => 
+      (p1p :: seq.belast p2p p)`_i *: 'T^(D2R a,D2R b)_i)); last first.
+  move=> i1 _.
+  rewrite lastI nth_rcons size_belast ifT //=.
+  by have := ltn_ord i1; rewrite -{2}sp. 
+rewrite foldl_rcons.
+rewrite hornerE.
+apply: add_correct; last first.
+  rewrite hornerE.
+  apply: mul_correct.
+    have /= := pIP n.+1.
+    by rewrite (last_nth I0) sP.
+  rewrite I.bnd_correct /= !F.fromZ_correct.
+  rewrite horner_comp -CPoly_trigo.pT_Cheby.
+    apply: COS_bound.
+  apply: Tab_bound => //.
+  move: xIab aLb.
+  rewrite F.cmp_correct I.bnd_correct /= /D2R.
+  by do 2 case: F.toX.
+apply:  (IH (p1 :: (seq.belast p2 P))) => //=.
+- by rewrite size_belast sP.
+- by rewrite size_belast sp.
+move=> j /=.
+case: (leqP n.+1 j) => [nLj|jLn].
+  rewrite !nth_default //.
+  - rewrite I.bnd_correct /= F.fromZ_correct; toR; lra.
+  - by rewrite /= size_belast sp.
+  by rewrite /= size_belast sP.
+have := pIP j.
+rewrite /= [p2p :: p]lastI [p2 :: P]lastI /=.
+by rewrite -!rcons_cons !nth_rcons /= !size_belast sp sP jLn.
+Qed.
+
+Definition eval_range_cms (c : cms) := 
+  let: CMS P Delta := c in 
+  add (eval_range_poly P) Delta.
+
+Lemma CPolyabE n (a b : R) p x (sp : size p = n) :
+   a != b ->
+   (CPolyab a b p).[x] =  
+        (\sum_(i < n) p`_i *: 'T^(a,b)_i).[x].
+Proof.
+move=> aDb.
+rewrite horner_CPolyab !horner_sum /= sp.
+apply: eq_bigr => j _.
+rewrite [LHS]hornerE [RHS]hornerE; congr (_ * _).
+rewrite horner_pTab; congr (_.[_]).
+rewrite !hornerE -mulr_natl natr_INR //=.
+have F : b + - a != 0.
+  have := (@subr_eq0 _ b a).
+  by toR => ->; rewrite eq_sym. 
+toR; rewrite /Rinvx ifT //.
+by field; apply/eqP.
+Qed.
+
+Lemma eval_range_cms_correct n a b f c i x :
+   F.cmp a b = Xlt ->
+   cms_correct n a b f c ->
+   I.subset i (I.bnd a b) ->
+   x \contained_in i -> f x \contained_in eval_range_cms c.
+Proof.
+move=> aLb.
+have F1 : (D2R a < D2R b)%R.
+  have := F.cmp_correct a b; rewrite aLb.
+  rewrite /D2R; case: F.toX; case: F.toX =>  //= r1 r2.
+  by case: Rcompare_spec.
+have F2 : D2R a != D2R b by apply/eqP; lra.
+case: c => P Delta [Hs [p [H1p H2p H3p]]] Hi Hx.
+have Hy : x \contained_in I.bnd a b.
+  case: i Hi Hx; rewrite //= => l u.
+  rewrite !F.cmp_correct /= !F.real_correct.
+  (do 4! case: F.toX => //=);
+     try (by move=> r1 r2; case: Rcompare_spec => //; lra);
+     try (by move=> r1 r2 r3; case: Rcompare_spec => //; lra);
+     try (by move=> r1 r2 r3 r4; do! case: Rcompare_spec => //; lra).
+have [d [H1d ->]] := H3p _ Hy.
+rewrite /=.
+apply: add_correct => //.
+rewrite (CPolyabE _ H1p) //.
+by apply: eval_range_poly_correct.
+Qed.
+
+Lemma isubset_refl i : I.subset i i.
+Proof.
+case: i => //= l u; rewrite !F.cmp_correct !F.real_correct /=.
+do 2 case: F.toX => //=.
+move=> r; case: Rcompare_spec => //; lra.
+move=> r; case: Rcompare_spec => //; lra.
+(move=> r1 r2; do 2 case: Rcompare_spec)=> //; lra.
+Qed.
+
+(* Should be something simpler *)
+Lemma eval_range_cms_subset n a b c d f cm x :
+   F.cmp a b = Xlt ->
+   F.cmp c d = Xlt ->
+   cms_correct n a b f cm ->
+   I.subset (eval_range_cms cm) (I.bnd c d) ->
+   x \contained_in I.bnd a b -> f x \contained_in (I.bnd c d).
+Proof.
+move=> aLb cLd Hc /I.subset_correct Hi Hx.
+have := eval_range_cms_correct aLb Hc (isubset_refl _) Hx.
+case: eval_range_cms Hi => //= l u.
+have := F.cmp_correct c d; rewrite cLd.
+case: F.toX => // cr; case: F.toX => //= dr.
+case El : (F.toX l) => [|xl] /=.
+  case Eu : (F.toX u) => [|xu] //=.
+    by move=> _ [_ []].
+  by move=> _ [].
+case: Rcompare_spec => //=.
+rewrite /le_lower /le_upper /=.
+case Eu : (F.toX u) => [|xu] //=.
+  by move=> _ _ [].
+by lra.
+Qed.
+
 (*****************************************************************************)
 (* Multiplication Chebyshev model                                            *)
 (*****************************************************************************)
@@ -1696,9 +1837,9 @@ Definition mul_cms n a b (c1 c2 : cms) :=
   let Ia := I.bnd a a in
   let Ib := I.bnd b b in
   let Iab := I.bnd a b in
-  let Delta3 := IsCshaw Ia Ib P1 Iab in
-  let Delta4 := IsCshaw Ia Ib P2 Iab in
-  let Delta5 := IsCshaw Ia Ib P5 Iab in
+  let Delta3 := eval_range_poly P1  in
+  let Delta4 := eval_range_poly P2  in
+  let Delta5 := eval_range_poly P5  in
   CMS P4 (add Delta5 (add (mul Delta1 Delta4)
                      (add (mul Delta2 Delta3)
                           (mul Delta1 Delta2)))).
@@ -1743,7 +1884,7 @@ exists ((Cp sp.2).[x] + d1 * (Cp p2).[x] +
 split.
   rewrite -!addrA.
   apply: add_correct.
-    apply: IsCshaw_correct => //.
+    apply: eval_range_poly_correct => //.
       rewrite -[P5]/(P4, P5).2 -E (@size_Isplit_Cpoly2 n.+1 p) //.
       by rewrite (@size_Imul_Cpoly p1 p2) ?Sp1 ?Sp2.
     rewrite -[P5]/(P4, P5).2 -E.
@@ -1752,10 +1893,10 @@ split.
     by apply: Imul_Cpoly_correct; rewrite ?Sp1 ?Sp2.
   apply: add_correct.
     apply: mul_correct => //.
-    by apply: IsCshaw_correct; rewrite ?Sp1 ?Sp2.
+    by apply: eval_range_poly_correct; rewrite ?Sp1 ?Sp2.
   apply: add_correct.
     apply: mul_correct => //.
-    by apply: IsCshaw_correct; rewrite ?Sp1 ?Sp2.
+    by apply: eval_range_poly_correct; rewrite ?Sp1 ?Sp2.
   by apply: mul_correct.
 rewrite /Cp H2d1 H2d2 /p /sp -addrA.
 set x1 := _.[_]; set x2 := _.[_].
@@ -1925,15 +2066,6 @@ Definition eval_shaw_cms a b (c : cms) I :=
   let: CMS P Delta := c in 
   add (IsCshaw (I.bnd a a) (I.bnd b b) P I) Delta.
 
-Lemma isubset_refl i : I.subset i i.
-Proof.
-case: i => //= l u; rewrite !F.cmp_correct !F.real_correct /=.
-do 2 case: F.toX => //=.
-move=> r; case: Rcompare_spec => //; lra.
-move=> r; case: Rcompare_spec => //; lra.
-(move=> r1 r2; do 2 case: Rcompare_spec)=> //; lra.
-Qed.
-
 Lemma eval_shaw_cms_correct n a b f c i x :
    F.cmp a b = Xlt ->
    cms_correct n a b f c ->
@@ -1954,7 +2086,6 @@ have Hy : x \contained_in I.bnd a b.
      try (by move=> r1 r2; case: Rcompare_spec => //; lra);
      try (by move=> r1 r2 r3; case: Rcompare_spec => //; lra);
      try (by move=> r1 r2 r3 r4; do! case: Rcompare_spec => //; lra).
-Search _ (_ \contained_in _) (_ <= _)%R.
 have [d [H1d ->]] := H3p _ Hy.
 apply: add_correct => //.
 have->: (CPolyab (D2R a) (D2R b) p).[x] =  
@@ -1998,114 +2129,6 @@ case Eu : (F.toX u) => [|xu] //=.
 by lra.
 Qed.
 
-Definition eval_range_cms (c : cms) := 
-  let: CMS P Delta := c in 
-  add (if P is p :: P1 then
-        foldl (fun x y => add x (mul y Im11)) p P1 else I0)
-  Delta.
-
-Lemma eval_range_cms_correct n a b f c i x :
-   F.cmp a b = Xlt ->
-   cms_correct n a b f c ->
-   I.subset i (I.bnd a b) ->
-   x \contained_in i -> f x \contained_in eval_range_cms c.
-Proof.
-move=> aLb.
-have F1 : (D2R a < D2R b)%R.
-  have := F.cmp_correct a b; rewrite aLb.
-  rewrite /D2R; case: F.toX; case: F.toX =>  //= r1 r2.
-  by case: Rcompare_spec.
-have F2 : D2R a != D2R b by apply/eqP; lra.
-case: c => P Delta [Hs [p [H1p H2p H3p]]] Hi Hx.
-have Hy : x \contained_in I.bnd a b.
-  case: i Hi Hx; rewrite //= => l u.
-  rewrite !F.cmp_correct /= !F.real_correct.
-  (do 4! case: F.toX => //=);
-     try (by move=> r1 r2; case: Rcompare_spec => //; lra);
-     try (by move=> r1 r2 r3; case: Rcompare_spec => //; lra);
-     try (by move=> r1 r2 r3 r4; do! case: Rcompare_spec => //; lra).
-have [d [H1d ->]] := H3p _ Hy.
-rewrite /=.
-apply: add_correct => //.
-have->: (CPolyab (D2R a) (D2R b) p).[x] =  
-        (\sum_(i < n.+1) p`_i *: 'T^(D2R a, D2R b)_i).[x].
-  rewrite horner_CPolyab !horner_sum H1p.
-  apply: eq_bigr => j _.
-  rewrite [LHS]hornerE [RHS]hornerE; congr (_ * _).
-  rewrite horner_pTab; congr (_.[_]).
-  rewrite !hornerE -mulr_natl natr_INR //=.
-  have F : D2R b + - D2R a != 0.
-    have := (@subr_eq0 _ (D2R b) (D2R a)).
-    by toR => ->; rewrite eq_sym. 
-  toR; rewrite /Rinvx ifT //.
-  by field; apply/eqP.
-elim: n P Hs p H1p {H3p}H2p => [[|P []]  // _ [|p []] //= _ /(_ 0%N) /= pIP|].
-  by rewrite big_ord1 /= /pTab pT0 comp_polyC !hornerE.
-move=> n IH [|p1P [|p2 P]] // sP [|p1p p]  // sp pIp.
-rewrite [_ :: P]lastI big_ord_recr /=.
-rewrite (eq_bigr (fun i : 'I_n.+1 => 
-      (seq.belast p1p  p)`_i *: 'T^(D2R a,D2R b)_i)); last first.
-  move=> i1 _.
-  rewrite lastI nth_rcons size_belast ifT //.
-  by have := ltn_ord i1; rewrite -ltnS -sp.  
-rewrite foldl_rcons.
-rewrite hornerE.
-have sPn : size P = n.
- by rewrite /= in sP; case: sP => ->.
-have spn : size p = n.+1.
- by rewrite /= in sp; case: sp => ->.
-apply: add_correct; last first.
-  rewrite hornerE.
-  apply: mul_correct.
-    have /= := pIp n.+1.
-    by rewrite (last_nth I0) sPn.
-rewrite I.bnd_correct /= !F.fromZ_correct.
-  rewrite horner_comp -CPoly_trigo.pT_Cheby.
-    apply: COS_bound.
-  apply: Tab_bound => //.
-  move: Hy aLb.
-  rewrite F.cmp_correct.
-  rewrite I.bnd_correct /= /D2R.
-  by do 2 case: F.toX => //=.
-apply:  (IH (p1P :: (seq.belast p2 P))) => //=.
-- by rewrite size_belast sPn.
-- by rewrite size_belast spn.
-move=> j /=.
-case: (leqP n.+1 j) => [nLj|jLn].
-  rewrite !nth_default //.
-  - rewrite I.bnd_correct /= F.fromZ_correct; toR; lra.
-  - by rewrite size_belast spn.
-  by rewrite /= size_belast sPn.
-have /= := pIp j.
-rewrite [_ :: p]lastI [_ :: P]lastI /=.
-rewrite nth_rcons size_belast spn jLn.
-Search _ rcons (_ :: _).
-by rewrite -rcons_cons nth_rcons /= size_belast sPn jLn.
-Qed.
-
-(* Should be something simpler *)
-Lemma eval_range_cms_subset n a b c d f cm x :
-   F.cmp a b = Xlt ->
-   F.cmp c d = Xlt ->
-   cms_correct n a b f cm ->
-   I.subset (eval_range_cms cm) (I.bnd c d) ->
-   x \contained_in I.bnd a b -> f x \contained_in (I.bnd c d).
-Proof.
-move=> aLb cLd Hc /I.subset_correct Hi Hx.
-have := eval_range_cms_correct aLb Hc (isubset_refl _) Hx.
-case: eval_range_cms Hi => //= l u.
-have := F.cmp_correct c d; rewrite cLd.
-case: F.toX => // cr; case: F.toX => //= dr.
-case El : (F.toX l) => [|xl] /=.
-  case Eu : (F.toX u) => [|xu] //=.
-    by move=> _ [_ []].
-  by move=> _ [].
-case: Rcompare_spec => //=.
-rewrite /le_lower /le_upper /=.
-case Eu : (F.toX u) => [|xu] //=.
-  by move=> _ _ [].
-by lra.
-Qed.
 
 Definition eval_cms a b (c : cms) I := 
   I.meet (eval_shaw_cms a b c I) (eval_range_cms c).
@@ -3067,7 +3090,9 @@ Notation " 'ln(' e ')' " := (fcomp fln e)
 Notation " 'exp(x)' " := (fexp) : fexpr_scope.
 Notation " 'exp(' e ')' " := (fcomp fexp e) 
   (format " 'exp(' e ')' " ) : fexpr_scope.
-Notation " '1/x' " := (finv) : fexpr_scope.
+Notation " '1/x' " := (
+finv) : fexpr_scope.
+Notation " '1/( x )' " := (fcomp finv x) : fexpr_scope.
 Notation " '1' " := (fconst (F.fromZ 1)) : fexpr_scope.
 Notation " 'sin(x)'" := (fsin) (at level 10) : fexpr_scope .
 Notation " 'sin(' e ')'" := (fcomp fsin e)
@@ -3270,6 +3295,7 @@ Notation " 'exp(x)' " := (fexp) : fexpr_scope.
 Notation " 'exp(' e ')' " := (fcomp fexp e) 
   (format " 'exp(' e ')' " ) : fexpr_scope.
 Notation " '1/x' " := (finv) : fexpr_scope.
+Notation " '/(' x ')' " := (fcomp finv x) : fexpr_scope.
 Notation " '1' " := (fconst (SFBI2.fromZ 1)) : fexpr_scope.
 Notation " 'sin(x)'" := (fsin) (at level 10) : fexpr_scope .
 Notation " 'sin(' e ')'" := (fcomp fsin e)
@@ -3278,19 +3304,26 @@ Notation " 'cos(x)'" := (fcos) (at level 10) : fexpr_scope .
 Notation " 'cos(' e ')'" := (fcomp fcos e) 
   (format " 'cos(' e ')' " ) : fexpr_scope.
 
+
+Notation " x * 2^ y " := (Interval_specific_ops.Float x%bigZ y%bigZ) (at level 0) : sollya.
+Notation " [ x ; y ] " :=  (Interval_interval_float.Ibnd x y) : sollya.
+Notation "[| x1 , x2 , .. , xn |]" := (x1 :: x2 :: .. [:: xn] ..) : sollya.
+
+Open Scope sollya.
+
 (* Where we evaluate *) 
-Definition Ia := I.fromZ (10).
-Definition Ib := I.fromZ (11).
+Definition Ia := I.fromZ (0).
+Definition Ib := I.fromZ (1).
 Definition a := I.lower Ia.
 Definition b := I.upper Ib.
 Definition Iab := I.join Ia Ib.
 
 
 (* The precision *)
-Definition prec := 50%bigZ.
+Definition prec := 165%bigZ.
 
 (* The real degree of the polynomial *)
-Definition n := 100%nat.
+Definition n := 14%nat.
 Definition ob :=   Eval vm_compute in odd n.
 Definition zn := 
   Eval vm_compute in Pos.of_nat n.+1.
@@ -3300,7 +3333,6 @@ Definition vn :=
   Eval vm_compute in I.fromZ (Zpos zn).
 Definition v2n := 
   Eval vm_compute in I.fromZ (Zpos z2n).
-
 
 (* List of n+1 1 *)
 Time
@@ -3322,11 +3354,31 @@ Definition vl3 :=
   Eval vm_compute in Ischeby_nodes prec a b n.+1 v2n.
 
 Time
-Definition scms :=
+Definition sscms :=
   Eval vm_compute in
-  fexpr_cms prec n ob vn zn z2n a b vl1 vl2 vl3 ('x)%fexpr.
+  fexpr_cms prec n ob vn zn z2n a b vl1 vl2 vl3 (exp((cos(x))))%fexpr.
 
-Compute eval_cms prec a b scms Iab.
+Compute eval_range_cms prec sscms.
+Compute P (norm_cms prec sscms).
+Compute Delta sscms.
+Compute P sscms.
+Compute Delta (norm_cms prec sscms).
+
+
+Definition scms1 :=
+  Eval vm_compute in
+  fexpr_cms prec n ob vn zn z2n a b vl1 vl2 vl3 (fcomp fcos fcos)%fexpr.
+Compute P (norm_cms prec scms1).
+Compute Delta scms1.
+Compute Delta scms1.
+Compute eval_shaw_cms prec a b scms1 (I.bnd a a).
+Compute Delta (norm_cms prec scms1).
+
+
+Compute eval_range_cms prec sscms.
+Compute eval_shaw_cms prec a b sscms (I.bnd a b).
+
+
 
 
 Time
@@ -3362,7 +3414,7 @@ Compute Delta ccms.
 
 (* Exp *)
 Time
-Definition ecms :=
+Definition ecms1 :=
   Eval vm_compute in
   fexpr_cms prec n ob vn zn z2n a b vl1 vl2 vl3 (exp(x))%fexpr.
 

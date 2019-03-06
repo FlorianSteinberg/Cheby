@@ -3297,6 +3297,8 @@ Notation " 'exp(' e ')' " := (fcomp fexp e)
 Notation " '1/x' " := (finv) : fexpr_scope.
 Notation " '/(' x ')' " := (fcomp finv x) : fexpr_scope.
 Notation " '1' " := (fconst (SFBI2.fromZ 1)) : fexpr_scope.
+Notation " '2' " := (fconst (SFBI2.fromZ 2)) : fexpr_scope.
+Notation " 'c(' n ')' " := (fconst (SFBI2.fromZ n)) : fexpr_scope.
 Notation " 'sin(x)'" := (fsin) (at level 10) : fexpr_scope .
 Notation " 'sin(' e ')'" := (fcomp fsin e)
   (format " 'sin(' e ')' " ) : fexpr_scope.
@@ -3311,143 +3313,288 @@ Notation "[| x1 , x2 , .. , xn |]" := (x1 :: x2 :: .. [:: xn] ..) : sollya.
 
 Open Scope sollya.
 
-(* Where we evaluate *) 
-Definition Ia := I.fromZ (0).
-Definition Ib := I.fromZ (1).
-Definition a := I.lower Ia.
-Definition b := I.upper Ib.
-Definition Iab := I.join Ia Ib.
+Section Example1.
 
+(* Where we evaluate *) 
+Let Ia := I.fromZ (3).
+Let Ib := I.fromZ (4).
+Let a := I.lower Ia.
+Let b := I.upper Ib.
+Let Iab := I.join Ia Ib.
 
 (* The precision *)
-Definition prec := 165%bigZ.
+Let prec := 165%bigZ.
 
 (* The real degree of the polynomial *)
-Definition n := 14%nat.
-Definition ob :=   Eval vm_compute in odd n.
-Definition zn := 
-  Eval vm_compute in Pos.of_nat n.+1.
-Definition z2n := 
-  Eval vm_compute in (2 * zn)%positive.
-Definition vn := 
-  Eval vm_compute in I.fromZ (Zpos zn).
-Definition v2n := 
-  Eval vm_compute in I.fromZ (Zpos z2n).
+Let n := 10%nat.
+Let ob :=   Eval vm_compute in odd n.
+Let zn :=  Eval vm_compute in Pos.of_nat n.+1.
+Let z2n := Eval vm_compute in (2 * zn)%positive.
+Let vn := Eval vm_compute in I.fromZ (Zpos zn).
+Let v2n := Eval vm_compute in I.fromZ (Zpos z2n).
 
 (* List of n+1 1 *)
-Time
-Definition l1 := Eval vm_compute in nseq n.+1 I1.
+Let l1 := Eval vm_compute in nseq n.+1 I1.
 
 (* Chebyshev nodes in [-1, 1] *)
-Time
-Definition vl1 := 
-  Eval vm_compute in Icheby_nodes prec n.+1 v2n.
+Let vl1 := Eval vm_compute in Icheby_nodes prec n.+1 v2n.
 
 (* Values of the Chebyshev polynomials at th Chebyshev nodes *)
-Time
-Definition vl2 :=
-  Eval vm_compute in ITvalues prec n.+1 l1 vl1.
+Let vl2 := Eval vm_compute in ITvalues prec n.+1 l1 vl1.
 
 (* Chebyshev nodes in [a, b] *)
-Time
-Definition vl3 := 
-  Eval vm_compute in Ischeby_nodes prec a b n.+1 v2n.
+Let vl3 := Eval vm_compute in Ischeby_nodes prec a b n.+1 v2n.
 
-Time
-Definition sscms :=
+Definition ex1 := (sin(x))%fexpr.
+
+Compute ex1.
+
+Time Definition ex1_cms :=
   Eval vm_compute in
-  fexpr_cms prec n ob vn zn z2n a b vl1 vl2 vl3 (exp((cos(x))))%fexpr.
+  fexpr_cms prec n ob vn zn z2n a b vl1 vl2 vl3 ex1.
 
-Compute eval_range_cms prec sscms.
-Compute P (norm_cms prec sscms).
-Compute Delta sscms.
-Compute P sscms.
-Compute Delta (norm_cms prec sscms).
+Compute P ex1_cms.
+Compute Delta ex1_cms.
+Compute Delta (norm_cms prec ex1_cms).
+Compute P (norm_cms prec ex1_cms).
+Compute eval_range_cms prec ex1_cms.
 
+End Example1.
 
-Definition scms1 :=
+Section Example4.
+
+(* Where we evaluate *) 
+Let Ia := I.fromZ (0).
+Let Ib := I.fromZ (1).
+Let a := I.lower Ia.
+Let b := I.upper Ib.
+Let Iab := I.join Ia Ib.
+
+(* The precision *)
+Let prec := 165%bigZ.
+
+(* The real degree of the polynomial *)
+Let n := 14%nat.
+Let ob :=   Eval vm_compute in odd n.
+Let zn :=  Eval vm_compute in Pos.of_nat n.+1.
+Let z2n := Eval vm_compute in (2 * zn)%positive.
+Let vn := Eval vm_compute in I.fromZ (Zpos zn).
+Let v2n := Eval vm_compute in I.fromZ (Zpos z2n).
+
+(* List of n+1 1 *)
+Let l1 := Eval vm_compute in nseq n.+1 I1.
+
+(* Chebyshev nodes in [-1, 1] *)
+Let vl1 := Eval vm_compute in Icheby_nodes prec n.+1 v2n.
+
+(* Values of the Chebyshev polynomials at th Chebyshev nodes *)
+Let vl2 := Eval vm_compute in ITvalues prec n.+1 l1 vl1.
+
+(* Chebyshev nodes in [a, b] *)
+Let vl3 := Eval vm_compute in Ischeby_nodes prec a b n.+1 v2n.
+
+Definition ex4 := (exp(/(cos(x))))%fexpr.
+
+Compute ex4.
+
+Time Definition ex4_cms :=
   Eval vm_compute in
-  fexpr_cms prec n ob vn zn z2n a b vl1 vl2 vl3 (fcomp fcos fcos)%fexpr.
-Compute P (norm_cms prec scms1).
-Compute Delta scms1.
-Compute Delta scms1.
-Compute eval_shaw_cms prec a b scms1 (I.bnd a a).
-Compute Delta (norm_cms prec scms1).
+  fexpr_cms prec n ob vn zn z2n a b vl1 vl2 vl3 ex4.
+
+Compute P ex4_cms.
+Compute Delta ex4_cms.
+Compute Delta (norm_cms prec ex4_cms).
+Compute P (norm_cms prec ex4_cms).
+Compute eval_range_cms prec ex4_cms.
+
+End Example4.
 
 
-Compute eval_range_cms prec sscms.
-Compute eval_shaw_cms prec a b sscms (I.bnd a b).
+Section Example5.
+
+(* Where we evaluate *) 
+Let Ia := I.fromZ (0).
+Let Ib := I.fromZ (1).
+Let a := I.lower Ia.
+Let b := I.upper Ib.
+Let Iab := I.join Ia Ib.
+
+(* The precision *)
+Let prec := 165%bigZ.
+
+(* The real degree of the polynomial *)
+Let n := 15%nat.
+Let ob :=   Eval vm_compute in odd n.
+Let zn :=  Eval vm_compute in Pos.of_nat n.+1.
+Let z2n := Eval vm_compute in (2 * zn)%positive.
+Let vn := Eval vm_compute in I.fromZ (Zpos zn).
+Let v2n := Eval vm_compute in I.fromZ (Zpos z2n).
+
+(* List of n+1 1 *)
+Let l1 := Eval vm_compute in nseq n.+1 I1.
+
+(* Chebyshev nodes in [-1, 1] *)
+Let vl1 := Eval vm_compute in Icheby_nodes prec n.+1 v2n.
+
+(* Values of the Chebyshev polynomials at th Chebyshev nodes *)
+Let vl2 := Eval vm_compute in ITvalues prec n.+1 l1 vl1.
+
+(* Chebyshev nodes in [a, b] *)
+Let vl3 := Eval vm_compute in Ischeby_nodes prec a b n.+1 v2n.
+
+Definition ex5 := (exp(x) / (ln(2 + 'x) * cos(x)))%fexpr.
+
+Compute (exp(x) / (ln(2 + 'x) * cos(x)))%fexpr.
+
+Time Definition ex5_cms :=
+  Eval vm_compute in fexpr_cms prec n ob vn zn z2n a b vl1 vl2 vl3 ex5.
+
+Compute P ex5_cms.
+Compute Delta ex5_cms.
+Compute Delta (norm_cms prec ex5_cms).
+Compute P (norm_cms prec ex5_cms).
+Compute eval_range_cms prec ex5_cms.
+
+End Example5.
+
+Section Example6.
+
+(* Where we evaluate *) 
+Let Ia := I.fromZ (-1).
+Let Ib := I.fromZ (1).
+Let a := I.lower Ia.
+Let b := I.upper Ib.
+Let Iab := I.join Ia Ib.
+
+(* The precision *)
+Let prec := 165%bigZ.
+
+(* The real degree of the polynomial *)
+Let n := 10%nat.
+Let ob :=   Eval vm_compute in odd n.
+Let zn :=  Eval vm_compute in Pos.of_nat n.+1.
+Let z2n := Eval vm_compute in (2 * zn)%positive.
+Let vn := Eval vm_compute in I.fromZ (Zpos zn).
+Let v2n := Eval vm_compute in I.fromZ (Zpos z2n).
+
+(* List of n+1 1 *)
+Let l1 := Eval vm_compute in nseq n.+1 I1.
+
+(* Chebyshev nodes in [-1, 1] *)
+Let vl1 := Eval vm_compute in Icheby_nodes prec n.+1 v2n.
+
+(* Values of the Chebyshev polynomials at th Chebyshev nodes *)
+Let vl2 := Eval vm_compute in ITvalues prec n.+1 l1 vl1.
+
+(* Chebyshev nodes in [a, b] *)
+Let vl3 := Eval vm_compute in Ischeby_nodes prec a b n.+1 v2n.
+
+Definition ex6 := (sin(exp(x)))%fexpr.
+
+Compute ex6.
+
+Time Definition ex6_cms :=
+  Eval vm_compute in fexpr_cms prec n ob vn zn z2n a b vl1 vl2 vl3 ex6.
+
+Compute P ex6_cms.
+Compute Delta ex6_cms.
+Compute Delta (norm_cms prec ex6_cms).
+Compute P (norm_cms prec ex6_cms).
+Compute eval_range_cms prec ex6_cms.
+
+End Example6.
+
+Section Example10.
+
+(* Where we evaluate *) 
+Let Ia := I.fromZ (-1).
+Let Ib := I.fromZ (1).
+Let a := I.lower Ia.
+Let b := I.upper Ib.
+Let Iab := I.join Ia Ib.
+
+(* The precision *)
+Let prec := 165%bigZ.
+
+(* The real degree of the polynomial *)
+Let n := 10%nat.
+Let ob :=   Eval vm_compute in odd n.
+Let zn :=  Eval vm_compute in Pos.of_nat n.+1.
+Let z2n := Eval vm_compute in (2 * zn)%positive.
+Let vn := Eval vm_compute in I.fromZ (Zpos zn).
+Let v2n := Eval vm_compute in I.fromZ (Zpos z2n).
+
+(* List of n+1 1 *)
+Let l1 := Eval vm_compute in nseq n.+1 I1.
+
+(* Chebyshev nodes in [-1, 1] *)
+Let vl1 := Eval vm_compute in Icheby_nodes prec n.+1 v2n.
+
+(* Values of the Chebyshev polynomials at th Chebyshev nodes *)
+Let vl2 := Eval vm_compute in ITvalues prec n.+1 l1 vl1.
+
+(* Chebyshev nodes in [a, b] *)
+Let vl3 := Eval vm_compute in Ischeby_nodes prec a b n.+1 v2n.
+
+Definition ex10 := (/(1 + c(4) * 'x * 'x))%fexpr.
+
+Compute ex10.
+
+Time Definition ex10_cms :=
+  Eval vm_compute in fexpr_cms prec n ob vn zn z2n a b vl1 vl2 vl3 ex10.
+
+Compute P ex10_cms.
+Compute Delta ex10_cms.
+Compute Delta (norm_cms prec ex10_cms).
+Compute P (norm_cms prec ex10_cms).
+Compute eval_range_cms prec ex10_cms.
+
+End Example10.
 
 
+Section Example11.
 
+(* Where we evaluate *) 
+Let Ia := I.fromZ (-1).
+Let Ib := I.fromZ (1).
+Let a := I.lower Ia.
+Let b := I.upper Ib.
+Let Iab := I.join Ia Ib.
 
-Time
-Definition ecms :=
-  Eval vm_compute in
-  fexpr_cms prec n ob vn zn z2n a b vl1 vl2 vl3 exp(ln(x))%fexpr.
+(* The precision *)
+Let prec := 165%bigZ.
 
-(* Compute norm_cms prec a b ecms. *)
-Compute eval_cms prec a b ecms (D2I a).
+(* The real degree of the polynomial *)
+Let n := 10%nat.
+Let ob :=   Eval vm_compute in odd n.
+Let zn :=  Eval vm_compute in Pos.of_nat n.+1.
+Let z2n := Eval vm_compute in (2 * zn)%positive.
+Let vn := Eval vm_compute in I.fromZ (Zpos zn).
+Let v2n := Eval vm_compute in I.fromZ (Zpos z2n).
 
-Compute Delta ecms.
+(* List of n+1 1 *)
+Let l1 := Eval vm_compute in nseq n.+1 I1.
 
+(* Chebyshev nodes in [-1, 1] *)
+Let vl1 := Eval vm_compute in Icheby_nodes prec n.+1 v2n.
 
+(* Values of the Chebyshev polynomials at th Chebyshev nodes *)
+Let vl2 := Eval vm_compute in ITvalues prec n.+1 l1 vl1.
 
-(* sin *)
-Time
-Definition scms :=
-  Eval vm_compute in
-  fexpr_cms prec n ob vn zn z2n a b vl1 vl2 vl3 (sin(x))%fexpr.
+(* Chebyshev nodes in [a, b] *)
+Let vl3 := Eval vm_compute in Ischeby_nodes prec a b n.+1 v2n.
 
-Compute "Delta sin"%string.
-Compute Delta scms.
+Definition ex11 := (sin(x) * sin(x) + cos(x) * cos(x))%fexpr.
 
+Compute ex11.
 
-(* cos *)
-Time
-Definition ccms :=
-  Eval vm_compute in
-  fexpr_cms prec n ob vn zn z2n a b vl1 vl2 vl3 (cos(x))%fexpr.
+Time Definition ex11_cms :=
+  Eval vm_compute in fexpr_cms prec n ob vn zn z2n a b vl1 vl2 vl3 ex11.
 
-Compute "Delta cos"%string.
-Compute Delta ccms.
+Compute P ex11_cms.
+Compute Delta ex11_cms.
+Compute Delta (norm_cms prec ex11_cms).
+Compute P (norm_cms prec ex11_cms).
+Compute eval_range_cms prec ex11_cms.
 
-(* Exp *)
-Time
-Definition ecms1 :=
-  Eval vm_compute in
-  fexpr_cms prec n ob vn zn z2n a b vl1 vl2 vl3 (exp(x))%fexpr.
-
-Compute "Delta exp"%string.
-Compute Delta ecms.
-
-(* exp * cos *)
-Time
-Definition eccms :=
-  Eval vm_compute in 
-  fexpr_cms prec n ob vn zn z2n a b vl1 vl2 vl3 (exp(x) * cos(x))%fexpr.
-
-Compute "Delta exp * cos"%string.
-Compute Delta eccms.
-
-
-(* ln *)
-Time
-Definition lccms :=
-  Eval vm_compute in 
-  fexpr_cms prec n ob vn zn z2n a b vl1 vl2 vl3 (ln(x))%fexpr.
-
-Compute "Delta ln"%string.
-Compute Delta lccms.
-
-(* exp(cos(x)) *)
-Time
-Definition ec1cms :=
-  Eval vm_compute in 
-  fexpr_cms prec n ob vn zn z2n a b vl1 vl2 vl3 ('x)%fexpr.
-
-Compute "Delta  exp(cos x)"%string.
-Compute eval_cms prec a b (ec1cms) (Iab).
-Compute P ec1cms.
-
-
+End Example11.

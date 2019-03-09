@@ -3569,11 +3569,29 @@ Qed.
 
 End Solver.
 
-Ltac cheby_solve prec depth degr H :=
- apply: (@solve_correct prec depth degr.-1 _ _ _) H;
-  match goal with 
-   |- is_true (is_interval ?X) => vm_cast_no_check (refl_equal true)   
- | |-  _ = ?X => vm_cast_no_check (refl_equal X) end.
+(* Tactic to solve box problems :
+       a1/b1 <= x <= a2/b2 -> a3/b3 <= f x <= a4/b4
+*)
+ 
+Lemma Rpower_IZR a b : 
+   Rpower (IZR (Zpos a)) (IZR (Zpos b)) = IZR (Zpos a ^ Zpos b).
+Proof. 
+by rewrite -powerRZ_Rpower ?Raux.IZR_Zpower_pos //; apply: RIneq.IZR_lt.
+Qed.
 
+Ltac cheby_solve_tac prec depth degr tang H :=
+  rewrite ?Rpower_IZR -?RIneq.mult_IZR;
+  match type of H with 
+  | (_ <= ?x <= _)%R => 
+    match goal with 
+    |- (_ <= ?X <= _)%R => 
+        rewrite (_ :  X = fexpr_eval tang x); last by apply: refl_equal
+    end
+  end;
+  apply: (@solve_correct prec depth degr.-1 _ _ _) H;
+  match goal with 
+  |  |- is_true (is_interval ?X) => native_cast_no_check (refl_equal true)   
+  |  |-  _ = ?X => native_cast_no_check (refl_equal X) 
+  end.
 
 End CPoly_interval.

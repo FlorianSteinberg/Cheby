@@ -237,12 +237,6 @@ Let If :=
    (I.fromZ (27 * 2^33)) in I.bnd (SFBI2.neg (I.lower z)) (I.lower z).
 Compute If.
  
-Lemma Rpower_IZR a b : 
-   Rpower (IZR (Zpos a)) (IZR (Zpos b)) = IZR (Zpos a ^ Zpos b).
-Proof. 
-by rewrite -powerRZ_Rpower ?Raux.IZR_Zpower_pos //; apply: RIneq.IZR_lt.
-Qed.
-
 Definition tang := exp('x) - 1 - ('x + c(8388676, 2^24) * 'x * 'x
                                  + c(11184876, 2^26) * 'x * 'x * 'x).
 
@@ -255,10 +249,26 @@ Lemma tang_correct x :
                       <= (23 / (27 * Rpower 2 33)))%R.
 Proof.
 move=> H.
-rewrite !Rpower_IZR -!RIneq.mult_IZR.
-rewrite (_ :  (_ - _ - _)%R = fexpr_eval tang x); last first.
-  by apply: refl_equal.
-cheby_solve prec 8 3 H. 
+cheby_solve_tac prec 7 3 tang H. 
 Qed.
 
 End Tang.
+
+Section CosSin.
+
+(* The precision *)
+Let prec := 165%bigZ.
+
+Definition sin_cos := cos(x) * cos(x) + sin(x) * sin(x).
+
+Let k := 100%Z.
+Lemma sin_correct x :
+ (3 / 1  <= x <= (4 / 1) ->
+  (IZR (2^k -  1) / IZR (2 ^ k)) <= (cos x * cos x + sin x * sin x)
+                      <= (IZR (2^k + 1) / IZR (2 ^ k)))%R.
+Proof.
+move=> H.
+cheby_solve_tac prec 4%nat 15%nat sin_cos H.
+Time Qed.
+
+End CosSin.

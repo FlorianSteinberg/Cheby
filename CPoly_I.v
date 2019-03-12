@@ -3,7 +3,7 @@ Require Import String Rstruct Reals Psatz under.
 Require Import Poly_complements CPoly CPoly_exec CPoly_interpolation.
 Require Import Coquelicot.Coquelicot.
 Require Import sine_interpolation cos_interpolation exp_interpolation.
-Require Import ln_interpolation inv_interpolation.
+Require Import ln_interpolation sqrt_interpolation inv_interpolation.
 Set Implicit Arguments.
 Unset Strict Implicit.
 Import Prenex Implicits.
@@ -135,6 +135,14 @@ Proof.
 move=> xI.
 have /= := I.ln_correct prec _ _ xI.
 by rewrite /Xln'; case: is_positive => //; case: I.ln.
+Qed.
+
+Lemma sqrt_correct x I:
+	x \contained_in I -> (sqrt x) \contained_in (I.sqrt prec I).
+Proof.
+move=> xI.
+have /= := I.sqrt_correct prec _ _ xI.
+by rewrite /Xsqrt'; case: is_negative => //; case: I.sqrt.
 Qed.
 
 Lemma atan_correct x I:
@@ -2857,6 +2865,106 @@ Qed.
 
 End CMLn.
 
+Section CMSqrt.
+
+Variable (a b : D).
+
+(*****************************************************************************)
+(* Chebyshev Model of sqrt                                                   *)
+(*****************************************************************************)
+
+Definition sqrt_error P :=
+  let Ia := I.bnd a a in
+  let Ib := I.bnd b b in
+  let Ida := I.abs (I.sub prec (I.sqrt prec Ia) (IsCshaw Ia Ib P Ia)) in
+  let Idb := I.abs (I.sub prec (I.sqrt prec Ib) (IsCshaw Ia Ib P Ib)) in
+  let Ic := I.mul prec I01 (I.join Ida Idb) in
+  I.join (I.neg Ic) Ic.
+
+Definition sqrt_cms n vn vl2 vl3 :=
+  if Fpos a then
+    let P := Icheby_coefs (I.sqrt prec) vn vl3 vl2 in
+    CMS P (sqrt_error P)
+  else error_cms n.
+
+Lemma sqrt_env a1 b1 : I.sqrt prec \is_envelope_of[a1, b1] sqrt.
+Proof. by move=> *; apply: sqrt_correct. Qed.
+
+Lemma sqrt_cms_correct n vn v2n vl2 vl3 :    
+  F.cmp a b = Xlt ->
+  INR n.+1 \contained_in vn ->
+  (2 * INR n.+1) \contained_in v2n ->
+  vl2 = ITvalues n.+1 (nseq n.+1 I1) (Icheby_nodes n.+1 v2n) ->
+  vl3 = Ischeby_nodes a b n.+1 v2n ->
+  cms_correct n a b sqrt (sqrt_cms n vn vl2 vl3).
+Proof.
+move=> aLb vnE v2nE vl2E vl3E.
+have F1 : (D2R a < D2R b)%R.
+  have := F.cmp_correct a b; rewrite aLb.
+  rewrite /D2R; case: F.toX; case: F.toX =>  //= r1 r2.
+  by case: Rcompare_spec.
+have F2 : D2R a != D2R b by apply/eqP; lra.
+have F3 : D2R b != D2R a by rewrite eq_sym.
+have Hia : D2R a \contained_in I.bnd a a.
+  by rewrite /D2R /=; case: F.toX  => //= r; lra.
+have Hib : D2R b \contained_in I.bnd b b.
+  by rewrite /D2R /=; case: F.toX  => //= r; lra.
+pose iv := interpolation ln (scheby_nodes (D2R a) (D2R b) n.+1).
+rewrite /cms_correct /sqrt_cms.
+have := Fpos_correct a; case: Fpos => [aP|aN]; last first.
+  split; first by rewrite size_nseq.
+  exists (nseq n.+1 0); split => //.
+  - by rewrite size_nseq.
+  - by move=> i; rewrite !nth_nseq !if_same; apply: I.fromZ_correct.
+  move=> x Hx; set u := _.[_]; exists (sqrt x - u); split; last by toR; lra.
+  by rewrite /= F.nan_correct.
+split.
+  by rewrite size_Icheby_coefs vl2E size_ITvalue.
+pose p := scheby_coef_list (D2R a) (D2R b) sqrt n.+1.
+have Hp i : p`_i \contained_in nth I0 (Icheby_coefs (I.sqrt prec) vn vl3 vl2) i.
+  have [nLi|iLn] := leqP n.+1 i.
+    rewrite /scheby_coef_list !nth_default //.
+    - by apply: I.fromZ_correct.
+    - by rewrite size_map size_iota.
+    by rewrite size_Icheby_coefs vl2E size_ITvalue.
+  rewrite (nth_map 0%nat) ?size_iota // nth_iota // add0n.
+  rewrite sdsprod_coefs //.
+  apply: Ischeby_coefs_correct => //.
+  - by apply: sqrt_env.
+  - by apply: v2nE.
+  - by apply: vl2E.
+  by apply: vl3E.
+exists p; split => // [|x Hx].
+  by rewrite size_scheby_coef_list.
+exists (sqrt x - (CPolyab (D2R a) (D2R b) p).[x])%R; split; last by lra.
+rewrite scheby_coef_list_spec //.
+have Ix : (D2R a <= x <= D2R b)%R.
+  have := aLb; rewrite F.cmp_correct.
+  by have := Hx; rewrite /D2R /=; (do 2 case: F.toX).
+apply: Rabs_join.
+apply: I01_correct.
+  split; first by split_Rabs; lra.
+  apply: sqrt_scheby_ge => //.
+  rewrite /Rmax; case: Rle_dec => _.
+  apply: I.join_correct.
+  right.
+  apply/abs_correct/sub_correct.
+    by apply: sqrt_correct.
+  rewrite -scheby_coef_list_spec //.
+  apply: IsCshaw_correct => //.
+  by rewrite size_Icheby_coefs size_scheby_coef_list vl2E size_ITvalue.
+apply: I.join_correct.
+left.
+apply/abs_correct/sub_correct.
+  by apply: sqrt_correct.
+rewrite -scheby_coef_list_spec //.
+apply: IsCshaw_correct => //.
+by rewrite size_Icheby_coefs size_scheby_coef_list vl2E size_ITvalue.
+Qed.
+
+End CMSqrt.
+
+
 Section CMInvx.
 
 Variable (a b : D).
@@ -3076,7 +3184,7 @@ Inductive fexpr :=
   fadd  (_ _ : fexpr) |
   fsub  (_ _ : fexpr) |
   fcomp (_ _ : fexpr) |
-  fvar | fconst (_ _ : Z) | fln | fexp | finv | fsin | fcos.
+  fvar | fconst (_ _ : Z) | fln | fsqrt | fexp | finv | fsin | fcos.
  
 Delimit Scope fexpr_scope with fexpr.
 
@@ -3091,6 +3199,7 @@ Fixpoint fexpr_eval e :=
 | fconst v1 v2 => (fun x => if Z.eqb v2 1%Z  then (IZR v1)
                              else (IZR v1 / IZR v2)%R)
 | fln => ln
+| fsqrt => sqrt
 | fexp => exp
 | finv => Rinv
 | fsin => sin
@@ -3108,6 +3217,7 @@ match e with
 | fconst z1 z2 => (fun x => if Z.eqb z2 1 then I.fromZ z1
                             else div (I.fromZ z1) (I.fromZ z2))
 | fln => I.ln prec
+| fsqrt => I.sqrt prec
 | fexp => I.exp prec
 | finv => I.inv prec
 | fsin => I.sin prec
@@ -3134,6 +3244,7 @@ elim: e i x.
   case: Z.eqb_spec => [_|z2D1]; first by apply: I.fromZ_correct.
   by apply: div_correct; apply: I.fromZ_correct.
 - by move => i x Hx; apply: ln_correct.
+- by move => i x Hx; apply: sqrt_correct.
 - by move => i x Hx; apply: exp_correct.
 - by move => i x Hx; apply: inv_correct.
 - by move => i x Hx; apply: sin_correct.
@@ -3178,6 +3289,7 @@ match e with
 | fconst z1 z2 => const_cms n (if Z.eqb z2 1 then I.fromZ z1
                                else div (I.fromZ z1) (I.fromZ z2))
 | fln => ln_cms a b n vn vl2 vl3
+| fsqrt => sqrt_cms a b n vn vl2 vl3
 | fexp => exp_cms a b vn vl2 vl3
 | finv => invx_cms a b n vn vl2 vl3
 | fsin => sin_cms a b n b1 vn zn z2n vl2 vl3
@@ -3247,6 +3359,7 @@ elim: e a b vl3 aLb vl3E.
   case: Z.eqb_spec => [_|_]; first by apply: I.fromZ_correct.
   by apply: div_correct; apply: I.fromZ_correct.
 - by move=> a b vl3 aLb vl3E; apply: ln_cms_correct v2nE _ _.
+- by move=> a b vl3 aLb vl3E; apply: sqrt_cms_correct v2nE _ _.
 - by move=> a b vl3 aLb vl3E; apply: exp_cms_correct v2nE _ _.
 - by move=> a b vl3 aLb vl3E; apply: invx_cms_correct v2nE _ _.
 - by move=> a b vl3 aLb vl3E; apply: sin_cms_correct v2nE _ _ _ _.
@@ -3266,6 +3379,9 @@ Notation " 'x " := (fvar) : fexpr_scope.
 Notation " 'ln(x)' " := (fln) : fexpr_scope.
 Notation " 'ln(' e ')' " := (fcomp fln e) 
   (format "'ln(' e ')' " ) : fexpr_scope.
+Notation " 'sqrt(x)' " := (fsqrt) : fexpr_scope.
+Notation " 'sqrt(' e ')' " := (fcomp fsqrt e) 
+  (format "'sqrt(' e ')' " ) : fexpr_scope.
 Notation " 'exp(x)' " := (fexp) : fexpr_scope.
 Notation " 'exp(' e ')' " := (fcomp fexp e) 
   (format "'exp(' e ')'" ) : fexpr_scope.

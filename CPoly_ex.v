@@ -2,9 +2,7 @@ Require Import Psatz.
 From mathcomp Require Import all_ssreflect.
 Require Import CPoly_I.
 From Bignums Require Import BigZ.
-Import Rtrigo_def.
-Import Rdefinitions.
-Import Rpower.
+Import Rtrigo_def Rdefinitions Rpower R_sqrt.
 
 Coercion fromZ := SFBI2.fromZ.
 Coercion PfromZ (x : Z * Z) : SFBI2.type :=
@@ -152,6 +150,72 @@ Compute eval_range_cms prec ex6_cms.
 
 End Example6.
 
+Section Example8.
+
+(* The precision *)
+Let prec := 165%bigZ.
+
+Definition ex8 := (sqrt('x + c(100001,100000)))%fexpr.
+
+Print ex8.
+
+(* TL = chebyshevform(sqrt(x + 1.00001), 10 , [-1, 0]); *)
+(* TL[2];                                               *)
+(* TL[3];                                               *)
+Time Definition ex8_cms :=
+  Eval vm_compute in mk_cms prec 10 (-1)%Z 0%Z ex8.
+
+Lemma ex8_correct :
+       cms_correct 10 (-1)%Z 0%Z (fun x => sqrt (x + 100001/100000))%R ex8_cms.
+Proof.
+have-> : (fun x => sqrt (x + 100001/100000)) = fexpr_eval ex8.
+  by apply: refl_equal.
+have-> : ex8_cms = mk_cms prec 10 (-1)%Z 0%Z ex8.
+  by vm_cast_no_check (refl_equal ex8_cms).
+by apply mk_cms_correct.
+Qed.
+
+Compute P ex8_cms.
+Compute Delta ex8_cms.
+Compute Delta (norm_cms prec ex8_cms).
+Compute P (norm_cms prec ex8_cms).
+Compute eval_range_cms prec ex8_cms.
+
+End Example8.
+
+Section Example9.
+
+(* The precision *)
+Let prec := 165%bigZ.
+
+Definition ex9 := (sqrt('x + c(100001,100000)) * sin(x))%fexpr.
+
+Print ex9.
+
+(* TL = chebyshevform(sqrt(x + 1.00001) * sin(x), 10 , [-1, 0]); *)
+(* TL[2];                                                        *)
+(* TL[3];                                                        *)
+Time Definition ex9_cms :=
+  Eval vm_compute in mk_cms prec 10 (-1)%Z 0%Z ex9.
+
+Lemma ex9_correct :
+       cms_correct 10 (-1)%Z 0%Z (fun x => sqrt (x + 100001/100000) * sin x)%R ex9_cms.
+Proof.
+have-> : (fun x => sqrt (x + 100001/100000) * sin x)%R = fexpr_eval ex9.
+  by apply: refl_equal.
+have-> : ex9_cms = mk_cms prec 10 (-1)%Z 0%Z ex9.
+  by vm_cast_no_check (refl_equal ex9_cms).
+by apply mk_cms_correct.
+Qed.
+
+Compute P ex9_cms.
+Compute Delta ex9_cms.
+Compute Delta (norm_cms prec ex9_cms).
+Compute P (norm_cms prec ex9_cms).
+Compute eval_range_cms prec ex9_cms.
+
+End Example9.
+
 Section Example10.
 
 
@@ -257,18 +321,18 @@ End Tang.
 Section CosSin.
 
 (* The precision *)
-Let prec := 165%bigZ.
+Let prec := 52%bigZ.
 
 Definition sin_cos := cos(x) * cos(x) + sin(x) * sin(x).
 
-Let k := 100%Z.
+Let k := 40%Z.
 Lemma sin_correct x :
  (3 / 1  <= x <= (4 / 1) ->
   (IZR (2^k -  1) / IZR (2 ^ k)) <= (cos x * cos x + sin x * sin x)
                       <= (IZR (2^k + 1) / IZR (2 ^ k)))%R.
 Proof.
 move=> H.
-cheby_solve_tac prec 4%nat 15%nat sin_cos H.
+cheby_solve_tac prec 8%nat 30%nat sin_cos H.
 Time Qed.
 
 End CosSin.

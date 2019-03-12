@@ -1,0 +1,25 @@
+opam-version: "1.2"
+name: "Cheby"
+maintainer: "Laurent.Thery@inria.fr"
+homepage: "https://github.com/FlorianSteinberg/Cheby"
+bug-reports: "https://github.com/FlorianSteinberg/Cheby/issues"
+dev-repo: "git+https:https://github.com/FlorianSteinberg/Cheby"
+license: "CeCILL-B"
+authors: ["FlorianSteinberg" "Laurent Théry"]
+build: [
+  [make "-j%{jobs}%"]
+]
+install: [
+  [make "install"]
+]
+remove: ["rm" "-R" "%{lib}%/coq/user-contrib/Cheby"]
+depends: [
+  "coq" {(>= "8.9")}
+  "coq-bignums"
+  "coq-flocq" {>= "3.0"}
+  "coq-mathcomp-ssreflect" {>= "1.6"}
+  "coq-coquelicot" {>= "3.0"}
+  "coq-interval" { (>= "3.4") }
+]
+tags: [
+]

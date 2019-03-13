@@ -5,8 +5,6 @@ From Bignums Require Import BigZ.
 Import Rtrigo_def Rdefinitions Rpower R_sqrt.
 
 Coercion fromZ := SFBI2.fromZ.
-Coercion PfromZ (x : Z * Z) : SFBI2.type :=
-           SFBI2.scale2 (SFBI2.fromZ x.1) (BigZ.of_Z x.2).
 
 Module V := CPoly_interval SFBI2.
 

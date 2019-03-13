@@ -1,5 +1,5 @@
 From mathcomp Require Import ssreflect.
-Require Import Reals Coquelicot.Coquelicot Fourier.
+Require Import Reals Coquelicot.Coquelicot Psatz.
 
 Definition filter_Rlt F1 F2 :=
   exists m, filter_prod F1 F2 (fun p => fst p < m < snd p).
@@ -22,13 +22,13 @@ Proof.
 apply (filter_Rlt_witness (b - 1)).
   now exists (b - 1); intros x cmpx; apply Rlt_gt.
 exists pos_half; intros x yb _.
-enough (b - x  < 1) by fourier.
+enough (b - x  < 1) by lra.
 apply Rle_lt_trans with (abs (minus b x)).
   now apply Rle_abs.
 apply ball_sym in yb; apply AbsRing_norm_compat2 in yb.
 apply Rlt_trans with (1 := yb).
 rewrite Rmult_1_l; simpl.
-fourier.
+lra.
 Qed.
 
 Lemma filter_Rlt_at_right_p_infty b :
@@ -36,13 +36,13 @@ Lemma filter_Rlt_at_right_p_infty b :
 Proof.
 apply (filter_Rlt_witness (b + 1)).
   exists pos_half; intros y yb _.
-  enough (y - b < 1) by fourier.
+  enough (y - b < 1) by lra.
   apply Rle_lt_trans with (abs (minus y b)).
     now apply Rle_abs.
   apply AbsRing_norm_compat2 in yb.
   apply Rlt_trans with (1 := yb).
   rewrite Rmult_1_l; simpl.
-  fourier.
+  lra.
 now exists (b + 1); intros x cmpx.
 Qed.
 
@@ -50,7 +50,7 @@ Lemma filter_Rlt_at_point_p_infty b :
   filter_Rlt (at_point b) (Rbar_locally p_infty).
 Proof.
 apply (filter_Rlt_witness (b + 1)).
-  now unfold at_point; fourier.
+  now unfold at_point; lra.
 now exists (b + 1); tauto.
 Qed.
 
@@ -59,13 +59,13 @@ Lemma filter_Rlt_m_infty_at_point b :
 Proof.
 apply (filter_Rlt_witness (b - 1)).
   now exists (b - 1); tauto.
-now unfold at_point; fourier.
+now unfold at_point; lra.
 Qed.
 
 Local Lemma compare_half_sum a b (altb : a < b) : a < (a + b) / 2 < b.
 Proof.
 assert ((a + b) / 2 * 2 = a + b) by field.
-split; apply Rmult_lt_reg_r with 2; fourier.
+split; apply Rmult_lt_reg_r with 2; lra.
 Qed.
 
 Lemma filter_Rlt_at_point a b : a < b ->
@@ -86,30 +86,30 @@ Lemma filter_Rlt_locally a b : a < b ->
 Proof.
 intros ab.
 assert (bmap: 0 < (b - a)/2).
-  apply Rmult_lt_reg_r with 2;[fourier | ].
+  apply Rmult_lt_reg_r with 2;[lra | ].
   unfold Rdiv; rewrite -> Rmult_0_l, Rmult_assoc.
-  rewrite -> Rinv_l, Rmult_1_r;[ | apply Rgt_not_eq]; fourier.
+  rewrite -> Rinv_l, Rmult_1_r;[ | apply Rgt_not_eq]; lra.
 apply (filter_Rlt_witness ((a + b)/2)).
   exists (mkposreal _ bmap); intros y ya.
   enough (yma : y * 2 - a * 2 < b - a).
-    apply Rmult_lt_reg_r with 2;[fourier | ].
-    unfold Rdiv; rewrite -> Rmult_assoc, Rinv_l;[ | apply Rgt_not_eq; fourier].
-    rewrite -> Rmult_1_r; fourier.
+    apply Rmult_lt_reg_r with 2;[lra | ].
+    unfold Rdiv; rewrite -> Rmult_assoc, Rinv_l;[ | apply Rgt_not_eq; lra].
+    rewrite -> Rmult_1_r; lra.
   rewrite <- Rmult_minus_distr_r; apply Rmult_lt_reg_r with (/2).
-    apply Rinv_0_lt_compat; fourier.
-  rewrite -> Rmult_assoc, Rinv_r, Rmult_1_r;[|apply Rgt_not_eq; fourier].
+    apply Rinv_0_lt_compat; lra.
+  rewrite -> Rmult_assoc, Rinv_r, Rmult_1_r;[|apply Rgt_not_eq; lra].
   apply Rle_lt_trans with (abs (minus y a)).
     now apply Rle_abs.
   apply AbsRing_norm_compat2 in ya; apply Rlt_le_trans with (1 := ya).
   now rewrite -> Rmult_1_l; simpl; auto with real.
 exists (mkposreal _ bmap); intros y yb.
 enough (yma : b * 2 - y * 2 < b - a).
-  apply Rmult_lt_reg_r with 2;[fourier | ].
-  unfold Rdiv; rewrite -> Rmult_assoc, Rinv_l;[ | apply Rgt_not_eq; fourier].
-  rewrite -> Rmult_1_r; fourier.
+  apply Rmult_lt_reg_r with 2;[lra | ].
+  unfold Rdiv; rewrite -> Rmult_assoc, Rinv_l;[ | apply Rgt_not_eq; lra].
+  rewrite -> Rmult_1_r; lra.
 rewrite <- Rmult_minus_distr_r; apply Rmult_lt_reg_r with (/2).
-  apply Rinv_0_lt_compat; fourier.
-rewrite -> Rmult_assoc, Rinv_r, Rmult_1_r;[|apply Rgt_not_eq; fourier].
+  apply Rinv_0_lt_compat; lra.
+rewrite -> Rmult_assoc, Rinv_r, Rmult_1_r;[|apply Rgt_not_eq; lra].
 apply Rle_lt_trans with (abs (minus b y)).
   now apply Rle_abs.
 apply ball_sym in yb; apply AbsRing_norm_compat2 in yb.
@@ -134,12 +134,12 @@ apply filter_Rlt_witness with a.
   assert (qa : Q a) by now apply atQ; intros; apply ball_center.
   apply (filter_imp P); auto.
   intros x px.
-  assert (t := cnd1 x a px qa); simpl in t; destruct t; fourier.
+  assert (t := cnd1 x a px qa); simpl in t; destruct t; lra.
 destruct Pm2 as [P Q atP GQ cnd2].
 assert (pa : P a) by now apply atP; intros; apply ball_center.
 apply (filter_imp Q); auto.
 intros x qx.
-assert (t := cnd2 a x pa qx); simpl in t; destruct t; fourier.
+assert (t := cnd2 a x pa qx); simpl in t; destruct t; lra.
 Qed.
 
 Lemma filter_Rlt_right_left a b : a < b ->
@@ -147,30 +147,30 @@ Lemma filter_Rlt_right_left a b : a < b ->
 Proof.
 intros ab.
 assert (bmap: 0 < (b - a)/2).
-  apply Rmult_lt_reg_r with 2;[fourier | ].
+  apply Rmult_lt_reg_r with 2;[lra | ].
   unfold Rdiv; rewrite -> Rmult_0_l, Rmult_assoc.
-  rewrite -> Rinv_l, Rmult_1_r;[ | apply Rgt_not_eq]; fourier.
+  rewrite -> Rinv_l, Rmult_1_r;[ | apply Rgt_not_eq]; lra.
 apply (filter_Rlt_witness ((a + b)/2)).
   exists (mkposreal _ bmap); intros y ya cmp.
   enough (yma : y * 2 - a * 2 < b - a).
-    apply Rmult_lt_reg_r with 2;[fourier | ].
-    unfold Rdiv; rewrite -> Rmult_assoc, Rinv_l;[ | apply Rgt_not_eq; fourier].
-    rewrite -> Rmult_1_r; fourier.
+    apply Rmult_lt_reg_r with 2;[lra | ].
+    unfold Rdiv; rewrite -> Rmult_assoc, Rinv_l;[ | apply Rgt_not_eq; lra].
+    rewrite -> Rmult_1_r; lra.
   rewrite <- Rmult_minus_distr_r; apply Rmult_lt_reg_r with (/2).
-    apply Rinv_0_lt_compat; fourier.
-  rewrite -> Rmult_assoc, Rinv_r, Rmult_1_r;[|apply Rgt_not_eq; fourier].
+    apply Rinv_0_lt_compat; lra.
+  rewrite -> Rmult_assoc, Rinv_r, Rmult_1_r;[|apply Rgt_not_eq; lra].
   apply Rle_lt_trans with (abs (minus y a)).
     now apply Rle_abs.
   apply AbsRing_norm_compat2 in ya; apply Rlt_le_trans with (1 := ya).
   now rewrite -> Rmult_1_l; simpl; auto with real.
 exists (mkposreal _ bmap); intros y yb cmp.
 enough (yma : b * 2 - y * 2 < b - a).
-  apply Rmult_lt_reg_r with 2;[fourier | ].
-  unfold Rdiv; rewrite -> Rmult_assoc, Rinv_l;[ | apply Rgt_not_eq; fourier].
-  rewrite -> Rmult_1_r; fourier.
+  apply Rmult_lt_reg_r with 2;[lra | ].
+  unfold Rdiv; rewrite -> Rmult_assoc, Rinv_l;[ | apply Rgt_not_eq; lra].
+  rewrite -> Rmult_1_r; lra.
 rewrite <- Rmult_minus_distr_r; apply Rmult_lt_reg_r with (/2).
-  apply Rinv_0_lt_compat; fourier.
-rewrite -> Rmult_assoc, Rinv_r, Rmult_1_r;[|apply Rgt_not_eq; fourier].
+  apply Rinv_0_lt_compat; lra.
+rewrite -> Rmult_assoc, Rinv_r, Rmult_1_r;[|apply Rgt_not_eq; lra].
 apply Rle_lt_trans with (abs (minus b y)).
   now apply Rle_abs.
 apply ball_sym in yb; apply AbsRing_norm_compat2 in yb.
@@ -369,7 +369,7 @@ intros P2 PP2; specialize (intf P2 PP2); destruct PP2 as [eps P2eps].
 set (M := Rabs (f a) + 1).
 assert (M0 : 0 < eps / M).
   apply Rmult_lt_0_compat;[apply cond_pos | apply Rinv_0_lt_compat].
-  now assert (0 <= Rabs (f a)) by apply Rabs_pos; unfold M; fourier.
+  now assert (0 <= Rabs (f a)) by apply Rabs_pos; unfold M; lra.
 assert (close : forall y, y <> a -> ball a delta2 y -> Rabs (f y) < M).
   intros y ay b_y; unfold M.
   replace (f y) with (f a + (f y - f a)) by ring.
@@ -382,26 +382,26 @@ assert (exrint_close : forall a', ball a delta1 a' -> ex_RInt f a a').
     rewrite -> Rmin_left, Rmax_right in pz; auto.
     change (Rabs (z - a) < delta1).
     rewrite -> Rabs_right; cycle 1.
-      destruct pz; fourier.
-    destruct pz; apply Rle_lt_trans with (a' - a); try fourier.
-    rewrite <- (Rabs_right (a' - a)); try fourier.
+      destruct pz; lra.
+    destruct pz; apply Rle_lt_trans with (a' - a); try lra.
+    rewrite <- (Rabs_right (a' - a)); try lra.
     tauto.
   change (Rabs (z - a) < delta1).
   destruct (Rle_dec a z) as [az | za].
     apply Rnot_le_lt in a'a.
-    rewrite -> Rmin_right, Rmax_left in pz; try (destruct pz; fourier).
+    rewrite -> Rmin_right, Rmax_left in pz; try (destruct pz; lra).
     assert (za' : z = a).
-      now apply Rle_antisym; (destruct pz; fourier).
+      now apply Rle_antisym; (destruct pz; lra).
     now rewrite -> za', Rminus_eq_0, Rabs_R0; case delta1; tauto.
   apply Rnot_le_lt in a'a; apply Rnot_le_lt in za.
-  rewrite -> Rmin_right, Rmax_left in pz; try fourier.
-  rewrite -> Rabs_left;[ | fourier].
-  apply Rle_lt_trans with (a - a'); try (intuition fourier).
-  rewrite <- (Rabs_right (a - a')); try (intuition fourier).
+  rewrite -> Rmin_right, Rmax_left in pz; try lra.
+  rewrite -> Rabs_left;[ | lra].
+  apply Rle_lt_trans with (a - a'); try (intuition lra).
+  rewrite <- (Rabs_right (a - a')); try (intuition lra).
   now change (ball a' delta1 a); apply ball_sym; tauto.
 assert (pre_ep2 : 0 < eps / 2 * /M).
-  repeat apply Rmult_lt_0_compat; try fourier;[destruct eps; tauto | ].
-  now apply Rinv_0_lt_compat; unfold M; assert (t := Rabs_pos (f a)); fourier.
+  repeat apply Rmult_lt_0_compat; try lra;[destruct eps; tauto | ].
+  now apply Rinv_0_lt_compat; unfold M; assert (t := Rabs_pos (f a)); lra.
 set (ep2 := mkposreal _ pre_ep2).
 assert (at_right a (fun x => ball a delta1 x /\ ball a ep2 x /\
                              ball a delta2 x /\ a < x /\ x < m)).
@@ -409,10 +409,10 @@ assert (at_right a (fun x => ball a delta1 x /\ ball a ep2 x /\
     now exists ep2; intros; tauto.
   destruct (filter_ex _ FQ) as [y' Py'].
   assert (ma0 : 0 < m - a).
-    now destruct (cmp a y'); auto; fourier.
+    now destruct (cmp a y'); auto; lra.
   exists (mkposreal _ ma0); simpl; intros y.
   intros bay ay; change (Rabs (y - a) < m - a) in bay.
-  now rewrite -> Rabs_right in bay; fourier.
+  now rewrite -> Rabs_right in bay; lra.
 specialize (intf2 _ (locally_ball v (pos_div_2 eps))).
 destruct intf2 as [Pl Ql FPl FQl closerint].
 assert (pla : Pl a) by (apply FPl; intros; apply ball_center).
@@ -437,15 +437,15 @@ assert (Rabs (RInt f a x) < pos_div_2 eps).
     apply Rle_trans with (1 := Rabs_triang _ _).
     apply Rplus_le_compat;[apply Rle_refl | ].
     apply Rlt_le, (Pd2 t).
-    change (Rabs (t - a) < delta2); rewrite -> Rabs_right;[ | intuition fourier].
-    apply Rle_lt_trans with (x - a);[intuition fourier | ].
-    now rewrite <- (Rabs_right (x - a));[tauto | intuition fourier].
+    change (Rabs (t - a) < delta2); rewrite -> Rabs_right;[ | intuition lra].
+    apply Rle_lt_trans with (x - a);[intuition lra | ].
+    now rewrite <- (Rabs_right (x - a));[tauto | intuition lra].
   replace (pos (pos_div_2 eps)) with (ep2 * M).
-    rewrite <- (Rabs_right (x - a));[|intuition fourier].
+    rewrite <- (Rabs_right (x - a));[|intuition lra].
     apply Rmult_lt_compat_r;[unfold M  | tauto].
-    now assert (t := Rabs_pos (f a)); fourier.
+    now assert (t := Rabs_pos (f a)); lra.
   simpl; field; unfold M; apply Rgt_not_eq; assert (t := Rabs_pos (f a)).
-  now fourier.
+  now lra.
 replace (pos eps) with (pos_div_2 eps + pos_div_2 eps) by (simpl; field).
 apply ball_triangle with (RInt f a y); cycle 1.
   change (Rabs (RInt f x y - RInt f a y) < pos_div_2 eps).
@@ -493,13 +493,13 @@ assert (t': forall eps : posreal, exists x,
     destruct (vfg' x z) as [xz pxz]; try tauto.
     assert (ex_RInt f x y) by (exists xy; tauto).
     assert (ex_RInt f x z) by (exists xz; tauto).
-    assert (x < a) by (destruct (lFa x a); intuition fourier || tauto).
-    assert (a < y) by (destruct (laG a y); intuition fourier || tauto).
-    assert (a < z) by (destruct (laG a z); intuition fourier || tauto).
+    assert (x < a) by (destruct (lFa x a); intuition lra || tauto).
+    assert (a < y) by (destruct (laG a y); intuition lra || tauto).
+    assert (a < z) by (destruct (laG a z); intuition lra || tauto).
     assert (ex_RInt f x a).
-      apply (ex_RInt_Chasles_1 f x a y);[intuition fourier | assumption].
+      apply (ex_RInt_Chasles_1 f x a y);[intuition lra | assumption].
     rewrite -> !(RInt_Chasles f); auto;
-       try (apply (ex_RInt_Chasles_2 f x); auto; intuition fourier); cycle 1.
+       try (apply (ex_RInt_Chasles_2 f x); auto; intuition lra); cycle 1.
     change (ball (RInt f x y) eps (RInt f x z)).
     replace (pos eps) with (pos_div_2 eps + pos_div_2 eps) by (simpl; field).
     replace (RInt f x y) with xy by (symmetry; apply is_RInt_unique; tauto).
@@ -526,13 +526,13 @@ destruct (Pvfg (ball vfg (mkposreal _ Rlt_0_1))) as [S3 S4 fs3 gs4 Ps4].
 assert (F (Rgt a)).
   apply (filter_imp S5); [intros x s5x | auto].
   assert (s6a : S6 a) by apply p6.
-  destruct (lFa x a s5x s6a); fourier.
+  destruct (lFa x a s5x s6a); lra.
 destruct (filter_ex (F := F) (fun x => a > x /\ S3 x)) as [w Pw];
   [apply filter_and; auto | ].
 exists (fun x => S4 x /\ a < x); split;[ | intros x px; apply (RInt_correct f)].
   apply filter_and;[assumption | apply (filter_imp S2);[intros x s2x | easy]].
   assert (s1a : S1 a) by apply p1.
-  destruct (laG a x s1a s2x); fourier.
+  destruct (laG a x s1a s2x); lra.
 apply ex_RInt_Chasles_2 with w;[split; apply Rlt_le; tauto | ].
 destruct (Ps4 w x) as [wx [Pwx closewx]]; try tauto; exists wx; tauto.
 Qed.

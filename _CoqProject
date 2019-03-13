@@ -21,5 +21,4 @@ CPoly_ex.v
 #Interval_exec.v
 generalities.v
 atan_derivative_improper_integral.v
-asin.v
 arcsinh.v

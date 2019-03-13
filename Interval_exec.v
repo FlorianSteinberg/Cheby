@@ -464,7 +464,6 @@ Definition D2Q (d: s_float bigZ bigZ) := match d with
 	| Float m e => (BigQ.Qz m * (2^([e]%bigZ)))%bigQ
 end.
 
-Locate PtoP.
 Definition I1 := I.fromZ (-1)%Z.
 Definition I2 := I.fromZ (2)%Z.
 Definition I3 := I.fromZ (3)%Z.

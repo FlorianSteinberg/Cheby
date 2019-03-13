@@ -1,5 +1,16 @@
+
+(******************************************************************************)
+(* This file contains material that should be included into                   *)
+(* Coquelicot                                                                 *)
+(******************************************************************************)
+
 From mathcomp Require Import ssreflect.
-Require Import Reals Coquelicot.Coquelicot Psatz.
+Require Import Reals Coquelicot.Coquelicot Psatz generalities.
+
+(*****************************************************************************)
+(* Definition of a < filter                                                  *)
+(* Most of this was borrowed from Yves Bertot                                *)
+(*****************************************************************************)
 
 Definition filter_Rlt F1 F2 :=
   exists m, filter_prod F1 F2 (fun p => fst p < m < snd p).
@@ -536,3 +547,107 @@ exists (fun x => S4 x /\ a < x); split;[ | intros x px; apply (RInt_correct f)].
 apply ex_RInt_Chasles_2 with w;[split; apply Rlt_le; tauto | ].
 destruct (Ps4 w x) as [wx [Pwx closewx]]; try tauto; exists wx; tauto.
 Qed.
+
+Lemma is_RInt_gen_at_point_at_left (f : R -> R) (a : R) F {FF : ProperFilter F}
+  v : locally a (continuous f) -> is_RInt_gen f F (at_point a) v ->
+  filter_Rlt F (at_point a) ->  is_RInt_gen f F (at_left a) v.
+Proof.
+move=> [delta1 pd1] intf [m [P Q FP FQ /= cmp]] P2 PP2.
+have [delta2 Pd2] :=
+   (pd1 a (ball_center a delta1)
+          (ball (f a) (mkposreal _ Rlt_0_1)) (locally_ball _ _)).
+have qa : Q a by (apply: FQ => *; apply: ball_center).
+have intf2 := intf P2 PP2.
+have [eps P2eps] := PP2.
+pose M := Rabs (f a) + 1.
+have M0 : 0 < eps / M.
+  apply: Rmult_lt_0_compat; first by apply: cond_pos.
+  apply: Rinv_0_lt_compat.
+  have RH : 0 <= Rabs (f a) by apply: Rabs_pos.
+  by rewrite /M; lra.
+have close y : y <> a -> ball a delta2 y -> Rabs (f y) < M.
+  move=> ay b_y; rewrite /M (_: f y = f a + (f y - f a)); last by lra.
+  apply: Rle_lt_trans (Rabs_triang _ _) _.
+  by apply/Rplus_lt_compat_l/Pd2.
+have exrint_close a' : ball a delta1 a' -> ex_RInt f a' a.
+  move=> baa'.
+  apply: (ex_RInt_continuous f)=> z pz; apply: pd1.
+  have [aa' | a'a] := Rle_dec a a'.
+    move: pz; rewrite Rmin_right // Rmax_left // => pz.
+    change (Rabs (z - a) < delta1).
+    rewrite Rabs_right; try lra.
+    apply: Rle_lt_trans (_ : a' - a < _); try lra.
+    rewrite -(Rabs_right (a' - a)); try lra.
+    tauto.
+  change (Rabs (z - a) < delta1).
+  have [az | za] := Rle_dec a z.
+    have a'aW :=  Rnot_le_lt _ _ a'a.
+    move: pz; rewrite Rmin_left; try lra.
+    rewrite Rmax_right => [pz|]; try lra.
+    have za' : z = a by apply: Rle_antisym; lra.
+    by rewrite za' Rminus_eq_0 Rabs_R0; case delta1.
+  have a'a1 :=  Rnot_le_lt _ _ a'a; have za1 :=  Rnot_le_lt _ _ za.
+  move: pz; rewrite Rmin_left; try lra.
+  rewrite Rmax_right => [pz|]; try lra.
+  apply: Rle_lt_trans (_ : a - a' < _); try (split_Rabs; lra).
+  rewrite -(Rabs_right (a - a')); try (split_Rabs; lra).
+  by change (ball a' delta1 a); apply: ball_sym.
+have pre_ep2 : 0 < eps / 2 * /M.
+  repeat apply: Rmult_lt_0_compat; try lra.
+    by destruct eps; tauto.
+  by apply: Rinv_0_lt_compat; rewrite /M; assert (t := Rabs_pos (f a)); lra.
+pose ep2 := mkposreal _ pre_ep2.
+have aH : (at_left a (fun x => ball a delta1 x /\ ball a ep2 x /\
+                             ball a delta2 x /\ m < x /\ x < a)).
+  repeat apply: filter_and; try (by apply/filter_le_within/locally_ball).
+    have  [y' Py'] := filter_ex _ FP.
+    have ma0 : 0 < a - m by case:  (cmp y' a) => //; lra.
+    exists (mkposreal _ ma0) => /= y.
+    rewrite ball_Rabs=> bay ay; rewrite Rabs_left in bay; lra.
+  by exists ep2.
+have [Pl Ql FPl FQl closerint] := intf _ (locally_ball v (pos_div_2 eps)).
+have pla : Ql a by apply: FQl => *; apply: ball_center.
+have HF : F (fun y => P y /\ Pl y) by apply: filter_and.
+exists (fun y => P y /\ Pl y)
+       (fun x => ball a delta1 x /\ ball a ep2 x /\
+                 ball a delta2 x /\ m < x /\ x < a) => // x y bx Ry.
+exists (RInt f x y).
+have [||fxa [close_fxa]] // := closerint x a; first by tauto.
+split => /=.
+  apply: (RInt_correct f x y).
+  apply: (ex_RInt_Chasles_1 f _ _ a); last by exists fxa; tauto.
+  split; apply: Rlt_le; last by tauto.
+  apply: Rlt_trans (_ : m < _); last by tauto.
+  by assert (t := cmp x a (proj1 bx) qa); tauto.
+apply: P2eps.
+have RH :  Rabs (RInt f y a) < pos_div_2 eps.
+  apply: Rle_lt_trans (_ : (a - y) * M < _).
+    apply: abs_RInt_le_const => [||t yta]; first by apply: Rlt_le; tauto.
+      by apply: exrint_close; tauto.
+    rewrite (_ : f t =f a + (f t - f a)); last by lra.
+    apply: Rle_trans (Rabs_triang _ _) _.
+    apply: Rplus_le_compat (Rle_refl _) _.
+    apply/Rlt_le/(Pd2 t).
+    change (Rabs (t - a) < delta2); rewrite Rabs_left1; try lra.
+    apply: Rle_lt_trans (_ : a - y < _); try lra.
+    rewrite -(Rabs_right (a - y)); try lra.
+    by rewrite -Rabs_Ropp Ropp_minus_distr; tauto.
+  rewrite (_ : pos (pos_div_2 eps) = ep2 * M) /=.
+    rewrite -(Rabs_right (a - y)); try lra.
+    apply: Rmult_lt_compat_r.
+      by assert (t := Rabs_pos (f a)); rewrite /M; lra.
+    by rewrite -Rabs_Ropp Ropp_minus_distr; tauto.
+  by field; rewrite /M; apply: Rgt_not_eq; assert (t := Rabs_pos (f a)); lra.
+rewrite (_ : pos eps = pos_div_2 eps + pos_div_2 eps) /=; last by field.
+apply: ball_triangle (_ : ball v (eps / 2) (RInt f x a)) _; last first.
+  change (Rabs (RInt f x y - RInt f x a) < pos_div_2 eps).
+  rewrite (_ : RInt f x a = RInt f x y + RInt f y a); last first.
+    apply/sym_equal/(RInt_Chasles f); last by apply: exrint_close; tauto.
+    apply: (ex_RInt_Chasles_1 f _ _ a); last by exists fxa.
+    split.
+      by apply/Rlt_le/(Rlt_trans _ _ _ _ (_ : m < _)); case: (cmp x a); tauto.
+    by apply: Rlt_le; tauto.
+  by split_Rabs; lra.
+by rewrite (is_RInt_unique f x a fxa).
+Qed.
+

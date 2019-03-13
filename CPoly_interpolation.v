@@ -1,7 +1,7 @@
 From mathcomp Require Import all_ssreflect.
 From mathcomp Require Import all_algebra.
 
-Require Import Rstruct CPoly CPoly_trigo.
+Require Import Rstruct CPoly CPoly_trigo atan_asin_acos.
 Import Rtrigo_def.
 Import Rtrigo1.
 

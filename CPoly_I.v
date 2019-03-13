@@ -2,8 +2,7 @@ From mathcomp Require Import all_ssreflect all_algebra.
 Require Import String Rstruct Reals Psatz under.
 Require Import Poly_complements CPoly CPoly_exec CPoly_interpolation.
 Require Import Coquelicot.Coquelicot.
-Require Import sine_interpolation cos_interpolation exp_interpolation.
-Require Import ln_interpolation sqrt_interpolation inv_interpolation.
+Require Import Fun_interpolation.
 Set Implicit Arguments.
 Unset Strict Implicit.
 Import Prenex Implicits.
@@ -107,7 +106,7 @@ Lemma abs_correct x I:
 	x \contained_in I -> Rabs x \contained_in (I.abs I).
 Proof. by apply I.abs_correct. Qed.
 
-Lemma power_pos_correct x I (n : nat) : 
+Lemma power_pos_correct x I (n : nat) :
   (0 < n)%nat ->
   x \contained_in I -> (x ^ n) \contained_in I.power_pos prec I (Pos.of_nat n).
 Proof.
@@ -174,7 +173,7 @@ rewrite /= !F.fromZ_correct; split.
 by apply/Rle_div_l; lra.
 Qed.
 
-Lemma Rabs_join x I : 
+Lemma Rabs_join x I :
   Rabs x \contained_in I -> x \contained_in (I.join (I.neg I) I).
 Proof.
 move=> H.
@@ -187,7 +186,7 @@ Qed.
 Lemma Rabs_I01_max y i I J g :
   (i \contained_in I) ->
   (forall x, x \contained_in I -> Rabs (g x) \contained_in J)%R ->
-  (forall z, 
+  (forall z,
     (forall x, x \contained_in I -> Rabs (g x) <= z)%R ->
     (Rabs y <= z))%R ->
   (Rabs y \contained_in (I.mul prec I01 J)).
@@ -241,8 +240,8 @@ Qed.
 (*                             Factorial                                     *)
 (*****************************************************************************)
 
-Fixpoint mfact_rec n p := 
-  if n is n1.+1 then (p * (mfact_rec n1 p.+1))%nat 
+Fixpoint mfact_rec n p :=
+  if n is n1.+1 then (p * (mfact_rec n1 p.+1))%nat
   else 1%nat.
 
 Lemma mfact_recE n p : mfact_rec n p.+1 = ((n + p)`! %/ p`!)%nat.
@@ -256,8 +255,8 @@ rewrite addSn factS.
 by apply/dvdn_mull/dvdnn.
 Qed.
 
-Fixpoint Ifact_rec n p := 
-  if n is n1.+1 then mul p (Ifact_rec n1 (add I1 p)) 
+Fixpoint Ifact_rec n p :=
+  if n is n1.+1 then mul p (Ifact_rec n1 (add I1 p))
   else I1.
 
 Definition Ifact n := Ifact_rec n I1.
@@ -269,7 +268,7 @@ rewrite /Ifact (_ : n`! = (n + 0)`! %/ 0`!)%nat; last first.
 rewrite -mfact_recE.
 have : INR 1 \contained_in I1 by apply: I.fromZ_correct.
 elim: n 1%nat I1 => [|n IH] m M H; first by apply: I.fromZ_correct.
-lazy iota beta delta [mfact_rec Ifact_rec]. 
+lazy iota beta delta [mfact_rec Ifact_rec].
 rewrite mult_INR.
 apply: mul_correct => //.
 apply: IH.
@@ -346,7 +345,7 @@ Fixpoint ICb q (x : ID) : ID * ID :=
    let a1 := sub (add a (mul (fst t) x)) (snd t) in
    (a1, (fst t)) else (I0, I0).
 
-Definition ICshaw p x := 
+Definition ICshaw p x :=
   let: (i1, i2) := ICb p (scl2 x) in sub i1 (mul i2 x).
 
 Lemma ICb_crct (p: seq R) (pI: seq ID) (x: R) (I: ID):
@@ -390,16 +389,16 @@ End ICshaw.
 
 Section IsCshaw.
 
-Definition IsCshaw a b p x := 
+Definition IsCshaw a b p x :=
   let x1 := (div (sub (sub (scl2 x) b) a) (sub b a)) in
   ICshaw p x1.
 
 Lemma IsCshaw_correct n (p: seq R) (P: seq ID) (x a b : R) (X A B : ID) :
   a != b -> size p = n -> size P = n ->
-	(forall i, p`_i \contained_in (nth I0 P i)) -> 
-  x \contained_in X -> 
-  a \contained_in A -> 
-  b \contained_in B -> 
+	(forall i, p`_i \contained_in (nth I0 P i)) ->
+  x \contained_in X ->
+  a \contained_in A ->
+  b \contained_in B ->
 		(\sum_(i < n) p`_ i *: 'T^(a,b)_i).[x] \contained_in IsCshaw A B P X.
 Proof.
 move=> aDb Sp SP IP IX IA IB.
@@ -465,7 +464,7 @@ rewrite add0n /Rdiv !natr_INR.
 lra.
 Qed.
 
-Definition Imlist n v2n := 
+Definition Imlist n v2n :=
    Iilist n (fun x => add I2 x) (fun x => div x v2n) I1.
 
 Lemma Iiter_add21 i :
@@ -479,7 +478,7 @@ by apply: add_correct.
 Qed.
 
 Lemma Imlist_correct n i u v2n :
-   (i < n)%nat -> 
+   (i < n)%nat ->
    (2 * INR n)%R \contained_in v2n ->
    m n i \contained_in nth u (Imlist n v2n) i.
 Proof.
@@ -490,11 +489,11 @@ Qed.
 
 Definition Ipi := I.pi prec.
 
-Definition Icheby_nodes n v2n := 
+Definition Icheby_nodes n v2n :=
    Iilist n (fun x => add I2 x) (fun x => I.cos prec (div (mul x Ipi) v2n)) I1.
 
 Lemma Imulist_correct n u v2n i:
-   (i < n)%nat -> 
+   (i < n)%nat ->
    (2 * INR n)%R \contained_in v2n ->
     mu n i \contained_in nth u (Icheby_nodes n v2n) i.
 Proof.
@@ -512,7 +511,7 @@ Qed.
 Lemma size_Icheby_nodes n v2n: size (Icheby_nodes n v2n) = n.
 Proof. by rewrite size_Iilist. Qed.
 
-Lemma Icheby_nodes_correct n v2n i: 
+Lemma Icheby_nodes_correct n v2n i:
    (2 * INR n)%R \contained_in v2n ->
    (cheby_nodes n)`_ i \contained_in nth I0 (Icheby_nodes n v2n) i.
 Proof.
@@ -532,8 +531,8 @@ by apply: Imulist_correct.
 Qed.
 
 Definition Ischeby_nodes (a b : D) (n : nat) v2n :=
-  [seq I.scale2 
-         (add (add (mul (sub (FtoI b) (FtoI a)) i) (FtoI a)) (FtoI b)) 
+  [seq I.scale2
+         (add (add (mul (sub (FtoI b) (FtoI a)) i) (FtoI a)) (FtoI b))
          (F.ZtoS (-1)) | i <- Icheby_nodes n v2n].
 
 Lemma size_Ischeby_nodes a b n v2n : size (Ischeby_nodes a b n v2n) = n.
@@ -596,7 +595,7 @@ Qed.
 
 Definition Tvalue_list n j := map (Tvalues n j) (iota 0 n).
 
-Lemma Tvalue_list_correct n i j: (j < n)%nat -> 
+Lemma Tvalue_list_correct n i j: (j < n)%nat ->
     (Tvalue_list n i)`_j = ('T_i).[(cheby_nodes n)`_j].
 Proof.
 move=> *; rewrite (nth_map 0%nat); last by rewrite size_iota.
@@ -615,7 +614,7 @@ rewrite -dsprod_cheby_eq //.
 by apply /leq_trans; first exact/ size_Poly.
 Qed.
 
-Definition cheby_coefs n j := 
+Definition cheby_coefs n j :=
    ((if j == 0%nat then 1 else 2%R) / INR (n.+1))%R * \sum_(i < n.+1) (value_list n.+1)`_i * (Tvalue_list n.+1 j)`_i.
 
 Lemma dsprod_coefs n j:
@@ -636,7 +635,7 @@ Qed.
 Definition cheby_coef_list n :=
   [seq cheby_coefs n.-1 i | i <- iota 0 n].
 
-Lemma cheby_coef_list_spec n: 
+Lemma cheby_coef_list_spec n:
 	CPoly (cheby_coef_list n) = interpolation f (cheby_nodes n).
 Proof.
 case: n => [ | n]; first by rewrite CPoly_nil.
@@ -652,7 +651,7 @@ Qed.
 End cheby_coefs.
 
 Definition Ienv f a b F :=
-	forall x I, 
+	forall x I,
     (a <= x <= b)%R -> x \contained_in I -> (f x) \contained_in (F I).
 
 Notation "F \is_envelope_of f":= (Ienv f (-1) 1 F) (at level 70).
@@ -685,7 +684,7 @@ Qed.
 
 Fixpoint IT3values l1 l2 l3 : seq ID :=
   if l1 is m::l1 then
-    if l2 is v1::l2 then 
+    if l2 is v1::l2 then
       if l3 is v2::l3 then sub (mul (scl2 m)  v2) v1 :: IT3values l1 l2 l3
       else [::]
     else [::]
@@ -704,7 +703,7 @@ Lemma IT3values_correct l1 l2 l3 n m k  :
   (forall i, (i < size l1)%nat -> (cheby_nodes n)`_(m + i) \contained_in nth I0 l1 i) ->
   (forall i, (i < size l2)%nat -> (pT _ k).[(cheby_nodes n)`_(m + i)] \contained_in nth I0 l2 i) ->
   (forall i, (i < size l3)%nat -> (pT _ k.+1).[(cheby_nodes n)`_(m + i)] \contained_in nth I0 l3 i) ->
-  (forall i, (i < size (IT3values l1 l2 l3))%nat -> 
+  (forall i, (i < size (IT3values l1 l2 l3))%nat ->
       (pT _ k.+2).[(cheby_nodes n)`_(m + i)] \contained_in nth I0 (IT3values l1 l2 l3) i).
 Proof.
 elim: l1 l2 l3 m k => // a l1 IH  [|b l2] // [|c l3] //= m k [] Hs2 [] Hs3 Hl1 Hl2 Hl3 [|i] /= H.
@@ -751,8 +750,8 @@ Lemma ITvalues_rec_correct l1 l2 l3 n m k  :
   (forall i, (i < size l3)%nat -> (pT _ k.+1).[(cheby_nodes n)`_i] \contained_in nth I0 l3 i) ->
   (forall i p,
       let l4 := nth [::] (ITvalues_rec m l1 l2 l3) p in
-      (p < m)%nat -> 
-      (i < size l1)%nat -> 
+      (p < m)%nat ->
+      (i < size l1)%nat ->
       (pT _(k.+2 + p)).[(cheby_nodes n)`_(i)] \contained_in nth I0 l4 i).
 Proof.
 elim: m k l1 l2 l3 => // m1 IH k l1 l2 l3 Hs2 Hs3 Hl1 Hl2 Hl3 i [/= _ H|p] /=.
@@ -768,7 +767,7 @@ by apply: IT3values_correct.
 Qed.
 
 Definition ITvalues n l1 l2 :=
-  if n is n1.+1 then 
+  if n is n1.+1 then
      l1 ::
      if n1 is n2.+1 then
        l2 :: ITvalues_rec n2 l2 l1 l2
@@ -795,8 +794,8 @@ Lemma ITvalues_correct n l1 l2 v2n p i :
       l1 = nseq n I1 ->
       (2 * INR n)%R \contained_in v2n ->
       l2 = Icheby_nodes n v2n ->
-      (p < n)%nat -> 
-      (i < n)%nat -> 
+      (p < n)%nat ->
+      (i < n)%nat ->
       (pT _(i)).[mu n p] \contained_in nth I0 (nth [::] (ITvalues n l1 l2) i) p.
 Proof.
 case: n => // [] [|n] // l1D v2nD l2D.
@@ -833,7 +832,7 @@ Qed.
 Fixpoint Isum (F : ID -> ID -> ID) l1 l2 :=
   if l1 is a :: l1 then
   if l2 is b :: l2 then
-     add (F a b) (Isum F l1 l2)  
+     add (F a b) (Isum F l1 l2)
   else I0
   else I0.
 
@@ -850,7 +849,7 @@ Lemma Isum_correct n a b c d g G (l1 l2 : seq R) Il1 Il2:
   (\sum_(i < n) (g (nth 0 l1 i) (nth 0 l2 i)))
       \contained_in (Isum G Il1 Il2).
 Proof.
-move=> H; elim: l1 l2 Il1 Il2 n => 
+move=> H; elim: l1 l2 Il1 Il2 n =>
    [|a1 l1 IH] [|b1 l2] [|A1 Il1] [|B1 Il2] [|n] //.
   move=> _ _ _ _ _ _ _ _.
   by rewrite big_ord0; apply: I.fromZ_correct.
@@ -869,7 +868,7 @@ by apply: (Inl2 i.+1).
 Qed.
 
 Definition Icheby_coefs vn vl1 vl2 :=
-  let g x y := mul (If x) y in 
+  let g x y := mul (If x) y in
   let res := [seq div (mul I2 (Isum g vl1 i)) vn | i <- vl2] in
   if res is a :: res1 then (div a I2) :: res1
   else res.
@@ -891,7 +890,7 @@ Lemma Icheby_coefs_correct n vn v2n l1 vl1 vl2 j :
    vl1 = Icheby_nodes n.+1 v2n ->
    vl2 = ITvalues n.+1 l1 vl1 ->
    (j < n.+1)%nat ->
-	dsprod_coef (interpolation f (cheby_nodes n.+1)) n j \contained_in 
+	dsprod_coef (interpolation f (cheby_nodes n.+1)) n j \contained_in
              (nth I0 (Icheby_coefs vn vl1 vl2) j).
 Proof.
 move=> v1D v2nD vnD vl1D -> jL.
@@ -904,7 +903,7 @@ rewrite map_cons.
 case: j jL => [|j] jL; set s := \sum_(i < _) _.
   rewrite eqxx {1}/nth.
   rewrite -[((1 / INR n.+1)%R * s)%RR]/((1 / INR n.+1 * s))%R.
-  have -> : ((1 / INR n.+1) *  s = 
+  have -> : ((1 / INR n.+1) *  s =
              ((2 * s) / INR n.+1) / 2)%R.
     by field; apply: (not_INR _ 0).
   apply: div_correct; last first.
@@ -912,7 +911,7 @@ case: j jL => [|j] jL; set s := \sum_(i < _) _.
   apply: div_correct => //.
   apply: mul_correct.
     by apply: I.fromZ_correct.
-  have ->: s = 
+  have ->: s =
       \sum_(i < n.+1)
         f ((cheby_nodes n.+1)`_i) * (Tvalue_list n.+1 0)`_i.
     apply: eq_bigr => i _; congr (_ * _).
@@ -950,7 +949,7 @@ rewrite (nth_map [::]); last first.
 apply: div_correct => //.
 apply: mul_correct.
   by apply: I.fromZ_correct.
-have ->: s = 
+have ->: s =
     \sum_(i < n.+1)
         f ((cheby_nodes n.+1)`_i) * (Tvalue_list n.+1 j.+1)`_i.
   apply: eq_bigr => i _; congr (_ * _).
@@ -1002,8 +1001,8 @@ Lemma svalue_list_correct n i: (i < n)%nat ->
 	(svalue_list n)`_i = f (scheby_nodes a b n)`_i.
 Proof. by intros; rewrite (nth_map 0%RR); last rewrite size_scheby_nodes. Qed.
 
-Definition scheby_coefs n j := 
-   ((if j == 0%nat then 1 else 2) / INR (n.+1))%R * \sum_(i < n.+1) 
+Definition scheby_coefs n j :=
+   ((if j == 0%nat then 1 else 2) / INR (n.+1))%R * \sum_(i < n.+1)
             (svalue_list n.+1)`_i * (Tvalue_list n.+1 j)`_i.
 
 Lemma sdsprod_coefs n j:
@@ -1086,7 +1085,7 @@ Lemma Ischeby_coefs_correct n vn v2n l1 vl1 vl2 vl3 j :
    vl3 = Ischeby_nodes a b n.+1 v2n ->
    (j < n.+1)%nat ->
 	sdsprod_coef (D2R a) (D2R b)
-    (interpolation f (scheby_nodes (D2R a) (D2R b) n.+1)) n j \contained_in 
+    (interpolation f (scheby_nodes (D2R a) (D2R b) n.+1)) n j \contained_in
              (nth I0 (Icheby_coefs If vn vl3 vl2) j).
 Proof.
 move=> aLb v1D v2nD vnD vl1D -> -> jL.
@@ -1103,7 +1102,7 @@ rewrite map_cons.
 case: j jL => [|j] jL; set s := \sum_(i < _) _.
   rewrite eqxx {1}/nth.
   rewrite -[((1 / INR n.+1)%R * s)%RR]/((1 / INR n.+1 * s))%R.
-  have -> : ((1 / INR n.+1) *  s = 
+  have -> : ((1 / INR n.+1) *  s =
              ((2 * s) / INR n.+1) / 2)%R.
     by field; apply: (not_INR _ 0).
   apply: div_correct; last first.
@@ -1111,7 +1110,7 @@ case: j jL => [|j] jL; set s := \sum_(i < _) _.
   apply: div_correct => //.
   apply: mul_correct.
     by apply: I.fromZ_correct.
-  have ->: s = 
+  have ->: s =
       \sum_(i < n.+1)
         f ((scheby_nodes (D2R a) (D2R b) n.+1)`_i) * (Tvalue_list n.+1 0)`_i.
     apply: eq_bigr => i _; congr (_ * _).
@@ -1152,7 +1151,7 @@ rewrite (nth_map [::]); last first.
 apply: div_correct => //.
 apply: mul_correct.
   by apply: I.fromZ_correct.
-have ->: s = 
+have ->: s =
     \sum_(i < n.+1)
         f ((scheby_nodes (D2R a) (D2R b) n.+1)`_i) * (Tvalue_list n.+1 j.+1)`_i.
   apply: eq_bigr => i _; congr (_ * _).
@@ -1188,26 +1187,26 @@ Qed.
 
 End Ischeby_coefs.
 
-Record cms := CMS { 
-  P : seq ID; 
+Record cms := CMS {
+  P : seq ID;
   Delta : ID
  }.
 
 Definition cms_correct n a b f (c : cms) :=
-  let:  CMS P Delta  := c in 
+  let:  CMS P Delta  := c in
   size P = n.+1 /\
-  exists p : seq R, 
-   [/\ size p = n.+1, 
+  exists p : seq R,
+   [/\ size p = n.+1,
        forall i, p`_i \contained_in nth I0 P i &
      forall x, x \contained_in I.bnd a b ->
      exists d : R,
-       d \contained_in Delta /\ 
+       d \contained_in Delta /\
        f x = ((CPolyab (D2R a) (D2R b) p).[x] + d)%R].
 
 Lemma cms_correct_eval n a b f c x X :
-  let:  CMS P Delta  := c in 
+  let:  CMS P Delta  := c in
   F.cmp a b = Xlt ->
-  cms_correct n a b f c -> 
+  cms_correct n a b f c ->
   (x \contained_in X) -> (I.subset X (I.bnd a b)) ->
   f x \contained_in add (IsCshaw (I.bnd a a) (I.bnd b b) P X) Delta.
 Proof.
@@ -1294,7 +1293,7 @@ Proof. by apply/const_cms_correct/I.fromZ_correct. Qed.
 (* Variable Chebyshev model                                                  *)
 (*****************************************************************************)
 
-Definition var_cms a b n := 
+Definition var_cms a b n :=
   let Ia := I.bnd a a in
   let Ib := I.bnd b b in
    CMS (I.scale2 (add Ia Ib) (F.ZtoS (-1)) ::
@@ -1317,7 +1316,7 @@ have F x : (x / 2 = x * powerRZ 2 (-1))%R.
 exists ((D2R a + D2R b) / 2 :: (D2R b - D2R a) / 2 :: nseq n 0)%R; split => //.
 - by rewrite /= size_nseq.
 - move=> [|[|i]].
-  - rewrite F. 
+  - rewrite F.
     by apply/scale2_correct/add_correct;
        rewrite /D2R /=; case: F.toX  => //= r; lra.
   - rewrite !F.
@@ -1346,7 +1345,7 @@ Notation "l '\lcontained_in' L" :=
  (forall i,  l`_i \contained_in nth I0 L i) (at level 20).
 
 Lemma Iopp_Cpoly_correct p1 P1 :
-  size p1 = size P1 -> 
+  size p1 = size P1 ->
   p1 \lcontained_in P1 ->
   opp_Cpoly p1 \lcontained_in Iopp_Cpoly P1.
 Proof.
@@ -1361,7 +1360,7 @@ Definition opp_cms (c : cms) :=
   CMS (Iopp_Cpoly P) (I.neg Delta).
 
 Lemma opp_cms_correct n a b c f :
-   cms_correct n a b f c -> 
+   cms_correct n a b f c ->
    cms_correct n a b (fun x => -(f x))%R (opp_cms c).
 Proof.
 case: c => [P Delta] [Sp [p [H1p H2p H3p]]].
@@ -1378,13 +1377,13 @@ Qed.
 (* Addition Chebyshev model                                                  *)
 (*****************************************************************************)
 
-Fixpoint Iadd_Cpoly l1 l2 := 
+Fixpoint Iadd_Cpoly l1 l2 :=
   if l1 is a :: l3 then
     if l2 is b :: l4 then add a b :: Iadd_Cpoly l3 l4
     else l1
   else l2.
 
-Lemma size_Iadd_Cpoly P1 P2 : 
+Lemma size_Iadd_Cpoly P1 P2 :
   size (Iadd_Cpoly P1 P2) = maxn (size P1) (size P2).
 Proof.
 elim: P1 P2 => [P2|a P1 IH [|b P2]] /=; first by rewrite max0n.
@@ -1441,13 +1440,13 @@ Qed.
 (* Subtraction Chebyshev model                                               *)
 (*****************************************************************************)
 
-Fixpoint Isub_Cpoly l1 l2 := 
+Fixpoint Isub_Cpoly l1 l2 :=
   if l1 is a :: l3 then
     if l2 is b :: l4 then sub a b :: Isub_Cpoly l3 l4
     else l1
   else [seq I.neg i | i <- l2].
 
-Lemma size_Isub_Cpoly P1 P2 : 
+Lemma size_Isub_Cpoly P1 P2 :
   size (Isub_Cpoly P1 P2) = maxn (size P1) (size P2).
 Proof.
 elim: P1 P2 => [P2|a P1 IH [|b P2]] /=; first by rewrite size_map max0n.
@@ -1494,11 +1493,11 @@ have  [d1 [H1d1 H2d1]] := H3p1 _ Hx.
 have  [d2 [H1d2 H2d2]] := H3p2 _ Hx.
 exists (d1 - d2); split => //.
   by apply: sub_correct.
-rewrite horner_CPolyab sub_Cpoly_spec hornerD hornerN ?H1p1 ?H1p2 //. 
+rewrite horner_CPolyab sub_Cpoly_spec hornerD hornerN ?H1p1 ?H1p2 //.
 rewrite -!horner_CPolyab H2d1 H2d2 !hornerE /=; toR; lra.
 Qed.
 
-Definition eval_range_poly (P : seq ID) := 
+Definition eval_range_poly (P : seq ID) :=
   if P is p :: P1 then
         foldl (fun x y => add x (mul y Im11)) p P1 else I0.
 
@@ -1524,11 +1523,11 @@ elim=> [ [//|p1 [|]//] [//|p1p [|]// _ _ pIP]|
   rewrite /CPolyab big_ord1 /= !hornerE horner_comp pT0 hornerE mulr1.
   by apply: (pIP 0%N).
 rewrite [_ :: P]lastI big_ord_recr /=.
-rewrite (eq_bigr (fun i : 'I_n.+1 => 
+rewrite (eq_bigr (fun i : 'I_n.+1 =>
       (p1p :: seq.belast p2p p)`_i *: 'T^(D2R a,D2R b)_i)); last first.
   move=> i1 _.
   rewrite lastI nth_rcons size_belast ifT //=.
-  by have := ltn_ord i1; rewrite -{2}sp. 
+  by have := ltn_ord i1; rewrite -{2}sp.
 rewrite foldl_rcons.
 rewrite hornerE.
 apply: add_correct; last first.
@@ -1557,13 +1556,13 @@ rewrite /= [p2p :: p]lastI [p2 :: P]lastI /=.
 by rewrite -!rcons_cons !nth_rcons /= !size_belast sp sP jLn.
 Qed.
 
-Definition eval_range_cms (c : cms) := 
-  let: CMS P Delta := c in 
+Definition eval_range_cms (c : cms) :=
+  let: CMS P Delta := c in
   add (eval_range_poly P) Delta.
 
 Lemma CPolyabE n (a b : R) p x (sp : size p = n) :
    a != b ->
-   (CPolyab a b p).[x] =  
+   (CPolyab a b p).[x] =
         (\sum_(i < n) p`_i *: 'T^(a,b)_i).[x].
 Proof.
 move=> aDb.
@@ -1574,7 +1573,7 @@ rewrite horner_pTab; congr (_.[_]).
 rewrite !hornerE -mulr_natl natr_INR //=.
 have F : b + - a != 0.
   have := (@subr_eq0 _ b a).
-  by toR => ->; rewrite eq_sym. 
+  by toR => ->; rewrite eq_sym.
 toR; rewrite /Rinvx ifT //.
 by field; apply/eqP.
 Qed.
@@ -1643,13 +1642,13 @@ Qed.
 (* Multiplication Chebyshev model                                            *)
 (*****************************************************************************)
 
-Fixpoint Iabs_mul_Cpoly n (a : ID) acc l := 
+Fixpoint Iabs_mul_Cpoly n (a : ID) acc l :=
  if n is n1.+1 then
    if l is b :: l1 then Iabs_mul_Cpoly n1 a ((I.scale2 (mul a b) (F.ZtoS (-1))) :: acc) l1
    else (ncons n.+1 I0 acc)
  else  Iadd_Cpoly (I0 :: acc) [seq (I.scale2 (mul a i) (F.ZtoS (-1))) | i <- l].
 
-Lemma size_Iabs_mul_Cpoly n (a : R) A acc Acc l L : 
+Lemma size_Iabs_mul_Cpoly n (a : R) A acc Acc l L :
   size acc = size Acc -> size l = size L ->
   size (Iabs_mul_Cpoly n A Acc L) = size (abs_mul_Cpoly n a acc l).
 Proof.
@@ -1660,7 +1659,7 @@ apply: IH => //=; first by rewrite H1.
 by case: H2.
 Qed.
 
-Lemma Iabs_mul_Cpoly_correct n a A acc Acc l L : 
+Lemma Iabs_mul_Cpoly_correct n a A acc Acc l L :
   size acc = size Acc -> size l = size L ->
   a \contained_in A -> acc \lcontained_in Acc -> l \lcontained_in L ->
   abs_mul_Cpoly n a acc l \lcontained_in Iabs_mul_Cpoly n A Acc L.
@@ -1680,7 +1679,7 @@ elim: n acc Acc l L => [acc Acc [|b l] [|B L] H1 H2 H3 H4 H5 i|
     rewrite /= !nth_default ?size_map -?H2//.
     - by apply: I.fromZ_correct.
     - by rewrite /= size_map.
-    by rewrite /= size_map; case: H2 => <-. 
+    by rewrite /= size_map; case: H2 => <-.
   pose f b :=  a * b / 2%:R.
   have /=-> := @nth_map _ 0 _ 0 f _ (_ :: _) => //.
   pose F b := I.scale2 (mul A b) (F.ZtoS (-1)).
@@ -1705,17 +1704,17 @@ apply: IH => //=.
 by move=> i1; apply: H5 i1.+1.
 Qed.
 
-Definition Iadd_mul_Cpoly n (a : ID) l := 
+Definition Iadd_mul_Cpoly n (a : ID) l :=
   ncons n I0 [seq I.scale2 (mul a i) (F.ZtoS (-1))| i <- l].
 
-Lemma size_Iadd_mul_Cpoly n (a : R) A l L : 
+Lemma size_Iadd_mul_Cpoly n (a : R) A l L :
   size l = size L ->
   size (Iadd_mul_Cpoly n A L) = size (add_mul_Cpoly n a l).
 Proof.
 by move=> H; rewrite !size_ncons !size_map H.
 Qed.
 
-Lemma Iadd_mul_Cpoly_correct n a A l L : 
+Lemma Iadd_mul_Cpoly_correct n a A l L :
   size l = size L ->
   a \contained_in A -> l \lcontained_in L ->
   add_mul_Cpoly n a l \lcontained_in Iadd_mul_Cpoly n A L.
@@ -1732,14 +1731,14 @@ rewrite (_ : _ / _ = (a * l`_(i - n)) * powerRZ 2 (-1)); last first.
 by apply/scale2_correct/mul_correct.
 Qed.
 
-Fixpoint Imul_rec_Cpoly n l1 l2 := 
+Fixpoint Imul_rec_Cpoly n l1 l2 :=
   if l1 is a :: l3 then
     let v1 := Iabs_mul_Cpoly n a [::] l2 in
     let v2 := Iadd_mul_Cpoly n a l2 in
     Iadd_Cpoly (Iadd_Cpoly v1 v2) (Imul_rec_Cpoly n.+1 l3 l2)
   else [::].
 
-Lemma size_Imul_rec_Cpoly n (l1 : seq R) l2 L1 L2 : 
+Lemma size_Imul_rec_Cpoly n (l1 : seq R) l2 L1 L2 :
   size l1 = size L1 -> size l2 = size L2 ->
   size (Imul_rec_Cpoly n L1 L2) = size (mul_rec_Cpoly n l1 l2).
 Proof.
@@ -1778,7 +1777,7 @@ Qed.
 
 Definition Imul_Cpoly (l1 l2 : seq ID) := Imul_rec_Cpoly 0 l1 l2.
 
-Lemma size_Imul_Cpoly (l1 : seq R) l2 L1 L2 : 
+Lemma size_Imul_Cpoly (l1 : seq R) l2 L1 L2 :
   size l1 = size L1 -> size l2 = size L2 ->
   size (Imul_Cpoly L1 L2) = size (mul_Cpoly l1 l2).
 Proof. exact: size_Imul_rec_Cpoly. Qed.
@@ -1791,7 +1790,7 @@ Lemma Imul_Cpoly_correct p1 p2 P1 P2 :
 Proof. exact: Imul_rec_Cpoly_correct. Qed.
 
 Fixpoint Isplit_Cpoly n l :=
-  if n is n1.+1 then 
+  if n is n1.+1 then
     if l is a :: l1 then let: (l2,l3) := Isplit_Cpoly n1 l1 in (a :: l2, I0 :: l3)
     else (nseq n I0, [::])
   else ([::], l).
@@ -1802,7 +1801,7 @@ elim: n l => //= n IH [|a l] /=; first by rewrite size_nseq.
 by case: Isplit_Cpoly (IH l) => /= l1 _ ->.
 Qed.
 
-Lemma size_Isplit_Cpoly2 n (l : seq R) L : 
+Lemma size_Isplit_Cpoly2 n (l : seq R) L :
  size l = size L ->
  size (Isplit_Cpoly n L).2 = size (split_Cpoly n l).2.
 Proof.
@@ -1811,7 +1810,7 @@ by have := IH l L; case: Isplit_Cpoly => L1 L2; case: split_Cpoly => l1 l2 /= ->
 Qed.
 
 Lemma Isplit_Cpoly_correct1 n (p : seq R) P :
-  size p = size P -> 
+  size p = size P ->
   p \lcontained_in P ->
   (split_Cpoly n p).1 \lcontained_in (Isplit_Cpoly n P).1.
 Proof.
@@ -1826,7 +1825,7 @@ by apply: H2 i1.+1.
 Qed.
 
 Lemma Isplit_Cpoly_correct2 n (p : seq R) P :
-  size p = size P -> 
+  size p = size P ->
   p \lcontained_in P ->
   (split_Cpoly n p).2 \lcontained_in (Isplit_Cpoly n P).2.
 Proof.
@@ -1920,7 +1919,7 @@ Qed.
 (* Scale 2  Chebyshev model                                                  *)
 (*****************************************************************************)
 
-Definition Iscl2_Cpoly l := [seq scl2 i | i <- l]. 
+Definition Iscl2_Cpoly l := [seq scl2 i | i <- l].
 
 Lemma size_Iscl2_Cpoly P : size (Iscl2_Cpoly P) = size P.
 Proof. by rewrite size_map. Qed.
@@ -1940,7 +1939,7 @@ Definition scl2_cms (c: cms) :=
   CMS (Iscl2_Cpoly P) (scl2 Delta).
 
 Lemma scl2_cms_correct n a b c f :
-   cms_correct n a b f c -> 
+   cms_correct n a b f c ->
    cms_correct n a b (fun x => f x *+ 2)%R (scl2_cms c).
 Proof.
 case: c => [P Delta] [Sp [p [H1p H2p H3p]]].
@@ -1970,16 +1969,16 @@ Fixpoint ICb_cms (q : seq ID) (x : cms) : (cms * cms) :=
  if q is c :: q' then
    let t := ICb_cms q' x in
    let a1 := sub_cms (add_cms (const_cms n c) (mul_cms n a b (fst t) x)) (snd t) in
-   (a1, (fst t)) else 
+   (a1, (fst t)) else
    let cm := const_cms n I0 in (cm,cm).
 
 Lemma ICb_cms_correct p P f c :
    F.cmp a b = Xlt ->
    p \lcontained_in P ->
    size p = size P ->
-   cms_correct n a b f c -> 
-   cms_correct n a b (fun x => (Cb p (f x)).1) (ICb_cms P c).1 
-  /\ 
+   cms_correct n a b f c ->
+   cms_correct n a b (fun x => (Cb p (f x)).1) (ICb_cms P c).1
+  /\
    cms_correct n a b (fun x => (Cb p (f x)).2) (ICb_cms P c).2.
 Proof.
 move=> aLb.
@@ -1995,14 +1994,14 @@ apply: add_cms_correct.
 by apply: mul_cms_correct.
 Qed.
 
-Definition ICshaw_cms p x := 
+Definition ICshaw_cms p x :=
   let: (i1, i2) := ICb_cms p (scl2_cms x) in sub_cms i1 (mul_cms n a b i2 x).
 
 Lemma ICshaw_cms_correct p P f c :
    F.cmp a b = Xlt ->
    p \lcontained_in P ->
    size p = size P ->
-   cms_correct n a b f c -> 
+   cms_correct n a b f c ->
    cms_correct n a b ((Cshaw p) \o f) (ICshaw_cms P c).
 Proof.
 move=> aLb Hp Hs Hc.
@@ -2016,7 +2015,7 @@ apply: sub_cms_correct => //.
 by apply: mul_cms_correct.
 Qed.
 
-Definition IsCshaw_cms c d p x := 
+Definition IsCshaw_cms c d p x :=
   let C := I.bnd c c in
   let D := I.bnd d d in
   let cm := I.inv prec (sub D C) in
@@ -2031,7 +2030,7 @@ Lemma IsCshaw_cms_correct c d p P f cm :
    (forall x, x \contained_in I.bnd a b -> f x \contained_in (I.bnd c d)) ->
    p \lcontained_in P ->
    size p = size P ->
-   cms_correct n a b f cm -> 
+   cms_correct n a b f cm ->
    cms_correct n a b (fun x => (CPolyab (D2R c) (D2R d) p).[f x]) (IsCshaw_cms c d P cm).
 Proof.
 move=> aLd cLd HI Hp Hs Hc.
@@ -2070,8 +2069,8 @@ Qed.
 End ICb.
 
 
-Definition eval_shaw_cms a b (c : cms) I := 
-  let: CMS P Delta := c in 
+Definition eval_shaw_cms a b (c : cms) I :=
+  let: CMS P Delta := c in
   add (IsCshaw (I.bnd a a) (I.bnd b b) P I) Delta.
 
 Lemma eval_shaw_cms_correct n a b f c i x :
@@ -2096,7 +2095,7 @@ have Hy : x \contained_in I.bnd a b.
      try (by move=> r1 r2 r3 r4; do! case: Rcompare_spec => //; lra).
 have [d [H1d ->]] := H3p _ Hy.
 apply: add_correct => //.
-have->: (CPolyab (D2R a) (D2R b) p).[x] =  
+have->: (CPolyab (D2R a) (D2R b) p).[x] =
         (\sum_(i < n.+1) p`_i *: 'T^(D2R a, D2R b)_i).[x].
   rewrite horner_CPolyab !horner_sum H1p.
   apply: eq_bigr => j _.
@@ -2105,7 +2104,7 @@ have->: (CPolyab (D2R a) (D2R b) p).[x] =
   rewrite !hornerE -mulr_natl natr_INR //=.
   have F : D2R b + - D2R a != 0.
     have := (@subr_eq0 _ (D2R b) (D2R a)).
-    by toR => ->; rewrite eq_sym. 
+    by toR => ->; rewrite eq_sym.
   toR; rewrite /Rinvx ifT //.
   by field; apply/eqP.
 apply: IsCshaw_correct => //.
@@ -2138,7 +2137,7 @@ by lra.
 Qed.
 
 
-Definition eval_cms a b (c : cms) I := 
+Definition eval_cms a b (c : cms) I :=
   I.meet (eval_shaw_cms a b c I) (eval_range_cms c).
 
 Lemma eval_cms_correct n a b f c i x :
@@ -2186,14 +2185,14 @@ Lemma comp_cms_correct n a b c d f1 f2 c1 c2 :
    F.cmp a b = Xlt ->
    F.cmp c d = Xlt ->
    I.subset (eval_range_cms c1) (I.bnd c d) ->
-   cms_correct n a b f1 c1 -> 
-   cms_correct n c d f2 c2 -> 
+   cms_correct n a b f1 c1 ->
+   cms_correct n c d f2 c2 ->
    cms_correct n a b (f2 \o f1) (comp_cms n a b c d c1 c2).
 Proof.
 move=> aLb cLd.
 case: c2 => [P2 Delta2] Hs Hc1 [Sp2 [p2 [H1p2 H2p2 H3p2]]].
 have Hsp2 : size p2 = size P2 by rewrite Sp2 H1p2.
-have F x: 
+have F x:
   x \contained_in I.bnd a b -> f1 x \contained_in I.bnd c d.
   move=> Hx.
   by apply: eval_range_cms_subset Hc1 Hs Hx.
@@ -2255,14 +2254,14 @@ Definition sin_error (b1 : bool) P zn z2n nn :=
   let Ib := I.bnd b b in
   let Iab := I.bnd a b in
   let v := Ibsin b1 Iab in
-  let Ic := 
+  let Ic :=
     if csign v then
       let Ida := I.abs (I.sub prec (I.sin prec Ia) (IsCshaw Ia Ib P Ia)) in
       let Idb := I.abs (I.sub prec (I.sin prec Ib) (IsCshaw Ia Ib P Ib)) in
       I.mul prec I01 (I.join Ida Idb)
     else
       I.div prec
-        (I.mul prec (I.power_pos prec (I.sub prec Ib Ia) zn) 
+        (I.mul prec (I.power_pos prec (I.sub prec Ib Ia) zn)
                     (I.mul prec I01 (I.abs (Ibsin (~~b1) Iab))))
        (I.mul prec (I.power_pos prec I2 z2n) (Ifact nn))
    in  I.join (I.neg Ic) Ic.
@@ -2271,7 +2270,7 @@ Definition sin_cms n b1 vn zn z2n vl2 vl3 :=
   let P := Icheby_coefs (I.sin prec) vn vl3 vl2 in
   CMS P (sin_error b1 P zn z2n n.+1).
 
-Lemma sin_cms_correct n b1 vn v2n zn z2n vl2 vl3 :    
+Lemma sin_cms_correct n b1 vn v2n zn z2n vl2 vl3 :
   F.cmp a b = Xlt ->
   b1 = odd n ->
   INR n.+1 \contained_in vn ->
@@ -2422,7 +2421,7 @@ Definition norm_cms c :=
   let: P2 := [seq (D2I (I.midpoint i)) | i <- P1] in
   let  c1 := CMS (Isub_Cpoly P1 P2) Delta1 in
   CMS P2 (eval_range_cms c1).
- 
+
 Lemma norm_cms_correct n c f :
    F.cmp a b = Xlt ->
    cms_correct n a b f c -> cms_correct n a b f (norm_cms c).
@@ -2492,7 +2491,7 @@ Fixpoint bcos b x := if b then sin x else cos x.
 Definition Ibcos b J := if b then I.sin prec J else I.cos prec J.
 
 Lemma Ibcos_correct a1 b1 n:
- (Ibcos (odd n)) \is_envelope_of[a1, b1] 
+ (Ibcos (odd n)) \is_envelope_of[a1, b1]
    (fun x => (-1) ^ (odd n) * (-1) ^ (odd n./2) * cos^(n) x)%R.
 Proof.
 move=> x X Ix Hx.
@@ -2520,14 +2519,14 @@ Definition cos_error (b1 : bool) P zn z2n nn :=
   let Ib := I.bnd b b in
   let Iab := I.bnd a b in
   let v := Ibcos b1 Iab in
-  let Ic := 
+  let Ic :=
     if csign v then
       let Ida := I.abs (I.sub prec (I.cos prec Ia) (IsCshaw Ia Ib P Ia)) in
       let Idb := I.abs (I.sub prec (I.cos prec Ib) (IsCshaw Ia Ib P Ib)) in
-      I.mul prec I01 (I.join Ida Idb) 
+      I.mul prec I01 (I.join Ida Idb)
     else
       I.div prec
-         (I.mul prec (I.power_pos prec (I.sub prec Ib Ia) zn) 
+         (I.mul prec (I.power_pos prec (I.sub prec Ib Ia) zn)
                      (I.mul prec I01 (I.abs (Ibcos (~~b1) Iab))))
          (I.mul prec (I.power_pos prec I2 z2n) (Ifact nn))
    in I.join (I.neg Ic) Ic.
@@ -2536,7 +2535,7 @@ Definition cos_cms n b1 vn zn z2n vl2 vl3 :=
   let P := Icheby_coefs (I.cos prec) vn vl3 vl2 in
   CMS P (cos_error b1 P zn z2n n.+1).
 
-Lemma cos_cms_correct n b1 vn v2n zn z2n vl2 vl3 :    
+Lemma cos_cms_correct n b1 vn v2n zn z2n vl2 vl3 :
   F.cmp a b = Xlt ->
   b1 = odd n ->
   INR n.+1 \contained_in vn ->
@@ -2700,7 +2699,7 @@ Definition exp_cms vn vl2 vl3 :=
 Lemma exp_env a1 b1 : I.exp prec \is_envelope_of[a1, b1] exp.
 Proof. move=> *; exact: exp_correct. Qed.
 
-Lemma exp_cms_correct n vn v2n vl2 vl3 :    
+Lemma exp_cms_correct n vn v2n vl2 vl3 :
   F.cmp a b = Xlt ->
   INR n.+1 \contained_in vn ->
   (2 * INR n.+1) \contained_in v2n ->
@@ -2791,7 +2790,7 @@ Definition ln_cms n vn vl2 vl3 :=
 Lemma ln_env a1 b1 : I.ln prec \is_envelope_of[a1, b1] ln.
 Proof. by move=> *; apply: ln_correct. Qed.
 
-Lemma ln_cms_correct n vn v2n vl2 vl3 :    
+Lemma ln_cms_correct n vn v2n vl2 vl3 :
   F.cmp a b = Xlt ->
   INR n.+1 \contained_in vn ->
   (2 * INR n.+1) \contained_in v2n ->
@@ -2890,7 +2889,7 @@ Definition sqrt_cms n vn vl2 vl3 :=
 Lemma sqrt_env a1 b1 : I.sqrt prec \is_envelope_of[a1, b1] sqrt.
 Proof. by move=> *; apply: sqrt_correct. Qed.
 
-Lemma sqrt_cms_correct n vn v2n vl2 vl3 :    
+Lemma sqrt_cms_correct n vn v2n vl2 vl3 :
   F.cmp a b = Xlt ->
   INR n.+1 \contained_in vn ->
   (2 * INR n.+1) \contained_in v2n ->
@@ -2984,13 +2983,13 @@ Definition invx_error P :=
 Definition invx_cms n vn vl2 vl3 :=
    if Fpos a || (Fneg b) then
      let P := Icheby_coefs (I.inv prec) vn vl3 vl2 in
-     CMS P (invx_error P) 
+     CMS P (invx_error P)
    else (error_cms n).
 
 Lemma invx_env a1 b1 : I.inv prec \is_envelope_of[a1, b1] Rinv.
 Proof. by move=> *; apply: inv_correct. Qed.
 
-Lemma invx_cms_correct n vn v2n vl2 vl3 :    
+Lemma invx_cms_correct n vn v2n vl2 vl3 :
   F.cmp a b = Xlt ->
   INR n.+1 \contained_in vn ->
   (2 * INR n.+1) \contained_in v2n ->
@@ -3076,8 +3075,8 @@ Variable (a b : D).
 
 Definition inv_cms n vn vl2 vl1 f_cms :=
   let v := eval_range_cms f_cms in
-  if I.bounded v then  
-    let c := I.lower v in 
+  if I.bounded v then
+    let c := I.lower v in
     let d := I.upper v in
     let t := F.cmp c d in
     if t is Xlt then
@@ -3093,7 +3092,7 @@ Definition inv_cms n vn vl2 vl1 f_cms :=
          else error_cms n
   else error_cms n.
 
-Lemma inv_cms_correct n vn v2n vl2 vl1 f f_cms :    
+Lemma inv_cms_correct n vn v2n vl2 vl1 f f_cms :
   F.cmp a b = Xlt ->
   INR n.+1 \contained_in vn ->
   (2 * INR n.+1) \contained_in v2n ->
@@ -3152,7 +3151,7 @@ Variable (a b : D).
 Definition div_cms n vn vl2 vl1 f_cms g_cms :=
    mul_cms n a b f_cms (inv_cms a b n vn vl2 vl1 g_cms).
 
-Lemma div_cms_correct n vn v2n vl2 vl1 g1 g2 g1_cms g2_cms :    
+Lemma div_cms_correct n vn v2n vl2 vl1 g1 g2 g1_cms g2_cms :
   F.cmp a b = Xlt ->
   INR n.+1 \contained_in vn ->
   (2 * INR n.+1) \contained_in v2n ->
@@ -3178,14 +3177,14 @@ Notation D := F.type.
 
 (* language *)
 
-Inductive fexpr := 
+Inductive fexpr :=
   fmul  (_ _ : fexpr) |
   fdiv  (_ _ : fexpr) |
   fadd  (_ _ : fexpr) |
   fsub  (_ _ : fexpr) |
   fcomp (_ _ : fexpr) |
   fvar | fconst (_ _ : Z) | fln | fsqrt | fexp | finv | fsin | fcos.
- 
+
 Delimit Scope fexpr_scope with fexpr.
 
 Fixpoint fexpr_eval e :=
@@ -3257,24 +3256,24 @@ match e with
     mul_cms n a b (fexpr_cms n b1 vn zn z2n a b vl1 vl2 vl3 e1)
                   (fexpr_cms n b1 vn zn z2n a b vl1 vl2 vl3 e2)
 | fdiv  e1 e2 =>
-    div_cms a b n vn vl2 vl1 
+    div_cms a b n vn vl2 vl1
         (fexpr_cms n b1 vn zn z2n a b vl1 vl2 vl3 e1)
         (fexpr_cms n b1 vn zn z2n a b vl1 vl2 vl3 e2)
 | fadd  e1 e2 =>
     add_cms (fexpr_cms n b1 vn zn z2n a b vl1 vl2 vl3 e1)
             (fexpr_cms n b1 vn zn z2n a b vl1 vl2 vl3 e2)
-| fsub  e1 e2 => 
+| fsub  e1 e2 =>
     sub_cms (fexpr_cms n b1 vn zn z2n a b vl1 vl2 vl3 e1)
             (fexpr_cms n b1 vn zn z2n a b vl1 vl2 vl3 e2)
-| fcomp e1 e2 => 
+| fcomp e1 e2 =>
     let c2 := fexpr_cms n b1 vn zn z2n a b vl1 vl2 vl3 e2 in
     let v := eval_range_cms c2 in
-    if I.bounded v then  
-      let c := I.lower v in 
+    if I.bounded v then
+      let c := I.lower v in
       let d := I.upper v in
       let t := F.cmp c d in
       if t is Xlt then
-        let vl4 := 
+        let vl4 :=
              [seq I.scale2
                   (add
                        (add (mul (sub (FtoI d) (FtoI c)) i)
@@ -3329,7 +3328,7 @@ elim: e a b vl3 aLb vl3E.
     set u := I.lower _.
     apply: cms_correct_ext.
       move=> x Hx.
-      have F1 : fexpr_eval e2 x \contained_in 
+      have F1 : fexpr_eval e2 x \contained_in
                     (eval_range_cms (fexpr_cms n.+1 b1 vn zn z2n a
                                     b vl1 vl2 vl3 e2)).
         apply: eval_range_cms_correct (aLb) _ _ Hx => //.
@@ -3341,7 +3340,7 @@ elim: e a b vl3 aLb vl3E.
       rewrite {}/u /D2R.
       case: eval_range_cms E E1 F1 => //= l u.
       rewrite !F.real_correct !F.cmp_correct.
-      by case: F.toX => // r1; case: F.toX => //= r2; 
+      by case: F.toX => // r1; case: F.toX => //= r2;
          case: Rcompare_spec => //; lra.
     apply: const_cms_correct.
     apply: fexpr_ieval_correct.
@@ -3377,28 +3376,28 @@ Notation "a + b" := (fadd a b) : fexpr_scope.
 Notation "a - b" := (fsub a b) : fexpr_scope.
 Notation " 'x " := (fvar) : fexpr_scope.
 Notation " 'ln(x)' " := (fln) : fexpr_scope.
-Notation " 'ln(' e ')' " := (fcomp fln e) 
+Notation " 'ln(' e ')' " := (fcomp fln e)
   (format "'ln(' e ')' " ) : fexpr_scope.
 Notation " 'sqrt(x)' " := (fsqrt) : fexpr_scope.
-Notation " 'sqrt(' e ')' " := (fcomp fsqrt e) 
+Notation " 'sqrt(' e ')' " := (fcomp fsqrt e)
   (format "'sqrt(' e ')' " ) : fexpr_scope.
 Notation " 'exp(x)' " := (fexp) : fexpr_scope.
-Notation " 'exp(' e ')' " := (fcomp fexp e) 
+Notation " 'exp(' e ')' " := (fcomp fexp e)
   (format "'exp(' e ')'" ) : fexpr_scope.
 Notation " '1/x' " := (finv) : fexpr_scope.
-Notation "'/(' x ')'" := (fcomp finv x) 
+Notation "'/(' x ')'" := (fcomp finv x)
    (format "/( x )" ): fexpr_scope.
-Notation "'c(' x , y ')'" := (fconst x y) 
+Notation "'c(' x , y ')'" := (fconst x y)
    (format "c( x ,  y ) " ): fexpr_scope.
-Notation "'c(' x ')'" := (fconst x 1) 
+Notation "'c(' x ')'" := (fconst x 1)
    (format "c( x ) " ): fexpr_scope.
 Notation " '1' " := (fconst 1 1) : fexpr_scope.
 Notation " '2' " := (fconst 2 1) : fexpr_scope.
-Notation " 'sin(x)'" := (fsin) (at level 10) : fexpr_scope . 
+Notation " 'sin(x)'" := (fsin) (at level 10) : fexpr_scope .
 Notation " 'sin(' e ')'" := (fcomp fsin e)
   (format "'sin(' e ')'" ) : fexpr_scope.
 Notation " 'cos(x)'" := (fcos) (at level 10) : fexpr_scope .
-Notation " 'cos(' e ')'" := (fcomp fcos e) 
+Notation " 'cos(' e ')'" := (fcomp fcos e)
   (format "'cos(' e ')'" ) : fexpr_scope.
 Delimit Scope fexpr_scope with fexpr.
 
@@ -3419,7 +3418,7 @@ Definition mk_cms prec n a b f :=
 Let lem1 n : Z.pos (Pos.of_nat n.+2) = Z.of_nat n.+2.
 Proof. by rewrite /Z.of_nat Pos.of_nat_succ. Qed.
 
-Lemma mk_cms_correct prec n a b f : 
+Lemma mk_cms_correct prec n a b f :
     F.cmp a b = Xlt ->
     cms_correct n.+1 a b (fexpr_eval f) (mk_cms prec n.+1 a b f).
 Proof.
@@ -3446,27 +3445,27 @@ rewrite Nat2Pos.inj_succ // Pplus_one_succ_r.
 rewrite -muln2 Nat2Pos.inj_mul // [Pos.of_nat 2]/=.
 rewrite [Pos.of_nat n.+2]Nat2Pos.inj_succ // Pplus_one_succ_r.
 rewrite -mult_IZR.
-rewrite (_ : (Zpos(Pos.of_nat n.+1 * 2 + 1) + 1 = 
+rewrite (_ : (Zpos(Pos.of_nat n.+1 * 2 + 1) + 1 =
               2 * Z.pos (Pos.of_nat n.+1 + 1))%Z); last by lia.
 by apply: I.fromZ_correct.
 Qed.
 
 Fixpoint solve_rec test n a b:=
-  if n is n1.+1 then 
+  if n is n1.+1 then
     if F.cmp a b is Xlt then
     if test a b then true else
     let a1 := I.midpoint (I.bnd a b) in
-      let t :=  solve_rec test n1 a a1 in 
+      let t :=  solve_rec test n1 a a1 in
       if t then solve_rec test n1 a1 b else false
     else false
   else false.
 
 Lemma solve_recE test n a b :
-  solve_rec test n.+1 a b = 
+  solve_rec test n.+1 a b =
     if F.cmp a b is Xlt then
     if test a b then true else
     let a1 := I.midpoint (I.bnd a b) in
-      let t :=  solve_rec test n a a1 in 
+      let t :=  solve_rec test n a a1 in
       if t then solve_rec test n a1 b else false
     else false.
 Proof. by []. Qed.
@@ -3522,7 +3521,7 @@ Definition is_interval a :=
 Lemma D2R_divWl prec a b a1 b1 x (i1 := I.div prec (I.fromZ a)  (I.fromZ b))
                                  (i2 := I.div prec (I.fromZ a1) (I.fromZ b1)) :
   is_interval i1 -> is_interval i2 -> Z.eqb b 0 = false -> Z.eqb b1 0 = false ->
-  (IZR a / IZR b <= x <= IZR a1 / IZR b1 -> 
+  (IZR a / IZR b <= x <= IZR a1 / IZR b1 ->
    D2R (I.lower i1) <= x  <= D2R (I.upper i2))%R.
 Proof.
 move=> Hi1 Hi2 bP b1P H.
@@ -3581,19 +3580,19 @@ case: F.toX => //= r2; case: F.toX => //= r3 _ H2.
 by lra.
 Qed.
 
-Lemma solve_correct prec depth n f a1 a2 b1 b2 c1 c2 d1 d2 x 
+Lemma solve_correct prec depth n f a1 a2 b1 b2 c1 c2 d1 d2 x
      (i1 := I.div prec (I.fromZ a1) (I.fromZ b1))
      (i2 := I.div prec (I.fromZ a2) (I.fromZ b2))
      (j1 := I.div prec (I.fromZ c1) (I.fromZ d1))
-     (j2 := I.div prec (I.fromZ c2) (I.fromZ d2)) 
+     (j2 := I.div prec (I.fromZ c2) (I.fromZ d2))
      (Iab := I.bnd (I.lower i1) (I.upper i2))
      (obj := I.bnd (I.upper j1) (I.lower j2)) :
   is_interval i1 -> is_interval i2 -> is_interval j1 -> is_interval j2 ->
-  Z.eqb b1 0 = false -> Z.eqb d1 0 = false -> 
-  Z.eqb b2 0 = false -> Z.eqb d2 0 = false -> 
+  Z.eqb b1 0 = false -> Z.eqb d1 0 = false ->
+  Z.eqb b2 0 = false -> Z.eqb d2 0 = false ->
   F.cmp (I.upper j1) (I.lower j2) = Xlt ->
    solve prec n.+1 Iab f obj depth = true ->
-   (IZR a1 / IZR b1 <= x <= IZR a2 / IZR b2)%R -> 
+   (IZR a1 / IZR b1 <= x <= IZR a2 / IZR b2)%R ->
    (IZR c1 / IZR d1 <= fexpr_eval f x <= IZR c2 / IZR d2)%R.
 Proof.
 move=> Ii1 Ii2 Ij1 Ij2 b1P d1P b2P d2P uLv Hs H1.
@@ -3634,7 +3633,7 @@ have [HI aLxLb _|] := boolP (I.subset _ _).
       rewrite -muln2 Nat2Pos.inj_mul // [Pos.of_nat 2]/=.
       rewrite [Pos.of_nat n.+2]Nat2Pos.inj_succ // Pplus_one_succ_r.
       rewrite -mult_IZR.
-      rewrite (_ : (Zpos(Pos.of_nat n.+1 * 2 + 1) + 1 = 
+      rewrite (_ : (Zpos(Pos.of_nat n.+1 * 2 + 1) + 1 =
               2 * Z.pos (Pos.of_nat n.+1 + 1))%Z); last by lia.
       by apply: I.fromZ_correct.
     - suff: I.subset (I.bnd a b) (I.bnd a b) by apply.
@@ -3688,26 +3687,26 @@ End Solver.
 (* Tactic to solve box problems :
        a1/b1 <= x <= a2/b2 -> a3/b3 <= f x <= a4/b4
 *)
- 
-Lemma Rpower_IZR a b : 
+
+Lemma Rpower_IZR a b :
    Rpower (IZR (Zpos a)) (IZR (Zpos b)) = IZR (Zpos a ^ Zpos b).
-Proof. 
+Proof.
 by rewrite -powerRZ_Rpower ?Raux.IZR_Zpower_pos //; apply: RIneq.IZR_lt.
 Qed.
 
 Ltac cheby_solve_tac prec depth degr tang H :=
   rewrite ?Rpower_IZR -?RIneq.mult_IZR;
-  match type of H with 
-  | (_ <= ?x <= _)%R => 
-    match goal with 
-    |- (_ <= ?X <= _)%R => 
+  match type of H with
+  | (_ <= ?x <= _)%R =>
+    match goal with
+    |- (_ <= ?X <= _)%R =>
         rewrite (_ :  X = fexpr_eval tang x); last by apply: refl_equal
     end
   end;
   apply: (@solve_correct prec depth degr.-1 _ _ _) H;
-  match goal with 
-  |  |- is_true (is_interval ?X) => native_cast_no_check (refl_equal true)   
-  |  |-  _ = ?X => native_cast_no_check (refl_equal X) 
+  match goal with
+  |  |- is_true (is_interval ?X) => native_cast_no_check (refl_equal true)
+  |  |-  _ = ?X => native_cast_no_check (refl_equal X)
   end.
 
 End CPoly_interval.

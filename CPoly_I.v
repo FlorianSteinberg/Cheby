@@ -3388,7 +3388,7 @@ Notation " 'exp(' e ')' " := (fcomp fexp e)
 Notation " '1/x' " := (finv) : fexpr_scope.
 Notation "'/(' x ')'" := (fcomp finv x) 
    (format "/( x )" ): fexpr_scope.
-Notation "'c(' x  ,  y ')'" := (fconst x y) 
+Notation "'c(' x , y ')'" := (fconst x y) 
    (format "c( x ,  y ) " ): fexpr_scope.
 Notation "'c(' x ')'" := (fconst x 1) 
    (format "c( x ) " ): fexpr_scope.

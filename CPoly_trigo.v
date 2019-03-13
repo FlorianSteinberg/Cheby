@@ -4,8 +4,8 @@ Require Import filter_Rlt generalities atan_asin_acos.
 
 Import GRing.Theory.
 
-
 Section Cheby_rec.
+
 Definition Cheby n x := cos (INR n * acos x).
 
 Lemma Cheby_0 x : -1 <= x <= 1 -> Cheby 0 x = 1.
@@ -30,7 +30,7 @@ Qed.
 Local Open Scope ring_scope.
 
 Lemma pT_Cheby n (x: R):
-	(Rle (IZR (-1)) x) /\ (Rle x (IZR 1)) -> Cheby n x = ('T_n).[x].
+	(-1 <= x <= 1)%R -> Cheby n x = ('T_n).[x].
 Proof.
 move => ineq.
 elim: n {-2}(n) (leqnn n) => [n ass | n ih k ineqk].
@@ -175,269 +175,7 @@ rewrite RInt_cos_cos_0_PI.
 by rewrite eq_sym (negPf H).
 Qed.
 
-Definition asin x  := atan (x / sqrt (1 - x ^ 2)).
-
-Lemma asin_derivative x : -1 < x < 1 ->
-  is_derive asin x (/sqrt (1 - x ^ 2)).
-Proof.
-move=> intx.
-have H1 : 0 < (1 + x) * (1 - x) by nra.
-have H2 : sqrt ((1 + x) * (1 - x)) <> 0.
-   by apply/Rgt_not_eq/sqrt_lt_R0; lra.
-have H3 : 0 <= sqrt ((1 + x) * (1 - x)) by apply: sqrt_pos.
-have H4 : 0 <= sqrt ((1 + x) * (1 - x)) * x ^ 2 by apply: Rmult_le_pos; nra.
-rewrite /asin; auto_derive;
-  rewrite (_ :  1 + - (x * (x * 1)) = (1 + x) * (1 - x)) //; try ring.
-rewrite (_ : 1 - x ^ 2 = (1 + x) * (1 - x)); last by ring.
-field_simplify; try nra.
-rewrite arcsinh.pow2_sqrt; try nra.
-rewrite -(tech_pow_Rmult (sqrt _)) arcsinh.pow2_sqrt; try nra.
-field; repeat split; auto; nra.
-Qed.
-
-Lemma asin_0 : asin 0 = 0.
-Proof. by rewrite /asin [_/_]Rmult_0_l atan_0. Qed.
-
-Lemma asin_opp x : asin (- x) = -asin x.
-Proof.
-rewrite /asin  -![_^ 2]Rmult_assoc !Rmult_1_r.
-by rewrite Rmult_opp_opp -atan_opp [-(x/_)]Ropp_mult_distr_l.
-Qed.
-
-Lemma sin_asin x : -1 < x < 1 -> sin (asin x) = x.
-Proof.
-intros xB.
-suff HP y : 0 < y < 1 -> sin (asin y) = y => [|[H1 H2]].
-  have [->|[H|H]] : x = 0 \/ -1 < x < 0 \/ 0 < x < 1 by lra.
-  - by rewrite asin_0 sin_0.
-  - have : sin (asin (-x)) = -x by apply: HP; lra.
-    by rewrite asin_opp sin_neg; lra.
-  by apply: HP.
-have SH : sqrt (1 - y ^ 2) <> 0.
-    intro H.
-    have [] : 1 - y ^ 2 <> 0 by nra.
-    by apply: sqrt_eq_0; nra.
-rewrite /asin.
-set A := atan _.
-have AB : - PI / 2 < A < PI / 2 by apply: atan_bound.
-have ANZ : A <> 0.
-  move=> /atan_eq0/Rmult_integral[H3|]; try lra.
-  by apply: Rinv_neq_0_compat.
-have cosANZ : cos A <> 0.
-  move/cos_eq_0_0=> [k Hk].
-  by case: (IZR_case k) => H; nra.
-have sinANZ : sin A <> 0.
-  move/sin_eq_0_0=> [k Hk].
-  case: (IZR_case k) => H; try nra.
-have H3 := sin2_cos2 A.
-rewrite /Rsqr in H3.
-have := (Logic.eq_refl ((tan A)^2)).
-rewrite {1}atan_right_inv /tan !Rpow_mult_distr -!Rinv_pow; try lra.
-move=> H4.
-have : sqrt (1 - y ^ 2) ^ 2 * sin A ^ 2 - y ^ 2 * cos A ^ 2 = 0.
-  have F a b : b <> 0 -> a = (a */ b) * b by move=> *; field.
-  rewrite {2}[y^2](F _ (sqrt (1 - y ^ 2)^2)) ?H4; try nra.
-  by field.
-rewrite (_ : (sin A)^2 = 1 - (cos A)^2); try lra.
-rewrite -Rsqr_pow2 [Rsqr _]sqrt_sqrt; try nra.
-move=> H5; ring_simplify in H5.
-have /Rmult_integral[] : (y - sin A) * (y + sin A) = 0 by nra.
-  by lra.
-have sP : 0 < sqrt (1 - y ^ 2) by apply: sqrt_lt_R0; nra.
-have AP : 0 < A.
-  rewrite -atan_0; apply: atan_increasing.
-  suff :  0 / sqrt (1 - y ^ 2) < y / sqrt (1 - y ^ 2) by lra.
-  apply: Rmult_lt_compat_r; last by lra.
-  by apply: Rinv_0_lt_compat; lra.
-suff : 0 < sin A by lra.
-by apply: sin_gt_0; lra.
-Qed.
-
-Lemma asin_Vsqrt2 : asin (/sqrt 2) = PI/4.
-Proof.
-have SH := sqrt2_neq_0.
-rewrite /asin -Rinv_pow // sqrt_pow_2; try lra.
-rewrite (_ : 1 - /2 = /2); try lra.
-rewrite -inv_sqrt; try lra.
-by rewrite (_ : _ / _ = 1) ?atan_1 //; field.
-Qed.
-
-Lemma acosE x : -1 < x < 1 -> acos x = PI/2 - asin x.
-Proof.
-move=> xB.
-wlog : x xB / 0 < x => [H|xP].
-  have [xN|[->|xP]] : (x < 0 \/ x = 0 \/ x > 0) by lra.
-  - by rewrite -{1}[x]Ropp_involutive acos_opp H ?asin_opp; lra.
-  - by rewrite acos_0 asin_0; lra.
-  by apply: H; lra.
-rewrite /acos; case: total_order_T => [[|]|_]; try lra.
-rewrite -Interval_missing.atan_inv; last first.
-  apply: RIneq.Rdiv_lt_0_compat => //.
-  by apply: sqrt_lt_R0; nra.
-rewrite Rinv_Rdiv; try lra.
-  by rewrite (_ : x * x = x ^ 2); lra.
-by move/sqrt_eq_0; nra.
-Qed.
-
-Lemma lim_asin_1 : filterlim asin (at_left 1) (at_left (PI/2)).
-Proof.
-rewrite /asin.
-apply: filterlim_comp; last first.
-  by apply: lim_atan_p_infty.
-apply: (filterlim_ext
-   (fun x => (fun p => fst p * snd p) (x, /sqrt (1 - x ^ 2)))) => //.
-apply: (filterlim_comp _ _ _ (fun x => (x, /sqrt (1 - x ^ 2)))
-          (fun p => fst p * snd p)
-          _ (filter_prod (at_left 1) (Rbar_locally p_infty)))
-     => [|P [M PM]].
-  apply: filterlim_pair (filterlim_id _ _) _.
-  apply: (filterlim_comp _ _ _ _ Rinv _ (at_right 0)); last first.
-    by apply: filterlim_Rinv_0_right.
-  apply: (filterlim_comp _ _ _ _ sqrt _ (at_right 0))
-        => [P [eps b]|]; last by  apply: filterlim_sqrt_0.
-  have e20 : 0 < Rmin (pos_div_2 eps) 1.
-    by apply: Rmin_glb_lt; try apply: cond_pos; lra.
-  exists (mkposreal _ e20) => /= y yc ylt1.
-  move: yc; rewrite ball_Rabs Rabs_left1 => [yc|]; last by lra.
-  have ygt0 : 0 < y.
-    apply/Ropp_lt_cancel/(Rplus_lt_reg_r 1).
-    rewrite Ropp_0 Rplus_0_l.
-    by apply: Rlt_le_trans (Rmin_r (eps / 2) 1); lra.
-  have yc1 : 1 - y < eps / 2.
-    by apply: Rlt_le_trans (Rmin_l (eps / 2) 1); lra.
-  apply: b; try nra.
-  by rewrite ball_Rabs Rminus_0_r Rabs_right; nra.
-exists (ball 1 pos_half) (Rlt (2 * (Rmax 1 M))) => [||x y].
-- by exists pos_half.
-- by exists (2 * Rmax 1 M).
-rewrite ball_Rabs => /Rabs_def2 /= => [] [cx1 cx2] cy.
-apply: PM.
-have xL2 : / 2 < x  by lra.
-apply: Rle_lt_trans  (_ : /2 * (2 * Rmax 1 M) < _).
-  rewrite -Rmult_assoc Rinv_l // Rmult_1_l; try lra.
-  by  apply: Rmax_r.
-apply: Rmult_gt_0_lt_compat; try lra.
-apply: Rmult_lt_0_compat; try lra; apply: Rlt_le_trans (Rmax_l _ _).
-lra.
-Qed.
-
-Lemma acos_derivative x : -1 < x < 1 ->
-  is_derive acos x (-/sqrt (1 - x ^ 2)).
-Proof.
-intros intx.
-pose dx := Rmin (1 - x) (x + 1).
-have dxP : 0 < dx.
-  rewrite /dx /Rmin; case: Rle_dec; try lra.
-have dxM : dx <= 1 - x /\ dx <= x + 1.
-  by rewrite /dx /Rmin; case: Rle_dec; lra.
-have Hl : locally x (fun x =>  PI/2 - asin x = acos x).
-  exists (mkposreal _ dxP) => y /ball_Rabs /= H.
-  rewrite acosE //; split_Rabs; lra.
-apply: is_derive_ext_loc Hl _.
-auto_derive.
-  exists (/sqrt (1 - x ^ 2)).
-  by apply:  asin_derivative.
-have dq : Derive asin x = /sqrt (1 - x ^ 2).
-  by apply/is_derive_unique/asin_derivative.
-by rewrite Rmult_1_l dq.
-Qed.
-
-Lemma lim_acos_1 : filterlim acos (at_left 1) (at_right 0).
-Proof.
-suff F : filterlim (fun x : R => PI / 2 - asin x) (at_left 1) (at_right 0).
-  move => P U.
-  have [x Hx] := F P U.
-  have xP : 0 < x by apply: cond_pos.
-  pose y := Rmin x (/2).
-  have yP : 0 < y.
-    by rewrite /y /Rmin; case: Rle_dec; lra.
-  have yB : y <= x /\ y <= /2.
-    by rewrite /y /Rmin; case: Rle_dec; lra.
-  exists (mkposreal _ yP) => /= z Hz zL1.
-  rewrite acosE.
-    apply: Hx => //.
-    apply: ball_le Hz.
-    by rewrite /y /Rmin; case: Rle_dec; lra.
-  have /ball_Rabs HH := Hz.
-  by split_Rabs; lra.
-apply: filterlim_comp => [|P [eps b]]; first by apply: lim_asin_1.
-exists eps => y cy ylt1.
-apply: b; last by lra.
-rewrite ball_Rabs Rminus_0_r Rabs_right; try lra.
-move: cy.
-by rewrite ball_Rabs Rabs_left1; lra.
-Qed.
-
-Lemma lim_asin_m1 : filterlim asin (at_right (-1)) (at_right (-PI/2)).
-Proof.
-rewrite /asin.
-apply: filterlim_comp; last first.
-  by apply: lim_atan_m_infty.
-apply: (filterlim_ext
-   (fun x => (fun p => fst p * snd p) (x, /sqrt (1 - x ^ 2)))) => //.
-apply: (filterlim_comp _ _ _ (fun x => (x, /sqrt (1 - x ^ 2)))
-          (fun p => fst p * snd p)
-          _ (filter_prod (at_right (-1)) (Rbar_locally p_infty)))
-   => [|P [M PM]].
-  apply: filterlim_pair; first apply: filterlim_id.
-  apply: (filterlim_comp _ _ _ _ Rinv _ (at_right 0)); last first.
-    by apply: filterlim_Rinv_0_right.
-  apply: (filterlim_comp _ _ _ _ sqrt _ (at_right 0))
-         => [P [eps b]|]; last first.
-    by apply: filterlim_sqrt_0.
-  have e20 : 0 < Rmin (pos_div_2 eps) 1.
-    by apply: Rmin_glb_lt; try apply: cond_pos; lra.
-  exists (mkposreal _ e20) => /= y yc ylt1.
-  move: yc.
-  (rewrite ball_Rabs Rabs_right; try lra) => yc.
-  have ygt0 : y < 0.
-    apply: (Rplus_lt_reg_r 1).
-    rewrite Rplus_0_l.
-    by apply: Rlt_le_trans (Rmin_r (eps / 2) 1); lra.
-  have yc1 : y + 1 < eps / 2.
-    by apply: Rlt_le_trans (Rmin_l (eps / 2) 1); lra.
-  apply: b; try nra.
-  by rewrite ball_Rabs Rminus_0_r Rabs_right; nra.
-exists (ball (-1) pos_half) (Rlt (2 * (Rmax 1 (-M)))) => [||x y].
-- by exists pos_half.
-- by exists (2 * Rmax 1 (-M)).
-rewrite ball_Rabs => /Rabs_def2 /= [cx1 cx2] cy.
-apply: PM.
-have xL2 : x < -/ 2 by lra.
-apply: Ropp_lt_cancel; rewrite Ropp_mult_distr_l.
-apply: Rle_lt_trans (_ : /2 * (2 * Rmax 1 (-M)) < _).
-  rewrite -Rmult_assoc Rinv_l ?Rmult_1_l; try lra.
-  by apply: Rmax_r.
-apply: Rmult_gt_0_lt_compat; try lra.
-apply: Rmult_lt_0_compat; try lra; apply: Rlt_le_trans (Rmax_l _ _).
-lra.
-Qed.
-
-Lemma lim_acos_m1 : filterlim acos (at_right (-1)) (at_left PI).
-Proof.
-suff F : filterlim (fun x : R => PI / 2 - asin x) (at_right (-1)) (at_left PI).
-  move => P U.
-  have [x Hx] := F P U.
-  have xP : 0 < x by apply: cond_pos.
-  pose y := Rmin x (/2).
-  have yP : 0 < y.
-    by rewrite /y /Rmin; case: Rle_dec; lra.
-  have yB : y <= x /\ y <= /2.
-    by rewrite /y /Rmin; case: Rle_dec; lra.
-  exists (mkposreal _ yP) => /= z Hz zL1.
-  rewrite acosE.
-    apply: Hx => //.
-    apply: ball_le Hz.
-    by rewrite /y /Rmin; case: Rle_dec; lra.
-  have /ball_Rabs HH := Hz.
-  by split_Rabs; lra.
-rewrite /acos; apply: filterlim_comp => [|P [eps b]].
-  by apply: lim_asin_m1.
-exists eps => y cy ylt1; apply: b; last by lra.
-rewrite ball_Rabs Rabs_left1; try lra.
-by move: cy; rewrite ball_Rabs Rabs_right; lra.
-Qed.
-Lemma ortho1 (n m : nat) l :
+Lemma cosn_is_ortho (n m : nat) l :
   is_RInt_gen (fun x => cos (INR n * x) * cos (INR m * x))
        (at_right 0) (at_left PI) l ->
   is_RInt_gen (fun y => -cos (INR n * acos y) * cos (INR m * acos y) /
@@ -493,109 +231,6 @@ move: lprop; apply: is_RInt_gen_filter_le; try
 by apply: lim_acos_m1.
 Qed.
 
-Lemma is_RInt_gen_at_point_at_left (f : R -> R) (a : R) F {FF : ProperFilter F}
-  v : locally a (continuous f) -> is_RInt_gen f F (at_point a) v ->
-  filter_Rlt F (at_point a) ->  is_RInt_gen f F (at_left a) v.
-Proof.
-move=> [delta1 pd1] intf [m [P Q FP FQ /= cmp]] P2 PP2.
-have [delta2 Pd2] :=
-   (pd1 a (ball_center a delta1)
-          (ball (f a) (mkposreal _ Rlt_0_1)) (locally_ball _ _)).
-have qa : Q a by (apply: FQ => *; apply: ball_center).
-have intf2 := intf P2 PP2.
-have [eps P2eps] := PP2.
-pose M := Rabs (f a) + 1.
-have M0 : 0 < eps / M.
-  apply: Rmult_lt_0_compat; first by apply: cond_pos.
-  apply: Rinv_0_lt_compat.
-  have RH : 0 <= Rabs (f a) by apply: Rabs_pos.
-  by rewrite /M; lra.
-have close y : y <> a -> ball a delta2 y -> Rabs (f y) < M.
-  move=> ay b_y; rewrite /M (_: f y = f a + (f y - f a)); last by lra.
-  apply: Rle_lt_trans (Rabs_triang _ _) _.
-  by apply/Rplus_lt_compat_l/Pd2.
-have exrint_close a' : ball a delta1 a' -> ex_RInt f a' a.
-  move=> baa'.
-  apply: (ex_RInt_continuous f)=> z pz; apply: pd1.
-  have [aa' | a'a] := Rle_dec a a'.
-    move: pz; rewrite Rmin_right // Rmax_left // => pz.
-    change (Rabs (z - a) < delta1).
-    rewrite Rabs_right; try lra.
-    apply: Rle_lt_trans (_ : a' - a < _); try lra.
-    rewrite -(Rabs_right (a' - a)); try lra.
-    tauto.
-  change (Rabs (z - a) < delta1).
-  have [az | za] := Rle_dec a z.
-    have a'aW :=  Rnot_le_lt _ _ a'a.
-    move: pz; rewrite Rmin_left; try lra.
-    rewrite Rmax_right => [pz|]; try lra.
-    have za' : z = a by apply: Rle_antisym; lra.
-    by rewrite za' Rminus_eq_0 Rabs_R0; case delta1.
-  have a'a1 :=  Rnot_le_lt _ _ a'a; have za1 :=  Rnot_le_lt _ _ za.
-  move: pz; rewrite Rmin_left; try lra.
-  rewrite Rmax_right => [pz|]; try lra.
-  apply: Rle_lt_trans (_ : a - a' < _); try (split_Rabs; lra).
-  rewrite -(Rabs_right (a - a')); try (split_Rabs; lra).
-  by change (ball a' delta1 a); apply: ball_sym.
-have pre_ep2 : 0 < eps / 2 * /M.
-  repeat apply: Rmult_lt_0_compat; try lra.
-    by destruct eps; tauto.
-  by apply: Rinv_0_lt_compat; rewrite /M; assert (t := Rabs_pos (f a)); lra.
-pose ep2 := mkposreal _ pre_ep2.
-have aH : (at_left a (fun x => ball a delta1 x /\ ball a ep2 x /\
-                             ball a delta2 x /\ m < x /\ x < a)).
-  repeat apply: filter_and; try (by apply/filter_le_within/locally_ball).
-    have  [y' Py'] := filter_ex _ FP.
-    have ma0 : 0 < a - m by case:  (cmp y' a) => //; lra.
-    exists (mkposreal _ ma0) => /= y.
-    rewrite ball_Rabs=> bay ay; rewrite Rabs_left in bay; lra.
-  by exists ep2.
-have [Pl Ql FPl FQl closerint] := intf _ (locally_ball v (pos_div_2 eps)).
-have pla : Ql a by apply: FQl => *; apply: ball_center.
-have HF : F (fun y => P y /\ Pl y) by apply: filter_and.
-exists (fun y => P y /\ Pl y)
-       (fun x => ball a delta1 x /\ ball a ep2 x /\
-                 ball a delta2 x /\ m < x /\ x < a) => // x y bx Ry.
-exists (RInt f x y).
-have [||fxa [close_fxa]] // := closerint x a; first by tauto.
-split => /=.
-  apply: (RInt_correct f x y).
-  apply: (ex_RInt_Chasles_1 f _ _ a); last by exists fxa; tauto.
-  split; apply: Rlt_le; last by tauto.
-  apply: Rlt_trans (_ : m < _); last by tauto.
-  by assert (t := cmp x a (proj1 bx) qa); tauto.
-apply: P2eps.
-have RH :  Rabs (RInt f y a) < pos_div_2 eps.
-  apply: Rle_lt_trans (_ : (a - y) * M < _).
-    apply: abs_RInt_le_const => [||t yta]; first by apply: Rlt_le; tauto.
-      by apply: exrint_close; tauto.
-    rewrite (_ : f t =f a + (f t - f a)); last by lra.
-    apply: Rle_trans (Rabs_triang _ _) _.
-    apply: Rplus_le_compat (Rle_refl _) _.
-    apply/Rlt_le/(Pd2 t).
-    change (Rabs (t - a) < delta2); rewrite Rabs_left1; try lra.
-    apply: Rle_lt_trans (_ : a - y < _); try lra.
-    rewrite -(Rabs_right (a - y)); try lra.
-    by rewrite -Rabs_Ropp Ropp_minus_distr; tauto.
-  rewrite (_ : pos (pos_div_2 eps) = ep2 * M) /=.
-    rewrite -(Rabs_right (a - y)); try lra.
-    apply: Rmult_lt_compat_r.
-      by assert (t := Rabs_pos (f a)); rewrite /M; lra.
-    by rewrite -Rabs_Ropp Ropp_minus_distr; tauto.
-  by field; rewrite /M; apply: Rgt_not_eq; assert (t := Rabs_pos (f a)); lra.
-rewrite (_ : pos eps = pos_div_2 eps + pos_div_2 eps) /=; last by field.
-apply: ball_triangle (_ : ball v (eps / 2) (RInt f x a)) _; last first.
-  change (Rabs (RInt f x y - RInt f x a) < pos_div_2 eps).
-  rewrite (_ : RInt f x a = RInt f x y + RInt f y a); last first.
-    apply/sym_equal/(RInt_Chasles f); last by apply: exrint_close; tauto.
-    apply: (ex_RInt_Chasles_1 f _ _ a); last by exists fxa.
-    split.
-      by apply/Rlt_le/(Rlt_trans _ _ _ _ (_ : m < _)); case: (cmp x a); tauto.
-    by apply: Rlt_le; tauto.
-  by split_Rabs; lra.
-by rewrite (is_RInt_unique f x a fxa).
-Qed.
-
 Lemma Cheby_is_ortho n m :
   is_RInt_gen (fun y => Cheby n y * Cheby m y /
                    (sqrt (1 - y ^ 2)))
@@ -620,7 +255,7 @@ apply: (is_RInt_gen_ext f); rewrite {}/f /=.
   - by rewrite /f -Ropp_mult_distr_l -[_/_]Ropp_mult_distr_l Ropp_involutive.
 apply: is_RInt_gen_opp.
 pose f x := cos (INR n * x) * cos (INR m * x).
-apply: ortho1.
+apply: cosn_is_ortho.
 have cmp0PI1 : filter_Rlt (at_point 0) (at_left PI).
   exists 1.
   exists (Rgt 1) (Rlt 1) => [||/= *]; first by rewrite /at_point; lra.
@@ -671,4 +306,3 @@ move=> x y /= Hx Hy x0 H1.
 by rewrite !pT_Cheby //;
    move: H1; rewrite /Rmin /Rmax; case: Rle_dec; lra.
 Qed.
-

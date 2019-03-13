@@ -18,6 +18,7 @@ depends: [
   "coq-bignums"
   "coq-flocq" {>= "3.0"}
   "coq-mathcomp-ssreflect" {>= "1.6"}
+  "coq-mathcomp-algebra" {>= "1.6"}
   "coq-coquelicot" {>= "3.0"}
   "coq-interval" { (>= "3.4") }
 ]

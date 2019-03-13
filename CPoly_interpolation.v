@@ -507,7 +507,7 @@ have F2 y k : (k <= n)%nat -> a <= y <= b ->
   apply: (@ex_derive_n_scal_l _ k.+1).
   by apply: ex_derive_n_horner.
 have F3 : has_zeros g n.+1 a b.
-  exists (x :: l); split => [|y] //=.
+  exists (x :: l); split => [|y|] //=.
   - by rewrite Ul andbT -root_prodl.
   - rewrite inE => /orP[/eqP->|Hy].
       split; rewrite // /g /c.
@@ -1725,7 +1725,7 @@ move=> c1Lb1 b2Lc2.
 case: l => /= a l; first by rewrite ddiff_nil.
 move=> Ul Hb Df De.
 rewrite {2}(_ : a = (a - a) * 1 + a); try lra.
-rewrite (@iddiff_rec_sum b1 b2 c1 c2) => // [|i Hi]; try lra.
+rewrite (@iddiff_rec_sum b1 b2 c1 c2) => // [|i Hi|]; try lra.
   by apply: eq_bigr => i _; rewrite mulr1 subrK.
 by have := Hb _ Hi; lra.
 Qed.

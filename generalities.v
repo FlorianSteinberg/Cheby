@@ -1,4 +1,4 @@
-Require Import Reals Coquelicot.Coquelicot Fourier Psatz.
+Require Import Reals Coquelicot.Coquelicot Psatz.
 Require Import filter_Rlt atan_derivative_improper_integral.
 Require Import arcsinh.
 Require Import Interval.Interval_tactic.
@@ -524,7 +524,7 @@ destruct (pd1 a (ball_center a delta1)
     [delta2 Pd2].
 intros intf.
 set (M := Rabs (f a) + 1).
-assert (M0 : 0 < M) by (assert (t:= Rabs_pos (f a)); unfold M; fourier).
+assert (M0 : 0 < M) by (assert (t:= Rabs_pos (f a)); unfold M; lra).
 assert (close : forall y, y <> a -> ball a delta2 y -> Rabs (f y) < M).
   intros y ay b_y; unfold M.
   replace (f y) with (f a + (f y - f a)) by ring.
@@ -538,26 +538,26 @@ assert (exrint_close : forall a', ball a delta1 a' -> ex_RInt f a a').
     rewrite -> Rmin_left, Rmax_right in pz; auto.
     change (Rabs (z - a) < delta1).
     rewrite Rabs_right; cycle 1.
-      destruct pz; fourier.
-    destruct pz; apply Rle_lt_trans with (a' - a); try fourier.
-    rewrite <- (Rabs_right (a' - a)); try fourier.
+      destruct pz; lra.
+    destruct pz; apply Rle_lt_trans with (a' - a); try lra.
+    rewrite <- (Rabs_right (a' - a)); try lra.
     tauto.
   change (Rabs (z - a) < delta1).
   apply Rnot_le_lt in a'a.
   destruct (Rle_dec a z) as [az | za].
-    rewrite -> Rmin_right, Rmax_left in pz; destruct pz; try fourier.
-    rewrite Rabs_right; try fourier.
-    case delta1; intros; simpl; fourier.
+    rewrite -> Rmin_right, Rmax_left in pz; destruct pz; try lra.
+    rewrite Rabs_right; try lra.
+    case delta1; intros; simpl; lra.
   apply Rnot_le_lt in za.
-  rewrite -> Rmin_right, Rmax_left in pz; try fourier.
-  rewrite Rabs_left; [ | fourier].
-  destruct pz; apply Rle_lt_trans with (a - a'); try fourier.
-  rewrite <- (Rabs_right (a - a')); try fourier.
+  rewrite -> Rmin_right, Rmax_left in pz; try lra.
+  rewrite Rabs_left; [ | lra].
+  destruct pz; apply Rle_lt_trans with (a - a'); try lra.
+  rewrite <- (Rabs_right (a - a')); try lra.
   now change (ball a' delta1 a); apply ball_sym; tauto.
 intros P [eps Peps].
 assert (pre_ep2 : 0 < eps / 2 * /M).
   apply Rmult_lt_0_compat;[ | now apply Rinv_0_lt_compat].
-  now destruct eps; simpl; fourier.
+  now destruct eps; simpl; lra.
 set (ep2 := mkposreal _ pre_ep2).
 destruct (intf (ball v (pos_div_2 eps))) as [Q R FQ FR vfi'].
   now apply locally_ball.
@@ -587,10 +587,10 @@ exists (RInt f a y); split; cycle 1.
       (* BUG: need to figure out how to make ring work without the Rplus_0_r. *)
       now rewrite -> tmp;[symmetry; ring | | ]; auto.
     destruct (Rle_dec a a') as [aa' | a'a].
-      rewrite -> Rmin_left, Rmax_right; try fourier.
+      rewrite -> Rmin_left, Rmax_right; try lra.
       apply abs_RInt_le; assumption.
     apply Rnot_le_lt in a'a.
-    rewrite <- (opp_RInt_swap f), Rabs_Ropp, Rmin_right, Rmax_left; try fourier; cycle 1.
+    rewrite <- (opp_RInt_swap f), Rabs_Ropp, Rmin_right, Rmax_left; try lra; cycle 1.
       now apply ex_RInt_swap.
     apply abs_RInt_le;[ apply Rlt_le | apply ex_RInt_swap]; assumption.
   apply Rle_lt_trans with (RInt (fun _ => M) (Rmin a a') (Rmax a a')).
@@ -603,40 +603,37 @@ exists (RInt f a y); split; cycle 1.
         unfold abs, minus, plus, opp; simpl.
         destruct (Rle_dec a a') as [aa' | a'a].
           now rewrite -> Rmin_left, Rmax_right in pz; destruct pz;
-            try rewrite !Rabs_right; fourier.
+            try rewrite !Rabs_right; lra.
         rewrite -> Rmin_right, Rmax_left in pz; destruct pz;
           apply Rnot_le_lt in a'a;
-          try rewrite (Rabs_left (a' - a)); try fourier.
+          try rewrite (Rabs_left (a' - a)); try lra.
         destruct (Req_dec z a) as [za | nza].
-          rewrite -> za,Rplus_opp_r, Rabs_R0; fourier.
-        rewrite Rabs_left; try fourier.
-        now apply Rnot_le_lt; intros abs; case nza; apply Rle_antisym; fourier.
+          rewrite -> za,Rplus_opp_r, Rabs_R0; lra.
+        by rewrite Rabs_left; lra.
       now apply ex_RInt_const.
     intros z pz; apply Rlt_le, close.
       destruct (Rle_dec a a') as [aa' | a'a].
-        rewrite -> Rmin_left, Rmax_right in pz; destruct pz; try fourier.
-        now apply Rgt_not_eq; assumption.
-      rewrite -> Rmin_right, Rmax_left in pz; destruct pz;
-      apply Rnot_le_lt in a'a; try fourier.
-      now apply Rlt_not_eq; assumption.
+        by rewrite -> Rmin_left, Rmax_right in pz; destruct pz; try lra.
+      by rewrite -> Rmin_right, Rmax_left in pz; destruct pz;
+         apply Rnot_le_lt in a'a; lra.
     apply Rlt_trans with (Rabs (a' - a));[ | tauto].
     unfold abs, minus, plus, opp; simpl.
     destruct (Rle_dec a a') as [aa' | a'a].
       now rewrite -> Rmin_left, Rmax_right in pz; destruct pz;
-        try rewrite !Rabs_right; fourier.
+        try rewrite !Rabs_right; lra.
     rewrite -> Rmin_right, Rmax_left in pz; destruct pz;
-      try rewrite (Rabs_left (a' - a)); apply Rnot_le_lt in a'a; try fourier.
+      try rewrite (Rabs_left (a' - a)); apply Rnot_le_lt in a'a; try lra.
     destruct (Req_dec z a) as [za | nza].
-      now rewrite -> za,Rplus_opp_r, Rabs_R0; fourier.
-    now rewrite Rabs_left; fourier.
+      now rewrite -> za,Rplus_opp_r, Rabs_R0; lra.
+    now rewrite Rabs_left; lra.
   rewrite -> RInt_const, Rmult_comm.
-  apply Rmult_lt_compat_l;[fourier | ].
+  apply Rmult_lt_compat_l;[lra | ].
   destruct (Rle_dec a a') as [aa' | a'a].
-    rewrite -> Rmax_right, Rmin_left; try fourier.
-    now rewrite <- (Rabs_right (a' - a));[tauto | fourier].
-  rewrite -> Rmax_left, Rmin_right; apply Rnot_le_lt in a'a ; try fourier.
+    rewrite -> Rmax_right, Rmin_left; try lra.
+    now rewrite <- (Rabs_right (a' - a));[tauto | lra].
+  rewrite -> Rmax_left, Rmin_right; apply Rnot_le_lt in a'a ; try lra.
   replace (a - a') with (- (a' - a)) by ring.
-  now rewrite <- (Rabs_left (a' - a)); try fourier; tauto.
+  now rewrite <- (Rabs_left (a' - a)); try lra; tauto.
 apply (RInt_correct f).
 apply (ex_RInt_Chasles f a a' y); auto.
 now destruct (vfi' a' y) as [a'y pa'y]; try tauto; exists a'y.

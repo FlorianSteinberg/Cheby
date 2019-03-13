@@ -1,13 +1,11 @@
-(* This file was tested with coq 8.5.1 and coquelicot 2.1.1 *)
-
 Require Import ssreflect ssrbool.
 Require Import Reals Coquelicot.Coquelicot Interval.Interval_tactic Psatz.
 Require Import filter_Rlt generalities.
 
 Open Scope R_scope.
 
-Lemma is_RInt_cos_0_PI (m : nat) : 
-   is_RInt (fun y : R => cos (INR m * y)) 0 PI 
+Lemma is_RInt_cos_0_PI (m : nat) :
+   is_RInt (fun y : R => cos (INR m * y)) 0 PI
      (if m =? 0 then PI else 0).
 Proof.
 case: Nat.eqb_spec=> [->|/= nDm].
@@ -35,7 +33,7 @@ exists (- sin x).
 by apply/derivable_pt_lim_cos.
 Qed.
 
-Lemma RInt_cos_0_PI (m : nat) : 
+Lemma RInt_cos_0_PI (m : nat) :
    RInt (fun y : R => cos (INR m * y)) 0 PI =
      if m =? 0 then PI else 0.
 Proof.
@@ -43,12 +41,12 @@ by apply: is_RInt_unique; apply: is_RInt_cos_0_PI.
 Qed.
 
 Lemma RInt_cos_cos_0_PI (n m : nat) :
-  RInt (fun y => cos (INR n * y) * cos (INR m * y)) 0 PI = 
+  RInt (fun y => cos (INR n * y) * cos (INR m * y)) 0 PI =
            if n =? m then if n =? 0 then PI else PI/2 else 0.
 Proof.
 apply: is_RInt_unique.
 wlog nLm : m n / (n <= m)%nat => [H|].
-  case: (Nat.leb_spec n m) => [/H//|H1]. 
+  case: (Nat.leb_spec n m) => [/H//|H1].
   have /(H _) : (m <= n)%nat by lia.
   have ->/= : m =? n = false by case: Nat.eqb_spec => //; lia.
   have ->/= : n =? m = false by case: Nat.eqb_spec => //; lia.
@@ -212,7 +210,7 @@ apply: (filterlim_comp _ _ _ (fun x => (x, /sqrt (1 - x ^ 2)))
   apply: filterlim_pair (filterlim_id _ _) _.
   apply: (filterlim_comp _ _ _ _ Rinv _ (at_right 0)); last first.
     by apply: filterlim_Rinv_0_right.
-  apply: (filterlim_comp _ _ _ _ sqrt _ (at_right 0)) 
+  apply: (filterlim_comp _ _ _ _ sqrt _ (at_right 0))
         => [P [eps b]|]; last by  apply: filterlim_sqrt_0.
   have e20 : 0 < Rmin (pos_div_2 eps) 1.
     by apply: Rmin_glb_lt; try apply: cond_pos; lra.
@@ -243,11 +241,11 @@ Qed.
 Lemma lim_acos_1 : filterlim acos (at_left 1) (at_right 0).
 Proof.
 rewrite /acos.
-apply: filterlim_comp => [|P [eps b]]; first by apply: lim_asin_1. 
+apply: filterlim_comp => [|P [eps b]]; first by apply: lim_asin_1.
 exists eps => y cy ylt1.
 apply: b; last by lra.
 rewrite ball_Rabs Rminus_0_r Rabs_right; try lra.
-move: cy. 
+move: cy.
 by rewrite ball_Rabs Rabs_left1; lra.
 Qed.
 
@@ -265,7 +263,7 @@ apply: (filterlim_comp _ _ _ (fun x => (x, /sqrt (1 - x ^ 2)))
   apply: filterlim_pair; first apply: filterlim_id.
   apply: (filterlim_comp _ _ _ _ Rinv _ (at_right 0)); last first.
     by apply: filterlim_Rinv_0_right.
-  apply: (filterlim_comp _ _ _ _ sqrt _ (at_right 0)) 
+  apply: (filterlim_comp _ _ _ _ sqrt _ (at_right 0))
          => [P [eps b]|]; last first.
     by apply: filterlim_sqrt_0.
   have e20 : 0 < Rmin (pos_div_2 eps) 1.
@@ -318,12 +316,12 @@ set g := acos.
 pose f x := cos (INR n * x) * cos (INR m * x).
 have rgt1 : at_right (-1) (ball 0 (mkposreal _ Rlt_0_1)).
   exists (mkposreal _ Rlt_0_1).
-  rewrite /ball /= /AbsRing_ball /minus /opp /plus /abs /= 
+  rewrite /ball /= /AbsRing_ball /minus /opp /plus /abs /=
     => y /Rabs_def2 [y1 y2] y3.
   by apply: Rabs_def1; lra.
 have llt1 : at_left 1 (ball 0 (mkposreal _ Rlt_0_1)).
   exists (mkposreal _ Rlt_0_1).
-  rewrite /ball /= /AbsRing_ball /minus /opp /plus /abs /= 
+  rewrite /ball /= /AbsRing_ball /minus /opp /plus /abs /=
     => y /Rabs_def2 [y1 y2] y3.
   by apply: Rabs_def1; lra.
 suff : is_RInt_gen
@@ -366,7 +364,7 @@ Lemma is_RInt_gen_at_point_at_left (f : R -> R) (a : R) F {FF : ProperFilter F}
   filter_Rlt F (at_point a) ->  is_RInt_gen f F (at_left a) v.
 Proof.
 move=> [delta1 pd1] intf [m [P Q FP FQ /= cmp]] P2 PP2.
-have [delta2 Pd2] := 
+have [delta2 Pd2] :=
    (pd1 a (ball_center a delta1)
           (ball (f a) (mkposreal _ Rlt_0_1)) (locally_ball _ _)).
 have qa : Q a by (apply: FQ => *; apply: ball_center).
@@ -478,11 +476,11 @@ apply: (is_RInt_gen_ext f); rewrite {}/f /=.
   exists (ball 0 (mkposreal _ Rlt_0_1)) (ball 0 (mkposreal _ Rlt_0_1))
        => [||x y Hx Hy z].
   - exists (mkposreal _ Rlt_0_1).
-    rewrite /ball /= /AbsRing_ball /minus /opp /plus /abs /= 
+    rewrite /ball /= /AbsRing_ball /minus /opp /plus /abs /=
       => y /Rabs_def2 [y1 y2] y3.
     by apply: Rabs_def1; lra.
   - exists (mkposreal _ Rlt_0_1).
-    rewrite /ball /= /AbsRing_ball /minus /opp /plus /abs /= 
+    rewrite /ball /= /AbsRing_ball /minus /opp /plus /abs /=
       => y /Rabs_def2 [y1 y2] y3.
     by apply: Rabs_def1; lra.
   - by rewrite /f -Ropp_mult_distr_l -[_/_]Ropp_mult_distr_l Ropp_involutive.

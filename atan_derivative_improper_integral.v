@@ -1,6 +1,6 @@
 (* This file was tested with coq 8.5.1 and coquelicot 2.1.1 *)
 
-Require Import Reals Coquelicot.Coquelicot Fourier Psatz.
+Require Import Reals Coquelicot.Coquelicot Psatz.
 
 Lemma lim_atan_p_infty :
   filterlim atan (Rbar_locally p_infty) (at_left (PI/2)).
@@ -40,8 +40,8 @@ Proof.
 intros [intx1 intx2].
 destruct (atan_bound (tan x)).
 destruct (Rtotal_order (atan (tan x)) x) as [abs | [ it | abs]]; auto;
-  apply tan_increasing in abs; try fourier; rewrite atan_right_inv in abs;
-  fourier.
+  apply tan_increasing in abs; try lra; rewrite atan_right_inv in abs;
+  lra.
 Qed.
 
 Lemma atan_lim_pinfty : Lim atan p_infty = PI/2.
@@ -49,21 +49,21 @@ Proof.
 assert (t := PI2_RGT_0).
 apply is_lim_unique; intros P [eps Peps].
 assert (ep2 : 0 < Rmin eps (PI/4)).
-  apply Rmin_glb_lt;[apply cond_pos | fourier].
+  apply Rmin_glb_lt;[apply cond_pos | lra].
 set (eps' := mkposreal _ ep2).
 assert (eps' < PI / 2).
   unfold eps'; simpl.
   apply Rle_lt_trans with (PI/4).
     now apply Rmin_r.
-  fourier.
+  lra.
 assert (eps' <= eps).
   now unfold eps'; simpl; apply Rmin_l.
 assert (0 < eps') by apply cond_pos.
 exists (tan (PI / 2 - eps')); intros x cx.
 apply Peps. change (Rabs (atan x -PI/2) < eps).
   rewrite Rabs_left; cycle 1.
-  destruct (atan_bound x); fourier.
-enough (PI / 2 - eps' < atan x) by fourier.
+  destruct (atan_bound x); lra.
+enough (PI / 2 - eps' < atan x) by lra.
 rewrite <- (atan_left_inv (PI/2 - eps')); cycle 1.
   now split; psatzl R.
 now apply atan_increasing.
@@ -74,21 +74,21 @@ Proof.
 assert (t := PI2_RGT_0).
 apply is_lim_unique; intros P [eps Peps].
 assert (ep2 : 0 < Rmin eps (PI/4)).
-  apply Rmin_glb_lt;[apply cond_pos | fourier].
+  apply Rmin_glb_lt;[apply cond_pos | lra].
 set (eps' := mkposreal _ ep2).
 assert (eps' < PI / 2).
   unfold eps'; simpl.
   apply Rle_lt_trans with (PI/4).
     now apply Rmin_r.
-  fourier.
+  lra.
 assert (eps' <= eps).
   now unfold eps'; simpl; apply Rmin_l.
 assert (0 < eps') by apply cond_pos.
 exists (tan (-PI / 2 + eps')); intros x cx.
 apply Peps; change (Rabs (atan x - -PI/2) < eps).
   rewrite Rabs_right; cycle 1.
-  destruct (atan_bound x); fourier.
-enough (atan x < -PI / 2 + eps') by fourier.
+  destruct (atan_bound x); lra.
+enough (atan x < -PI / 2 + eps') by lra.
 rewrite <- (atan_left_inv (-PI/2 + eps')); cycle 1.
   now split; psatzl R.
 now apply atan_increasing.

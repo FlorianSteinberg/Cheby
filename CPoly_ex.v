@@ -332,7 +332,7 @@ Lemma sin_correct x :
                       <= (IZR (2^k + 1) / IZR (2 ^ k)))%R.
 Proof.
 move=> H.
-cheby_solve_tac prec 8%nat 30%nat sin_cos H.
+cheby_solve_tac prec 10%nat 3%nat sin_cos H.
 Time Qed.
 
 End CosSin.

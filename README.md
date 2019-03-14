@@ -14,3 +14,5 @@ An opam file gives the explicit dependency and let you compile the library
 opam pin add -y -n cheby .
 opam install cheby
 ```
+
+The file CPoly_ex.v contains some examples of what we can do with this library.

@@ -27,6 +27,7 @@ have-> : (INR n.+2 * acos x + INR n * acos x) / 2 = INR n.+1 * acos x.
   rewrite !S_INR; field.
 by rewrite acos_right_inv.
 Qed.
+
 Local Open Scope ring_scope.
 
 Lemma pT_Cheby n (x: R):

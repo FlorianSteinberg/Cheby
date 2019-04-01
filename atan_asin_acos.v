@@ -122,7 +122,7 @@ now apply atan_increasing.
 Qed.
 
 Lemma atan_lim_minfty : Lim atan m_infty = -PI/2.
-Proof. 
+Proof.
 assert (t := PI2_RGT_0).
 apply is_lim_unique; intros P [eps Peps].
 assert (ep2 : 0 < Rmin eps (PI/4)).
@@ -398,7 +398,7 @@ rewrite asin_atan; last first.
   apply: Rlt_trans (_ : 0 < _); try lra.
   by apply/Rinv_0_lt_compat/sqrt_lt_R0; lra.
 have SH := sqrt2_neq_0.
-rewrite -Rinv_pow // sqrt_pow_2; try lra.
+rewrite -Rinv_pow // pow2_sqrt; try lra.
 rewrite (_ : 1 - /2 = /2); try lra.
 rewrite -inv_sqrt; try lra.
 by rewrite (_ : _ / _ = 1) ?atan_1 //; field.

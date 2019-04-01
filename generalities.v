@@ -106,11 +106,8 @@ rewrite -> Rinv_l, sqrt_1; auto with real.
 Qed.
 
 (* TOD0 : move to standard. *)
-Lemma sqrt_pow_2 x : 0 <= x -> sqrt x ^ 2 = x.
+Lemma pow2_sqrt x : 0 <= x -> sqrt x ^ 2 = x.
 Proof. now intros x0; simpl; rewrite -> Rmult_1_r, sqrt_sqrt. Qed.
-
-Lemma ints : 0 < /sqrt 2 < 1.
-Proof. split; interval. Qed.
 
 (* standard *)
 Lemma CVU_derivable :

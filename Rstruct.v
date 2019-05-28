@@ -430,6 +430,9 @@ rewrite  S_INR [_.+1%:R](natrD _ 1) IH -[1%:R]/1.
 by rewrite addrC.
 Qed.
 
+Lemma natrS (R :ringType) n : n.+1%:R = 1 + n%:R :> R.
+Proof. by rewrite -(natrD _ 1 n). Qed.
+
 Lemma Z_of_nat_gt0 n: (0 < n)%nat -> (0 < Z.of_nat n)%Z.
 Proof. by case: n. Qed.
 

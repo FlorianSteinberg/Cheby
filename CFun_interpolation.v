@@ -555,13 +555,279 @@ Qed.
 
 End Sin.
 
+(*****************************************************************************)
+(*                                                                           *)
+(*    Interpolation theorems for atan                                         *)
+(*                                                                           *)
+(*****************************************************************************)
+
+
+Section Atan.
+
+Variable n : nat.
+Variable a b : R.
+Hypothesis aLb : a < b.
+
+Let l := cheby_nodes n.+1.
+Let ls := scheby_nodes a b n.+1.
+Let atinter := interpolation atan ls.
+Let aterror := ierror atan ls.
+
+Definition atan_coef i := 
+  (if i == 0%nat then 1 else 2) / INR (n.+1) *
+   \sum_(j < n.+1) atan (((b - a) * (l`_j) + a + b) / 2)%R * ('T_i).[l`_j].
+
+Lemma atan_cheby_eq :
+   atinter = \sum_(i < n.+1) atan_coef i *: 'T^(a, b)_i.
+Proof.
+have aDb : a != b by apply/eqP; lra.
+rewrite [LHS](@sdsprod_cheby_eq a b n) //.
+- apply: eq_bigr => i _.
+  congr (_ *: _).
+  by apply: sdsprod_coef_interpolation_pT.
+apply: leq_trans (interpolation_size _ _) _.
+by rewrite size_scheby_nodes.
+Qed.
+
+Definition coef_poly_atan (m i : nat) (k2 := (m - i)%nat) (k := k2./2) := 
+  if odd k2 then 0 else
+  (-1)^+ (m + k) * ((m `! *  'C(m.+1, k2.+1)) %:R).
+
+Definition poly_atan m : {poly R} := \poly_(i < m.+1) coef_poly_atan m i.
+
+Lemma size_poly_atan m : size (poly_atan m) = m.+1.
+Proof.
+apply: size_poly_eq.
+rewrite /coef_poly_atan /=.
+rewrite subnn /= bin1 GRing.natrM.
+apply: GRing.mulf_neq0.
+  apply: GRing.expf_neq0.
+  by rewrite GRing.oppr_eq0 GRing.oner_neq0.
+apply: GRing.mulf_neq0; rewrite Num.Theory.pnatr_eq0 //.
+by rewrite -lt0n fact_gt0.
+Qed.
+
+Lemma poly_atan_0 : poly_atan 0%nat = 1%:P.
+Proof.
+apply/polyP => i; rewrite coefC coef_poly /coef_poly_atan /=.
+by case: i; rewrite //= binn fact0 !Rmult_1_l.
+Qed.
+
+Import GRing.Theory.
+
+Lemma poly_atan_deriv m : 
+  poly_atan m.+1 = (('X^2 + 1%:P) * (poly_atan m)^`() -
+                     (2 * m.+1%:R)%:P * 'X * (poly_atan m))%RR.
+Proof.
+apply/polyP => i.
+rewrite mulrDl mul1r coefB coefD.
+rewrite -mulrA coefCM coefXnM coefXM.
+rewrite coef_deriv /coef_poly_atan !coef_poly.
+rewrite /coef_poly_atan size_poly_atan !ltnS.
+case: m => [|[|m]]; rewrite /= ?rm0.
+- case: i => [|[|i]]; rewrite /= ?rm0; try (toR; lra).
+  by rewrite !addn0 expr0 expr1 binn binSn factS fact0; toR; lra.
+- case: i => [|[|[|i]]]; rewrite //= ?rm0; try (toR; lra).
+    by rewrite binn binSn !exprS !expr0 !factS fact0 ?rm1; toR; lra.
+  rewrite -['C(3, _)]/3%nat binSn.
+  rewrite !addn0 !exprS !expr0 ?rm1 !factS !fact0.
+  by toR; lra.
+case: i => [|[|i]]; rewrite ?rm0 !subSS !subn0 /=.
+- rewrite negbK binn binSn.
+  congr (if _ then _ else _ * _).
+    by rewrite !addSn !addnS !exprS; toR; lra.
+  by rewrite muln1 mulnC.
+- case: odd; rewrite /= ?rm0 //.
+  rewrite !(addnS, addSn) !exprS.
+  rewrite binSn binn.
+  set v := _ ^+ _.
+  rewrite ![(_ `! * _)%:R]natrM -!mulrnAr.
+  rewrite !factS !natrM /=.
+  rewrite (_ : _ *+2 = m.+3%:R * m.+2%:R)%RR.
+    by toR; lra.
+  rewrite -bin_sub 1?ltnW // subSS subSn // subSn // subnn.
+  by rewrite mulr2n -natrD addnn -muln2 bin_ffact ffactnS ffactn1 natrM.
+rewrite !ltnS.
+case: (leqP i m.+1) => [|H]; last first.
+  rewrite !rm0.
+  by rewrite ifN // ltnNge (leq_trans _ H) // ltnW.
+rewrite leq_eqVlt => /orP[/eqP->|].
+  rewrite subnn /= ifN ?ltnNge 1?ltnW //.
+  rewrite !rm0 !addn0.
+  rewrite !bin1 exprS.
+  rewrite [(_.+3)`!]factS.
+  rewrite 3!natrM.
+  rewrite (_ : m.+4%:R = 1 + m.+3%:R)%RR; last by toR; lra.
+  rewrite -[(_ *+ m.+2)]mulr_natl. 
+  by toR; ring.
+rewrite ltnS leq_eqVlt => /orP[/eqP<-|H1].
+  by rewrite subSn // subnn ltnn !rm0.
+rewrite H1 /=.
+rewrite subSn 1?ltnW // subnS.
+set u := (_ - _)%nat.
+rewrite -(subnKC (ltnW H1)) {}/u. 
+move: H1; rewrite -subn_gt0; case: subn => [|k]; rewrite //= ?negbK !addnS => Hk.
+have [H2|H2] := boolP (odd _).
+  by rewrite !rm0.
+rewrite [(_.+3 + _)%nat]addSn 2!exprS !mulN1r.
+rewrite opprK /= [_.+4`!]factS mulnAC.
+have->: ((i + k).+4 * 'C((i + k).+1.+4, k.+3) =
+  'C((i + k).+4, k.+1) *i.+3 +
+  (i.+1 + k.+1.*2).+4 * 'C((i + k).+4, k.+3))%nat.
+  rewrite binS mulnDr.
+  suff-> : ((i + k).+4 * 'C((i + k).+4, k.+2) =
+         'C((i + k).+4, k.+1) * i.+3 +
+           k.+3 * 'C((i + k).+4, k.+3))%nat.
+    by rewrite addnCA -mulnDl -addnn !addSn !addnS addnA.
+  rewrite [(_ * i.+3)%nat]mulnC (_ : i.+3 = (i + k).+4 - k.+1)%nat; last first. 
+    by rewrite subSS !subSn ?addnK ?leq_addl // ltnW // ltnS // ?leq_addl // ltnW // ltnS // leq_addl.
+  rewrite -mul_bin_left.
+  rewrite [X in (_ = _ + X)%nat]mul_bin_left.
+  rewrite -mulnDl; congr (_ * _)%nat.
+  by rewrite [RHS]addnC subnK // ltnS ltnW // !ltnS ltnW // ltnS leq_addl.
+move: _`! 'C(_,_) 'C(_,_) => u1 v1 v2.
+rewrite -[_ *+ i.+3]mulr_natl.
+rewrite -[_ *+ i.+1]mulr_natl.
+rewrite -addnn !(natrM, natrD, natrS).
+toR; lra.
+Qed.
+
+Lemma Derive_n_atan k x : 
+  Derive_n atan k.+1 x = (poly_atan k).[x] / (1 + x ^ 2)^k.+1.
+Proof.
+elim: k x => [x|k IH x].
+  rewrite /= poly_atan_0 hornerE.
+  apply: is_derive_unique.
+  rewrite !Rmult_1_r /Rdiv Rmult_1_l.
+  by exact: coquelicot_compl.is_derive_atan.
+apply: etrans.
+  apply: Derive_ext => y.
+  by exact: IH.
+rewrite Derive_div; last 3 first.
+  - by exact: ex_derive_horner.
+  - apply: ex_derive_pow.
+    apply: ex_derive_plus.
+      by apply: ex_derive_const.
+    apply: ex_derive_pow.
+    by apply: ex_derive_id.
+ - by apply: pow_nonzero; nra.
+rewrite [in RHS]poly_atan_deriv ![in RHS]hornerE.
+rewrite Derive_horner .
+rewrite Derive_pow; last first.
+  apply: ex_derive_plus.
+    by apply: ex_derive_const.
+  apply: ex_derive_pow.
+  by apply: ex_derive_id.
+rewrite Derive_plus; last 2 first.
+- by apply: ex_derive_const.
+- by apply/ex_derive_pow/ex_derive_id.
+rewrite Derive_const Derive_pow; last first.
+  by exact: ex_derive_id.
+rewrite Derive_id.
+rewrite -natr_INR !natrS /=.
+rewrite !(Rmult_1_l, Rmult_1_r, Rplus_0_l).
+toR.
+rewrite (_ : x * x + 1 = 1 + x * x); last by toR; lra.
+set u1 := _.[_].
+set u2 := _.[_].
+set v1 := 1 + _.
+set v2 := _ ^ _.
+field; split.
+  by rewrite /v2 /v1; apply: pow_nonzero; nra.
+by rewrite /v1; nra.
+Qed.
+
+Lemma ierror_atan x z :
+  a <= x <= b ->
+  (forall y, a <= y <= b -> 
+      Rabs (poly_atan n).[y] / (1 + y ^ 2)^n.+1 <= z) ->
+  Rabs (aterror x) <= (b - a)^+ n.+1 / ((expn 2 n.+1.*2.-1 * n.+1 `!) %:R) * z.
+Proof.
+move=> xB HD.
+apply: ierror_scheby => //.
+- have H : a - 1 < a by lra.
+  by exact H.
+- have H : b < b + 1 by lra.
+  by exact: H.
+- move=> y k yB kLn.
+  apply: coquelicot_compl.ex_derive_n_is_derive_n.
+  by apply: coquelicot_compl.is_derive_n_atan.
+- move=> y [/=|k] kLn yB.
+    by apply: coquelicot_compl.continuous_atan.
+  apply: continuous_ext => [u|].
+    apply/sym_equal.
+    by exact: Derive_n_atan.
+  apply: continuous_mult.
+    apply: ex_derive_continuous.
+    by apply: ex_derive_horner.
+  apply: coquelicot_compl.continuous_Rinv_comp; last first.
+    by apply: pow_nonzero; nra.
+  apply: ex_derive_continuous.
+  apply: ex_derive_pow.
+  apply: ex_derive_plus.
+    by apply: ex_derive_const.
+  apply: ex_derive_pow.
+  by apply: ex_derive_id.
+move=> y yB.
+rewrite Derive_n_atan Rabs_mult.
+rewrite [X in _ * X <= _]Rabs_pos_eq.
+  by exact: HD.
+apply/Rlt_le/Rinv_0_lt_compat.
+by apply: pow_lt; nra.
+Qed.
+
+Lemma atan_scheby_ge x :
+  a <= x <= b ->
+  (   (forall x, a <= x <= b -> (poly_atan n.+1).[x] <= 0) 
+    \/
+      (forall x, a <= x <= b -> (poly_atan n.+1).[x] >= 0)) ->
+  Rabs (aterror x) <= Rmax (Rabs (aterror a)) (Rabs (aterror b)).
+Proof.
+move=> xB HD.
+apply: interpolation_scheby_ge => //.
+- have H : a - 1 < a by lra.
+  by exact: H.
+- have H : b < b + 1 by lra.
+  by exact: H.
+- move=> [|m] y mLn yB.
+    by apply: coquelicot_compl.continuous_atan.
+  apply: continuous_ext => [u|].
+    apply/sym_equal.
+    by exact: Derive_n_atan.
+  apply: continuous_mult.
+    apply: ex_derive_continuous.
+    by apply: ex_derive_horner.
+  apply: coquelicot_compl.continuous_Rinv_comp; last first.
+    by apply: pow_nonzero; nra.
+  apply: ex_derive_continuous.
+  apply: ex_derive_pow.
+  apply: ex_derive_plus.
+    by apply: ex_derive_const.
+  apply: ex_derive_pow.
+  by apply: ex_derive_id.
+- case: HD => HD.
+    left => y Hy.
+    rewrite Derive_n_atan.
+    apply: Rmult_le_0_r; first by apply: HD.
+    apply/Rlt_le/Rinv_0_lt_compat.
+    by apply: pow_lt; nra.
+  right => y Hy.
+  rewrite Derive_n_atan.
+  apply/Rle_ge/Rmult_le_pos; first by apply/Rge_le/HD.
+  apply/Rlt_le/Rinv_0_lt_compat.
+  by apply: pow_lt; nra.
+move=> m y mLn yB.
+apply: coquelicot_compl.ex_derive_n_is_derive_n.
+by apply: coquelicot_compl.is_derive_n_atan.
+Qed.
+
+End Atan.
 
 (*****************************************************************************)
 (*                                                                           *)
 (*    Interpolation theorems for sqrt                                        *)
 (*                                                                           *)
 (*****************************************************************************)
-
 
 Section DoubleFact.
 

@@ -279,7 +279,6 @@ apply: is_RInt_gen_at_point_at_left => //.
   by apply: (ex_derive_continuous f); rewrite /f; auto_derive.
 by apply: filter_Rlt_at_point; interval_intro PI; lra.
 Qed.
-
 Lemma Cheby_ortho n m :
   RInt_gen (fun y => Cheby n y * Cheby m y /
                    (sqrt (1 - y ^ 2)))

@@ -591,75 +591,154 @@ Qed.
 
 Definition coef_poly_atan (m i : nat) (k2 := (m - i)%nat) (k := k2./2) := 
   if odd k2 then 0 else
-  (-1)^+ (m + k) * ((m `! *  'C(m.+1, k2.+1)) %:R).
+  (-1)^+ k * 'C(m.+1, k2.+1) %:R.
 
 Definition poly_atan m : {poly R} := \poly_(i < m.+1) coef_poly_atan m i.
+
+Import GRing.Theory.
+
+Fixpoint eval_atan_rec m (bv : bool) i j x res := 
+  if m is m1.+2 then
+  let i1 := i.+2 in 
+  let j1 := ((j * m  %/ i1) * m.-1 %/ i1.+1)%nat in
+  let res1 := res * x * x + (-1) ^+ bv * j1%:R in
+  eval_atan_rec m1 (~~ bv) i1 j1 x res1
+  else if m is 1%nat then x * res else res.
+
+Lemma eval_atan_rec_cor m m1 bv i j x res :
+  ~~ odd i ->
+  (m1 <= m)%nat ->
+  (m = m1 + i)%nat ->
+  (j = 'C(m.+1, i.+1))%nat ->
+  (bv = odd i./2.+1)%nat ->
+  res = (\poly_(u < (m - m1).+1) coef_poly_atan m (u + m1)).[x] ->
+  eval_atan_rec m1 bv i j x res = (\poly_(i < m.+1) coef_poly_atan m i).[x].
+Proof.
+elim: {m1}(S _) {-2}m1 (leqnn m1.+1) bv i j res => 
+   // v IH [|[|m1]] /= mLv bv i j res iE m1Lm mE jE bvE resE.
+- rewrite resE subn0; congr (_.[_]).
+  by apply: eq_poly => i1; rewrite addn0.
+- rewrite resE subn1 prednK //.
+  rewrite (_ : forall x y, x * y = (x * y)%RR) //.
+  rewrite -{1}[x]hornerX -hornerM; congr (_.[_]).
+  apply/polyP => /= w.
+  rewrite coefXM !coef_poly addn1.
+  case: w => //=.
+  rewrite /coef_poly_atan ifT //.
+  rewrite subn0 -[odd _]negbK -[~~ (odd _)]/(odd (S m)).
+  by rewrite mE /= iE.
+rewrite IH //=.
+- by rewrite ltnS in mLv; apply: leq_trans mLv.
+- by rewrite iE.
+- by rewrite (leq_trans _ m1Lm) // ltnW.
+- by rewrite 2!addnS.
+- rewrite jE (_ : m1.+2 = m.+1 - i.+1)%nat; last by rewrite subSS mE addnK.
+  rewrite [(_ * (_ - _))%nat]mulnC -mul_bin_left //.
+  rewrite [(_ * 'C(_, _))%nat]mulnC mulnK //.
+  rewrite (_ : m1.+1 = m.+1 - i.+2)%nat; last first.
+    by rewrite mE -addSn 2!addSnnS addnK.
+  rewrite [(_ * (_ - _))%nat]mulnC -mul_bin_left //.
+  by rewrite [(_ * 'C(_, _))%nat]mulnC mulnK //.
+- by rewrite bvE.
+rewrite resE jE.
+rewrite !(_ : forall x y, x * y = (x * y)%RR) //.
+rewrite -{2 3}[x]hornerX -!hornerM -(hornerC (_ * _%:R) x).
+rewrite !(_ : forall x y, x + y = (x + y)%RR) //.
+rewrite -hornerD; congr (_.[_]).
+apply/polyP => /= w.
+rewrite coefD coefC !coefMX !coef_poly.
+case: w => [|[|w]] /=.
+- rewrite add0r add0n /= /coef_poly_atan.
+  have ->/=: (m - m1 = i.+2)%nat.
+    rewrite mE 2!addSn 2?subSn ?leq_addr //.
+      by rewrite addnC addnK.
+    by rewrite -addnS leq_addr.
+  rewrite iE /= bvE -[in RHS]signr_odd; congr (_ * _)%RR.
+  rewrite (_ : m1.+2 = m.+1 - i.+1)%nat; last by rewrite subSS mE addnK.
+  rewrite [(_ * (_ - _))%nat]mulnC -mul_bin_left //.
+  rewrite [(_ * 'C(_, _))%nat]mulnC mulnK //.
+  rewrite (_ : m1.+1 = m.+1 - i.+2)%nat; last first.
+    by rewrite mE -addSn 2!addSnnS addnK.
+  rewrite [(_ * (_ - _))%nat]mulnC -mul_bin_left //.
+  by rewrite [(_ * 'C(_, _))%nat]mulnC mulnK.
+- rewrite ltnS subn_gt0 -ltnS (leq_trans m1Lm) //=.
+  by rewrite add0r /coef_poly_atan mE addSnnS addnC addnK /= iE.
+rewrite addr0 !ltnS -2!ltnS -2?subSn ?subSS ?addnS //=.
+by rewrite (leq_trans m1Lm).
+Qed.
+
+Definition eval_atan m x := eval_atan_rec m true 0 m.+1 x m.+1%:R.
+
+Lemma eval_atan_cor m x :
+  eval_atan m x = (\poly_(i < m.+1) coef_poly_atan m i).[x].
+Proof.
+apply: eval_atan_rec_cor => //.
+- by rewrite addn0.
+- by rewrite bin1.
+rewrite subnn /coef_poly_atan.
+rewrite horner_poly big_ord1 subnn /= expr0 mulr1 bin1.
+by rewrite Rmult_1_l.
+Qed.
 
 Lemma size_poly_atan m : size (poly_atan m) = m.+1.
 Proof.
 apply: size_poly_eq.
 rewrite /coef_poly_atan /=.
-rewrite subnn /= bin1 GRing.natrM.
+rewrite subnn /= bin1.
 apply: GRing.mulf_neq0.
   apply: GRing.expf_neq0.
   by rewrite GRing.oppr_eq0 GRing.oner_neq0.
-apply: GRing.mulf_neq0; rewrite Num.Theory.pnatr_eq0 //.
-by rewrite -lt0n fact_gt0.
+by rewrite Num.Theory.pnatr_eq0.
 Qed.
 
 Lemma poly_atan_0 : poly_atan 0%nat = 1%:P.
 Proof.
 apply/polyP => i; rewrite coefC coef_poly /coef_poly_atan /=.
-by case: i; rewrite //= binn fact0 !Rmult_1_l.
+by case: i; rewrite //= binn !Rmult_1_l.
 Qed.
 
 Import GRing.Theory.
 
 Lemma poly_atan_deriv m : 
-  poly_atan m.+1 = (('X^2 + 1%:P) * (poly_atan m)^`() -
-                     (2 * m.+1%:R)%:P * 'X * (poly_atan m))%RR.
+ ((m.+1)%:R%:P * poly_atan m.+1 =
+   (2 * m.+1%:R)%:P * 'X * (poly_atan m)-
+        ('X^2 + 1%:P) * (poly_atan m)^`())%RR.
 Proof.
 apply/polyP => i.
-rewrite mulrDl mul1r coefB coefD.
+rewrite mulrDl mul1r coefCM coefB coefD.
 rewrite -mulrA coefCM coefXnM coefXM.
 rewrite coef_deriv /coef_poly_atan !coef_poly.
 rewrite /coef_poly_atan size_poly_atan !ltnS.
 case: m => [|[|m]]; rewrite /= ?rm0.
-- case: i => [|[|i]]; rewrite /= ?rm0; try (toR; lra).
-  by rewrite !addn0 expr0 expr1 binn binSn factS fact0; toR; lra.
+- by case: i => [|[|i]]; rewrite /= ?rm0; toR; lra.
 - case: i => [|[|[|i]]]; rewrite //= ?rm0; try (toR; lra).
-    by rewrite binn binSn !exprS !expr0 !factS fact0 ?rm1; toR; lra.
+    by rewrite binn binSn !exprS !expr0 ?rm1; toR; lra.
   rewrite -['C(3, _)]/3%nat binSn.
-  rewrite !addn0 !exprS !expr0 ?rm1 !factS !fact0.
+  rewrite !expr0 ?rm1.
   by toR; lra.
 case: i => [|[|i]]; rewrite ?rm0 !subSS !subn0 /=.
 - rewrite negbK binn binSn.
-  congr (if _ then _ else _ * _).
-    by rewrite !addSn !addnS !exprS; toR; lra.
-  by rewrite muln1 mulnC.
+  case: odd; rewrite /= ?rm0 //.
+  rewrite !exprS Rmult_1_r -[in RHS]mulr_natl.
+  by toR; lra.
 - case: odd; rewrite /= ?rm0 //.
-  rewrite !(addnS, addSn) !exprS.
+  rewrite !exprS.
   rewrite binSn binn.
   set v := _ ^+ _.
-  rewrite ![(_ `! * _)%:R]natrM -!mulrnAr.
-  rewrite !factS !natrM /=.
+  rewrite !rm1 Rmult_1_r -!mulrnAr !natrS.
   rewrite (_ : _ *+2 = m.+3%:R * m.+2%:R)%RR.
-    by toR; lra.
+    rewrite -[in RHS]mulr_natl !natrS; toR; lra.
   rewrite -bin_sub 1?ltnW // subSS subSn // subSn // subnn.
   by rewrite mulr2n -natrD addnn -muln2 bin_ffact ffactnS ffactn1 natrM.
 rewrite !ltnS.
 case: (leqP i m.+1) => [|H]; last first.
   rewrite !rm0.
-  by rewrite ifN // ltnNge (leq_trans _ H) // ltnW.
+  by rewrite ifN ?rm0 // ltnNge (leq_trans _ H) // ltnW.
 rewrite leq_eqVlt => /orP[/eqP->|].
   rewrite subnn /= ifN ?ltnNge 1?ltnW //.
-  rewrite !rm0 !addn0.
-  rewrite !bin1 exprS.
-  rewrite [(_.+3)`!]factS.
-  rewrite 3!natrM.
-  rewrite (_ : m.+4%:R = 1 + m.+3%:R)%RR; last by toR; lra.
-  rewrite -[(_ *+ m.+2)]mulr_natl. 
-  by toR; ring.
+  rewrite !rm0 !bin1 expr0 /=.
+  rewrite -[_ *+ m.+2]mulr_natl !natrS.
+  by toR; lra.
 rewrite ltnS leq_eqVlt => /orP[/eqP<-|H1].
   by rewrite subSn // subnn ltnn !rm0.
 rewrite H1 /=.
@@ -669,8 +748,7 @@ rewrite -(subnKC (ltnW H1)) {}/u.
 move: H1; rewrite -subn_gt0; case: subn => [|k]; rewrite //= ?negbK !addnS => Hk.
 have [H2|H2] := boolP (odd _).
   by rewrite !rm0.
-rewrite [(_.+3 + _)%nat]addSn 2!exprS !mulN1r.
-rewrite opprK /= [_.+4`!]factS mulnAC.
+rewrite [LHS]mulrCA -natrM.
 have->: ((i + k).+4 * 'C((i + k).+1.+4, k.+3) =
   'C((i + k).+4, k.+1) *i.+3 +
   (i.+1 + k.+1.*2).+4 * 'C((i + k).+4, k.+3))%nat.
@@ -685,7 +763,8 @@ have->: ((i + k).+4 * 'C((i + k).+1.+4, k.+3) =
   rewrite [X in (_ = _ + X)%nat]mul_bin_left.
   rewrite -mulnDl; congr (_ * _)%nat.
   by rewrite [RHS]addnC subnK // ltnS ltnW // !ltnS ltnW // ltnS leq_addl.
-move: _`! 'C(_,_) 'C(_,_) => u1 v1 v2.
+rewrite exprS.
+move: (_^+ _) 'C(_,_) 'C(_,_) => u1 v1 v2.
 rewrite -[_ *+ i.+3]mulr_natl.
 rewrite -[_ *+ i.+1]mulr_natl.
 rewrite -addnn !(natrM, natrD, natrS).
@@ -693,7 +772,7 @@ toR; lra.
 Qed.
 
 Lemma Derive_n_atan k x : 
-  Derive_n atan k.+1 x = (poly_atan k).[x] / (1 + x ^ 2)^k.+1.
+  Derive_n atan k.+1 x = (-1)^+ k * k`!%:R * (poly_atan k).[x] / (1 + x ^ 2)^k.+1.
 Proof.
 elim: k x => [x|k IH x].
   rewrite /= poly_atan_0 hornerE.
@@ -704,15 +783,20 @@ apply: etrans.
   apply: Derive_ext => y.
   by exact: IH.
 rewrite Derive_div; last 3 first.
-  - by exact: ex_derive_horner.
+  - apply: ex_derive_mult.
+      by apply: ex_derive_const.
+    by exact: ex_derive_horner.
   - apply: ex_derive_pow.
     apply: ex_derive_plus.
       by apply: ex_derive_const.
     apply: ex_derive_pow.
     by apply: ex_derive_id.
  - by apply: pow_nonzero; nra.
-rewrite [in RHS]poly_atan_deriv ![in RHS]hornerE.
-rewrite Derive_horner .
+rewrite factS mulnC natrM ![in RHS]Rmult_assoc.
+rewrite (_ : k.+1%:R = k.+1%:R%:P.[x]); last by rewrite hornerE.
+rewrite -[_.[x] * _.[x]](@hornerM [comRingType of R]).
+rewrite poly_atan_deriv.
+rewrite ![in RHS]hornerE !Derive_scal !Derive_horner .
 rewrite Derive_pow; last first.
   apply: ex_derive_plus.
     by apply: ex_derive_const.
@@ -724,10 +808,10 @@ rewrite Derive_plus; last 2 first.
 rewrite Derive_const Derive_pow; last first.
   by exact: ex_derive_id.
 rewrite Derive_id.
-rewrite -natr_INR !natrS /=.
+rewrite -natr_INR !natrS /= exprS.
 rewrite !(Rmult_1_l, Rmult_1_r, Rplus_0_l).
+rewrite (_ : x * x + 1 = 1 + x * x)%RR; last by toR; lra.
 toR.
-rewrite (_ : x * x + 1 = 1 + x * x); last by toR; lra.
 set u1 := _.[_].
 set u2 := _.[_].
 set v1 := 1 + _.
@@ -741,9 +825,18 @@ Lemma ierror_atan x z :
   a <= x <= b ->
   (forall y, a <= y <= b -> 
       Rabs (poly_atan n).[y] / (1 + y ^ 2)^n.+1 <= z) ->
-  Rabs (aterror x) <= (b - a)^+ n.+1 / ((expn 2 n.+1.*2.-1 * n.+1 `!) %:R) * z.
+  Rabs (aterror x) <= (b - a)^+ n.+1 / ((expn 2 n.+1.*2.-1 * n.+1) %:R) * z.
 Proof.
 move=> xB HD.
+have-> : (b - a)^+ n.+1 / ((expn 2 n.+1.*2.-1 * n.+1) %:R) * z =
+         (b - a)^+ n.+1 / ((expn 2 n.+1.*2.-1 * n.+1`!) %:R) * (n`!%:R * z).
+  rewrite factS !natrM !natrS; toR; field; repeat split.
+  - apply: (not_INR _ 0%nat) => //.
+    by case: _`! (fact_gt0 n).
+  - have : 0 <= INR n by apply: pos_INR.
+    by lra.
+  apply: (not_INR _ 0%nat) => //.
+  by case: expn (expn_gt0 2 n.*2.+1).
 apply: ierror_scheby => //.
 - have H : a - 1 < a by lra.
   by exact H.
@@ -759,6 +852,8 @@ apply: ierror_scheby => //.
     by exact: Derive_n_atan.
   apply: continuous_mult.
     apply: ex_derive_continuous.
+    apply: ex_derive_mult.
+      by apply: ex_derive_const.
     by apply: ex_derive_horner.
   apply: coquelicot_compl.continuous_Rinv_comp; last first.
     by apply: pow_nonzero; nra.
@@ -771,6 +866,12 @@ apply: ierror_scheby => //.
 move=> y yB.
 rewrite Derive_n_atan Rabs_mult.
 rewrite [X in _ * X <= _]Rabs_pos_eq.
+  rewrite !Rabs_mult Rabs_exprN1 Rmult_1_l.
+  rewrite Rabs_pos_eq; last first.
+    by rewrite natr_INR; apply: pos_INR.
+  rewrite Rmult_assoc.
+  apply: Rmult_le_compat_l.
+    by rewrite natr_INR; apply: pos_INR.
   by exact: HD.
 apply/Rlt_le/Rinv_0_lt_compat.
 by apply: pow_lt; nra.
@@ -796,6 +897,8 @@ apply: interpolation_scheby_ge => //.
     by exact: Derive_n_atan.
   apply: continuous_mult.
     apply: ex_derive_continuous.
+    apply: ex_derive_mult.
+      by apply: ex_derive_const.
     by apply: ex_derive_horner.
   apply: coquelicot_compl.continuous_Rinv_comp; last first.
     by apply: pow_nonzero; nra.
@@ -806,14 +909,43 @@ apply: interpolation_scheby_ge => //.
   apply: ex_derive_pow.
   by apply: ex_derive_id.
 - case: HD => HD.
-    left => y Hy.
+    case : (boolP (odd n)) => E.
+      left => y Hy.
+      rewrite Derive_n_atan.
+      apply: Rmult_le_0_r; last first.
+        apply/Rlt_le/Rinv_0_lt_compat.
+        by apply: pow_lt; nra.
+      apply: Rmult_le_0_l; last by apply: HD.
+      apply: Rmult_le_pos.
+        by rewrite -signr_odd /= E expr0; toR; lra.
+      by rewrite natr_INR; apply: pos_INR.
+    right => y Hy.
     rewrite Derive_n_atan.
-    apply: Rmult_le_0_r; first by apply: HD.
+    rewrite -signr_odd [odd _]/= E expr1.
+    apply/Rle_ge/Rmult_le_pos.
+      apply: Interval_missing.Rmult_le_neg_neg.
+        by rewrite natr_INR; have := pos_INR n.+1`!; toR; lra.
+      by apply: HD.
     apply/Rlt_le/Rinv_0_lt_compat.
     by apply: pow_lt; nra.
-  right => y Hy.
+  case : (boolP (odd n)) => E.
+    right => y Hy.
+    rewrite Derive_n_atan.
+    rewrite -signr_odd [odd _]/= E expr0 Rmult_1_l.
+    apply/Rle_ge/Rmult_le_pos.
+      apply: Rmult_le_pos.
+        by rewrite natr_INR; apply: pos_INR.
+      by apply/Rge_le/HD.
+    apply/Rlt_le/Rinv_0_lt_compat.
+    by apply: pow_lt; nra.
+  left => y Hy.
   rewrite Derive_n_atan.
-  apply/Rle_ge/Rmult_le_pos; first by apply/Rge_le/HD.
+  rewrite -signr_odd [odd _]/= E expr1.
+  apply: Rmult_le_0_r.
+    apply: Rmult_le_0_r.
+      apply: Rmult_le_0_r; first by toR; lra.
+      by rewrite natr_INR; apply: pos_INR.
+    by apply/Rge_le/HD.
   apply/Rlt_le/Rinv_0_lt_compat.
   by apply: pow_lt; nra.
 move=> m y mLn yB.

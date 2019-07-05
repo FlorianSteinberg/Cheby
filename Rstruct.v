@@ -22,6 +22,8 @@ Require Import Rdefinitions Raxioms RIneq Rbasic_fun Zwf.
 Require Import Epsilon FunctionalExtensionality Ranalysis1 Rsqrt_def.
 From mathcomp Require Import ssreflect ssrfun ssrbool eqtype ssrnat seq choice bigop.
 From mathcomp Require Import ssrnum ssralg fintype poly mxpoly.
+From mathcomp Require Import div.
+
 Require Import Rtrigo1 Reals.
 Delimit Scope ring_scope with RR.
 
@@ -710,4 +712,12 @@ rewrite (_ : f b = f b - f a + f a); try lra.
 have [Hx1 ->] := Hx.
 have := H2 _ Hx1.
 nra.
+Qed.
+
+Lemma natDivP x y : (0 < y)%nat -> (x %/ y)%nat = (x / y)%nat.
+Proof.
+move=> yP.
+apply: (Nat.div_unique _ _ _ (x %% y)).
+ by apply/ltP; rewrite ltn_mod.
+by rewrite [(_ * _)%coq_nat]mulnC -[RHS]divn_eq.
 Qed.

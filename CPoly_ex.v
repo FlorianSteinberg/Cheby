@@ -2,7 +2,7 @@ Require Import Psatz.
 From mathcomp Require Import all_ssreflect.
 Require Import CPoly_I.
 From Bignums Require Import BigZ.
-Import Rtrigo_def Rdefinitions Rpower R_sqrt.
+Import Rtrigo_def Rdefinitions Rpower R_sqrt Ratan.
 
 Coercion fromZ := SFBI2.fromZ.
 
@@ -48,6 +48,72 @@ Compute P (norm_cms prec ex1_cms).
 Compute eval_range_cms prec ex1_cms.
 
 End Example1.
+
+Section Example2.
+
+Let prec := 165%bigZ.
+
+Definition ex2 := (atan(x))%fexpr.
+
+Let vmz25 := I.lower (I.neg (I.inv prec (I.fromZ 4))).
+Let vz25 := I.upper (I.inv prec (I.fromZ 4)).
+
+(* TL = chebyshevform(atan(x), 15 , [-0.25,0.25]);    *)
+(* TL[2];                                             *)
+(* TL[3];                                             *)
+Time Definition ex2_cms := 
+  Eval vm_compute in mk_cms prec 15 vmz25 vz25 (atan(x))%fexpr.
+
+Lemma ex2_correct : cms_correct 15 vmz25 vz25 atan ex2_cms.
+Proof.
+rewrite (_ : ex2_cms = mk_cms 165%bigZ 15 vmz25 vz25 (atan(x))%fexpr); last first.
+  by vm_cast_no_check (refl_equal ex2_cms).
+have-> : atan = (fexpr_eval ex2).
+  by apply: refl_equal.
+by apply: mk_cms_correct.
+Qed.
+
+Compute P ex2_cms.
+Compute Delta ex2_cms.
+Compute Delta (norm_cms prec ex2_cms).
+Compute P (norm_cms prec ex2_cms).
+Compute eval_range_cms prec ex2_cms.
+
+End Example2.
+
+Section Example3.
+
+Let prec := 165%bigZ.
+
+Definition ex3 := (atan(x))%fexpr.
+
+Let vmz9 := I.lower (I.neg (I.div prec (I.fromZ 9) (I.fromZ 10))).
+Let vz9 := I.upper (I.div prec (I.fromZ 9) (I.fromZ 10)).
+
+(* TL = chebyshevform(atan(x), 15 , [-0.9, 0.9]);    *)
+(* TL[2];                                             *)
+(* TL[3];                                             *)
+Time Definition ex3_cms := 
+  Eval vm_compute in mk_cms prec 15 vmz9 vz9 (atan(x))%fexpr.
+
+Lemma ex3_correct : cms_correct 15 vmz9 vz9 atan ex3_cms.
+Proof.
+rewrite (_ : ex3_cms = mk_cms 165%bigZ 15 vmz9 vz9 (atan(x))%fexpr); last first.
+  by vm_cast_no_check (refl_equal ex3_cms).
+have-> : atan = (fexpr_eval ex3).
+  by apply: refl_equal.
+by apply: mk_cms_correct.
+Qed.
+
+Compute P ex3_cms.
+Compute Delta ex3_cms.
+Compute Delta (norm_cms prec ex3_cms).
+Compute P (norm_cms prec ex3_cms).
+Compute eval_range_cms prec ex3_cms.
+
+End Example2.
+
+
 
 Section Example4.
 

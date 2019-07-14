@@ -38,6 +38,9 @@ Notation sqr I := (I.sqr prec I).
 Notation sub I J := (I.sub prec I J).
 Notation div I J := (I.div prec I J).
 
+Notation "l '\lcontained_in' L" :=
+ (forall i,  l`_i \contained_in nth I0 L i) (at level 20).
+
 Section Interval_lemmas.
 
 Definition FtoI (a: D) := (Interval.Interval_interval_float.Ibnd a a).
@@ -354,7 +357,7 @@ Definition ICshaw p x :=
   let: (i1, i2) := ICb p (scl2 x) in sub i1 (mul i2 x).
 
 Lemma ICb_crct (p: seq R) (pI: seq ID) (x: R) (I: ID):
-	(forall i, (p`_i) \contained_in (nth I0 pI i)) -> x \contained_in I  -> size p = size pI ->
+	(p \lcontained_in pI) -> x \contained_in I  -> size p = size pI ->
 		(Cb p x).1 \contained_in (ICb pI I).1 /\ (Cb p x).2 \contained_in (ICb pI I).2.
 Proof.
 move => prp xJ.
@@ -371,7 +374,7 @@ by apply: mul_correct.
 Qed.
 
 Lemma ICshaw_correct (p: seq R) (pI: seq ID) (x: R) (J: ID):
-	(forall i, p`_i \contained_in (nth I0 pI i)) -> x \contained_in J -> size p = size pI ->
+	p \lcontained_in pI -> x \contained_in J -> size p = size pI ->
 		(Cshaw p x) \contained_in (ICshaw pI J).
 Proof.
 move => prp xJ.
@@ -395,12 +398,12 @@ End ICshaw.
 Section IsCshaw.
 
 Definition IsCshaw a b p x :=
-  let x1 := (div (sub (sub (scl2 x) b) a) (sub b a)) in
+  let x1 := div (sub (sub (scl2 x) b) a) (sub b a) in
   ICshaw p x1.
 
 Lemma IsCshaw_correct n (p: seq R) (P: seq ID) (x a b : R) (X A B : ID) :
   a != b -> size p = n -> size P = n ->
-	(forall i, p`_i \contained_in (nth I0 P i)) ->
+	p \lcontained_in P ->
   x \contained_in X ->
   a \contained_in A ->
   b \contained_in B ->
@@ -1345,9 +1348,6 @@ Definition Iopp_Cpoly l := [seq I.neg i | i <- l].
 
 Lemma size_Iopp_Cpoly P : size (Iopp_Cpoly P) = size P.
 Proof. by rewrite size_map. Qed.
-
-Notation "l '\lcontained_in' L" :=
- (forall i,  l`_i \contained_in nth I0 L i) (at level 20).
 
 Lemma Iopp_Cpoly_correct p1 P1 :
   size p1 = size P1 ->
@@ -2484,7 +2484,6 @@ rewrite Rmult_1_l.
 by apply: I.fromZ_correct.
 Qed.
 
-
 Lemma Ieval_atan_correct m x xI :
    x \contained_in xI ->
    eval_atan m x \contained_in Ieval_atan m xI.
@@ -2498,28 +2497,73 @@ rewrite -IZR_Zof_nat (_ : (Z.of_nat m.+1 = Z.of_nat m + 1)%Z).
 by rewrite /= Zpos_P_of_succ_nat; lia.
 Qed.
 
+(*
+Derive_n atan k.+1 x = (-1)^+ k * k`!%:R * (poly_atan k).[x] / (1 + x ^ 2)^k.+1.
+*)
+
+Definition IDerive_n_atan n pn on xI :=
+  let kf := Ieval_atan n xI in
+  let df := I.power_pos prec (I.add prec (I.fromZ 1) (I.sqr prec xI)) pn in
+  if on then div kf df else I.neg (div kf df).
+
+Lemma IDerive_n_atan_correct n pn on x xI :
+ x \contained_in xI -> ~~ on = odd n -> pn = Pos.of_nat n.+1 ->
+ (Derive_n atan n.+1 x / n`!%:R)\contained_in
+  IDerive_n_atan n pn on xI.
+Proof.
+move=> xIxI onE pnE.
+rewrite Derive_n_atan /IDerive_n_atan -signr_odd -onE.
+have F x1 y1 z1 t1 : 
+  (0 < y1 -> 0 < z1 -> x1 * y1 * t1 / z1 / y1 = x1 * t1 / z1)%R.
+  by move=> y1P z1P; field; lra.
+rewrite {}F; last 2 first.
+- by rewrite natr_INR; apply/lt_0_INR/leP/fact_gt0.
+- by apply: pow_lt; nra.
+case: {onE}on.
+  rewrite Rmult_1_l.
+  apply: div_correct.
+    rewrite /poly_atan -eval_atan_cor.
+    by apply: Ieval_atan_correct.
+  rewrite pnE.
+  apply: power_pos_correct => //.
+  apply: add_correct; first by apply: I.fromZ_correct.
+  replace (x ^ 2)%R with (x * x)%R by ring.
+  by apply: sqr_correct.
+rewrite -Ropp_mult_distr_l Rmult_1_l Ropp_div.
+apply: neg_correct.
+apply: div_correct.
+  rewrite /poly_atan -eval_atan_cor.
+  by apply: Ieval_atan_correct.
+rewrite pnE.
+apply: power_pos_correct => //.
+apply: add_correct; first by apply: I.fromZ_correct.
+replace (x ^ 2)%R with (x * x)%R by ring.
+by apply: sqr_correct.
+Qed.
+
 Definition atan_error (b1 : bool) P zn z2n nn :=
   let Ia := I.bnd a a in
   let Ib := I.bnd b b in
   let Iab := I.bnd a b in
-  let v := Ibsin b1 Iab in
+  let v := Ieval_atan nn Iab in
   let Ic :=
     if csign v then
-      let Ida := I.abs (I.sub prec (I.sin prec Ia) (IsCshaw Ia Ib P Ia)) in
-      let Idb := I.abs (I.sub prec (I.sin prec Ib) (IsCshaw Ia Ib P Ib)) in
+      let Ida := I.abs (I.sub prec (I.atan prec Ia) (IsCshaw Ia Ib P Ia)) in
+      let Idb := I.abs (I.sub prec (I.atan prec Ib) (IsCshaw Ia Ib P Ib)) in
       I.mul prec I01 (I.join Ida Idb)
     else
       I.div prec
         (I.mul prec (I.power_pos prec (I.sub prec Ib Ia) zn)
-                    (I.mul prec I01 (I.abs (Ibsin (~~b1) Iab))))
-       (I.mul prec (I.power_pos prec I2 z2n) (Ifact nn))
+                    (I.mul prec I01 (I.abs (IDerive_n_atan 
+                                              nn.-1 (zn)%positive (~~ b1) Iab))))
+       (I.mul prec (I.power_pos prec I2 z2n) (I.fromZ (Zpos zn)))
    in  I.join (I.neg Ic) Ic.
-(* 
-Definition sin_cms n b1 vn zn z2n vl2 vl3 :=
-  let P := Icheby_coefs (I.sin prec) vn vl3 vl2 in
-  CMS P (sin_error b1 P zn z2n n.+1). *)
+   
+Definition atan_cms n b1 vn zn z2n vl2 vl3 :=
+  let P := Icheby_coefs (I.atan prec) vn vl3 vl2 in
+  CMS P (atan_error b1 P zn z2n n.+1).
 
-Lemma sin_cms_correct n b1 vn v2n zn z2n vl2 vl3 :
+Lemma atan_cms_correct n b1 vn v2n zn z2n vl2 vl3 :
   F.cmp a b = Xlt ->
   b1 = odd n ->
   INR n.+1 \contained_in vn ->
@@ -2528,7 +2572,7 @@ Lemma sin_cms_correct n b1 vn v2n zn z2n vl2 vl3 :
   z2n = Pos.of_nat n.*2.+1 ->
   vl2 = ITvalues n.+1 (nseq n.+1 I1) (Icheby_nodes n.+1 v2n) ->
   vl3 = Ischeby_nodes a b n.+1 v2n ->
-  cms_correct n a b sin (sin_cms n b1 vn zn z2n vl2 vl3).
+  cms_correct n a b atan (atan_cms n b1 vn zn z2n vl2 vl3).
 Proof.
 move=> aLb b1E vnE v2nE znE z2nE vl2E vl3E.
 have F1 : (D2R a < D2R b)%R.
@@ -2545,11 +2589,11 @@ have Hiab x : (D2R a <= x <= D2R b)%R -> x \contained_in I.bnd a b.
   by rewrite /= /D2R; (do 2 case: F.toX) => //= r1; lra.
 have Hiabr x : (F.cmp a b = Xlt) -> (x \contained_in I.bnd a b) -> (D2R a <= x <= D2R b)%R.
   by rewrite /= F.cmp_correct /D2R; (do 2 case: F.toX).
-pose iv := interpolation sin (scheby_nodes (D2R a) (D2R b) n.+1).
-rewrite /cms_correct /sin_cms; split.
+pose iv := interpolation atan (scheby_nodes (D2R a) (D2R b) n.+1).
+rewrite /cms_correct /atan_cms; split.
   by rewrite size_Icheby_coefs vl2E size_ITvalue.
-pose p := scheby_coef_list (D2R a) (D2R b) sin n.+1.
-have Hp i : p`_i \contained_in nth I0 (Icheby_coefs (I.sin prec) vn vl3 vl2) i.
+pose p := scheby_coef_list (D2R a) (D2R b) atan n.+1.
+have Hp i : p`_i \contained_in nth I0 (Icheby_coefs (I.atan prec) vn vl3 vl2) i.
   have [nLi|iLn] := leqP n.+1 i.
     rewrite /scheby_coef_list !nth_default //.
     - by apply: I.fromZ_correct.
@@ -2558,13 +2602,13 @@ have Hp i : p`_i \contained_in nth I0 (Icheby_coefs (I.sin prec) vn vl3 vl2) i.
   rewrite (nth_map 0%nat) ?size_iota // nth_iota // add0n.
   rewrite sdsprod_coefs //.
   apply: Ischeby_coefs_correct => //.
-  - by apply: sin_env.
+  - by apply: atan_env.
   - by apply: v2nE.
   - by apply: vl2E.
   by apply: vl3E.
 exists p; split => // [|x Hx].
   by rewrite size_scheby_coef_list.
-exists (sin x - (CPolyab (D2R a) (D2R b) p).[x])%R; split; last by lra.
+exists (atan x - (CPolyab (D2R a) (D2R b) p).[x])%R; split; last by lra.
   rewrite scheby_coef_list_spec //.
 have Ix : (D2R a <= x <= D2R b)%R.
   have := aLb; rewrite F.cmp_correct.
@@ -2573,35 +2617,33 @@ apply: Rabs_join.
 have [/csign_correct H|_] := boolP (csign _).
   apply: I01_correct.
     split; first by split_Rabs; lra.
-    apply: sin_scheby_ge => //.
+    apply: atan_scheby_ge => //.
     case: H => H.
       right => x1 /Hiab Hx1.
       apply: H.
-      rewrite /Ibsin b1E; case: odd.
-        by apply: cos_correct.
-      by apply: sin_correct.
+      rewrite /poly_atan -eval_atan_cor.
+      by apply: Ieval_atan_correct.
     left => x1 /Hiab Hx1.
     apply: H.
-    rewrite /Ibsin b1E; case: odd.
-      by apply: cos_correct.
-    by apply: sin_correct.
+    rewrite /poly_atan -eval_atan_cor.
+    by apply: Ieval_atan_correct.
   rewrite /Rmax; case: Rle_dec => _.
     apply: I.join_correct.
     right.
     apply/abs_correct/sub_correct.
-      by apply/sin_correct/Hib.
+      by apply/atan_correct/Hib.
     rewrite -scheby_coef_list_spec //.
     apply: IsCshaw_correct => //.
     by rewrite size_Icheby_coefs size_scheby_coef_list vl2E size_ITvalue.
   apply: I.join_correct.
   left.
   apply/abs_correct/sub_correct.
-    by apply/sin_correct/Hia.
+    by apply/atan_correct/Hia.
   rewrite -scheby_coef_list_spec //.
   apply: IsCshaw_correct => //.
   by rewrite size_Icheby_coefs size_scheby_coef_list vl2E size_ITvalue.
 set u := (_ - _)%R.
-pose e : R := (expn 2 n.+1.*2.-1 * n.+1 `!) %:R.
+pose e : R := (expn 2 n.+1.*2.-1 * n.+1)%:R.
 pose v := ((D2R b - D2R a)^+ n.+1).
 have vP : (0 < v)%R.
   rewrite /v expr_Rexp.
@@ -2609,52 +2651,57 @@ have vP : (0 < v)%R.
 have vE: (0 < e)%R.
   rewrite /e natr_INR.
   apply: (lt_INR 0).
-  by apply/ltP; rewrite muln_gt0 expn_gt0 fact_gt0.
+  by apply/ltP; rewrite muln_gt0 expn_gt0.
 have -> : Rabs u = ((v * Rabs (u / v * e)) / e)%R.
   rewrite Rabs_mult Rabs_div; try lra.
   rewrite (Rabs_pos_eq v); try lra.
   rewrite (Rabs_pos_eq e); try lra.
   by field; lra.
-apply: div_correct => //.
+apply: div_correct => //; last first.
+  rewrite /e natr_INR mult_INR.
   apply: mul_correct.
-    rewrite /v expr_Rexp znE.
+    rewrite -pow_expn pow_INR z2nE.
     apply: power_pos_correct => //.
-    by apply: sub_correct.
-  apply: Rabs_I01_max => [||z Hz].
-  - suff: (D2R a) \contained_in I.bnd a b by apply.
-    by apply: Hiab; lra.
-  - move=> y YC.
-    apply: abs_correct.
-    rewrite b1E.
-    apply: (Ibsin_correct n.+1) => //.
-    by apply: Hiabr.
-  rewrite Rabs_mult Rabs_div; try lra.
-  rewrite (Rabs_pos_eq v); try lra.
-  rewrite (Rabs_pos_eq e); try lra.
-  suff: (Rabs u <= v / e * z)%R.
-    move=> HH.
-    have-> : (z = (v / e * z) / v * e)%R by field; lra.
-    apply: Rmult_le_compat_r; try lra.
-    apply: Rmult_le_compat_r => //.
-    by have := Rinv_0_lt_compat _ vP; lra.
-  apply: ierror_sin => // y Hy.
-  have /Hz : y \contained_in I.bnd a b by apply: Hiab.
-  rewrite Derive_n_sin -[odd n.+1]/(~~ odd n).
-  case: (odd n).
-    rewrite -!expr_Rexp signr_odd -signr_odd expr_Rexp.
-    case: odd => /=.
-      by rewrite !(Ropp_mult_distr_l_reverse, Ropp_mult_distr_r_reverse) Ropp_involutive !Rmult_1_l.
-    by rewrite !Rmult_1_l.
-  rewrite -!expr_Rexp signr_odd -signr_odd expr_Rexp.
-  case: odd => /=.
-    by rewrite !(Ropp_mult_distr_l_reverse, Ropp_mult_distr_r_reverse) Ropp_involutive !Rmult_1_l.
-  by rewrite !Rmult_1_l.
-rewrite [e]natr_INR mult_INR.
+    by rewrite /= F.fromZ_correct; lra.
+  rewrite znE INR_IZR_INZ -Pos.of_nat_succ.
+  by apply: I.fromZ_correct.
 apply: mul_correct.
-  rewrite -pow_expn pow_INR z2nE.
+  rewrite /v expr_Rexp znE.
   apply: power_pos_correct => //.
-  by rewrite /= F.fromZ_correct; lra.
-by apply: Ifact_correct.
+  by apply: sub_correct.
+apply: Rabs_I01_max => [||z Hz].
+- suff: (D2R a) \contained_in I.bnd a b by apply.
+  by apply: Hiab; lra.
+- move=> y YC.
+  apply: abs_correct.
+  apply: IDerive_n_atan_correct; first by exact YC. 
+    by rewrite b1E negbK.
+  by rewrite znE.
+rewrite Rabs_mult Rabs_div; try lra.
+rewrite (Rabs_pos_eq v); try lra.
+rewrite (Rabs_pos_eq e); try lra.
+suff: (Rabs u <= v / e * z)%R.
+  move=> HH.
+  have-> : (z = (v / e * z) / v * e)%R by field; lra.
+  apply: Rmult_le_compat_r; try lra.
+  apply: Rmult_le_compat_r => //.
+  by have := Rinv_0_lt_compat _ vP; lra.
+apply: ierror_atan => // y Hy.
+have /Hz : y \contained_in I.bnd a b by apply: Hiab.
+rewrite Derive_n_atan.
+rewrite !Rabs_mult Rabs_exprN1 Rmult_1_l.
+rewrite [_.+1.-1]/= -!Rabs_mult.
+have F x1 y1 z1 : 
+    (0 < x1 -> 0 < z1 -> x1 * y1 * / z1 * / x1 = y1 / z1)%R.
+  by move=> x1P z1P; field; lra.
+rewrite {}F; last 2 first.
+- by rewrite natr_INR; apply/lt_0_INR/leP/fact_gt0.
+- by apply: pow_lt; nra.
+- rewrite Rabs_div.
+  rewrite [Rabs (_ ^ _)]Rabs_pos_eq //.
+  by apply: pow_le; nra.
+suff: (0 < (1 + y ^ 2) ^ n.+1)%R by lra.
+by apply: pow_lt; nra.
 Qed.
 
 End CMAtan.
@@ -3433,7 +3480,8 @@ Inductive fexpr :=
   fadd  (_ _ : fexpr) |
   fsub  (_ _ : fexpr) |
   fcomp (_ _ : fexpr) |
-  fvar | fconst (_ _ : Z) | fln | fsqrt | fexp | finv | fsin | fcos.
+  fvar | fconst (_ _ : Z) | fln | fsqrt | fexp | finv |
+  fatan | fsin | fcos.
 
 Delimit Scope fexpr_scope with fexpr.
 
@@ -3451,6 +3499,7 @@ Fixpoint fexpr_eval e :=
 | fsqrt => sqrt
 | fexp => exp
 | finv => Rinv
+| fatan => atan
 | fsin => sin
 | fcos => cos
 end)%R.
@@ -3469,6 +3518,7 @@ match e with
 | fsqrt => I.sqrt prec
 | fexp => I.exp prec
 | finv => I.inv prec
+| fatan => I.atan prec
 | fsin => I.sin prec
 | fcos => I.cos prec
 end.
@@ -3496,6 +3546,7 @@ elim: e i x.
 - by move => i x Hx; apply: sqrt_correct.
 - by move => i x Hx; apply: exp_correct.
 - by move => i x Hx; apply: inv_correct.
+- by move => i x Hx; apply: atan_correct.
 - by move => i x Hx; apply: sin_correct.
 by move => i x Hx; apply: cos_correct.
 Qed.
@@ -3541,6 +3592,7 @@ match e with
 | fsqrt => sqrt_cms a b n vn vl2 vl3
 | fexp => exp_cms a b vn vl2 vl3
 | finv => invx_cms a b n vn vl2 vl3
+| fatan => atan_cms a b n b1 vn zn z2n vl2 vl3
 | fsin => sin_cms a b n b1 vn zn z2n vl2 vl3
 | fcos => cos_cms a b n b1 vn zn z2n vl2 vl3
 end.
@@ -3611,6 +3663,7 @@ elim: e a b vl3 aLb vl3E.
 - by move=> a b vl3 aLb vl3E; apply: sqrt_cms_correct v2nE _ _.
 - by move=> a b vl3 aLb vl3E; apply: exp_cms_correct v2nE _ _.
 - by move=> a b vl3 aLb vl3E; apply: invx_cms_correct v2nE _ _.
+- by move=> a b vl3 aLb vl3E; apply: atan_cms_correct v2nE _ _ _ _.
 - by move=> a b vl3 aLb vl3E; apply: sin_cms_correct v2nE _ _ _ _.
 by move=> a b vl3 aLb vl3E; apply: cos_cms_correct v2nE _ _ _ _.
 Qed.
@@ -3643,6 +3696,9 @@ Notation "'c(' x ')'" := (fconst x 1)
    (format "c( x ) " ): fexpr_scope.
 Notation " '1' " := (fconst 1 1) : fexpr_scope.
 Notation " '2' " := (fconst 2 1) : fexpr_scope.
+Notation " 'atan(x)'" := (fatan) (at level 10) : fexpr_scope .
+Notation " 'atan(' e ')'" := (fcomp fatan e)
+  (format "'atan(' e ')'" ) : fexpr_scope.
 Notation " 'sin(x)'" := (fsin) (at level 10) : fexpr_scope .
 Notation " 'sin(' e ')'" := (fcomp fsin e)
   (format "'sin(' e ')'" ) : fexpr_scope.

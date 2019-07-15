@@ -111,9 +111,7 @@ Compute Delta (norm_cms prec ex3_cms).
 Compute P (norm_cms prec ex3_cms).
 Compute eval_range_cms prec ex3_cms.
 
-End Example2.
-
-
+End Example3.
 
 Section Example4.
 
@@ -400,3 +398,31 @@ cheby_solve_tac prec 10%nat 3%nat sin_cos H.
 Time Qed.
 
 End CosSin.
+
+
+Section Daumas.
+
+(* The precision *)
+Let prec := 52%bigZ.
+
+Definition daumas := 
+  atan(x) - 
+    ('x - c(11184811,33554432) * 'x * 'x * 'x -
+          c(13421773,67108864) * 'x * 'x * 'x * 'x * 'x).
+
+Let k := 25%Z.
+
+Lemma daumas_correct x :
+ (((- 1) / 30)  <= x <= (1 / 30) ->
+  (IZR (-1) / IZR (2 ^ k)) <= (atan x - (x - 11184811/33554432 * x * x * x 
+                                           - 13421773/67108864 * x * x * x * x * x))
+   <= (IZR (1) / IZR (2 ^ k)))%R.
+Proof.
+move=> H.
+cheby_solve_tac prec 10%nat 3%nat daumas H.
+Qed.
+
+End Daumas.
+
+
+

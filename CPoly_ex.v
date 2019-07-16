@@ -419,7 +419,7 @@ Lemma daumas_correct x :
    <= (IZR (1) / IZR (2 ^ k)))%R.
 Proof.
 move=> H.
-cheby_solve_tac prec 10%nat 3%nat daumas H.
+cheby_solve_tac prec 1%nat 3%nat daumas H.
 Qed.
 
 End Daumas.

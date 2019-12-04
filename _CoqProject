@@ -1,5 +1,6 @@
 -R . cheby
 -arg -w -arg -notation-overridden
+-arg -w -arg -ambiguous-paths
 
 under.v
 Rstruct.v

@@ -1408,8 +1408,8 @@ apply: etrans (_ : \sum_(i <- l1)
    f i / (\prod_(j <- l2 | j != i) (i - j))= _).
   apply:eq_bigr => i _.
   congr (_ / _)%RR.
-  by apply: eq_big_perm.
-by apply: eq_big_perm.
+  by apply: perm_big.
+by apply: perm_big.
 Qed.
 
 Definition lagrange (l : seq R) i := 
@@ -1939,7 +1939,7 @@ rewrite -!(@iddiff_diff b1 b2 c1 c2) //; first last.
   by do 3 (case: (_ \in _) || case: (_ == _); rewrite ?orbT //=).
 - suff: uniq (y :: rcons (a :: l) x) by case/andP.
   suff /perm_eq_uniq<- : perm_eq [:: x, y, a & l] (y :: rcons (a :: l) x) by [].
-  by rewrite perm_eq_sym (@perm_rcons _ _ (y :: a :: l)).
+  by rewrite perm_sym (@perm_rcons _ _ (y :: a :: l)).
 - move=> m z Hm Bz; apply: Pe => //.
   by apply: leq_trans Hm _; rewrite size_rcons.
 - move=> m z Hm Bz; apply: Pc => //.
@@ -2000,7 +2000,7 @@ rewrite /ierror [_ - _](@error_ddiff [fieldType of R]); last first.
 rewrite cheby_prodl hornerE /=; toR.
 rewrite -[RHS](@mulrA RC) [RHS](@mulrC RC) -![RHS](@mulrA RC); toR.
 congr (_ * _).
-  by apply/ddiff_perm_eq; rewrite perm_eq_sym perm_rcons.
+  by apply/ddiff_perm_eq; rewrite perm_sym perm_rcons.
 rewrite pow_expn; toR.
 set u : R := _.[_]; field.
 by apply/not_0_INR/eqP; rewrite expn_eq0.
@@ -2082,7 +2082,7 @@ rewrite /prodl undup_id ?uniq_scheby_nodes //.
 set p : R := _.[_].
 rewrite -[RHS](@mulrA RC) [RHS](@mulrC RC) -![RHS](@mulrA RC); toR.
 congr (_ * _).
-  by apply/ddiff_perm_eq; rewrite perm_eq_sym perm_rcons.
+  by apply/ddiff_perm_eq; rewrite perm_sym perm_rcons.
 rewrite pow_expn; toR. 
 set u : R := INR _; set v : R := _ ^+ _.
 have vNZ : v <> 0.

@@ -599,11 +599,12 @@ have pre_ep2 : 0 < eps / 2 * /M.
 pose ep2 := mkposreal _ pre_ep2.
 have aH : (at_left a (fun x => ball a delta1 x /\ ball a ep2 x /\
                              ball a delta2 x /\ m < x /\ x < a)).
-  repeat apply: filter_and; try (by apply/filter_le_within/locally_ball).
+  repeat apply: filter_and; 
+     try (by apply: filter_le_within; apply: locally_ball).
     have  [y' Py'] := filter_ex _ FP.
     have ma0 : 0 < a - m by case:  (cmp y' a) => //; lra.
     exists (mkposreal _ ma0) => /= y.
-    rewrite ball_Rabs=> bay ay; rewrite Rabs_left in bay; lra.
+    rewrite ball_Rabs => bay ay; rewrite Rabs_left in bay; lra.
   by exists ep2.
 have [Pl Ql FPl FQl closerint] := intf _ (locally_ball v (pos_div_2 eps)).
 have pla : Ql a by apply: FQl => *; apply: ball_center.

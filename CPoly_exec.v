@@ -628,7 +628,7 @@ elim: n p => [p k |n IH [|a p] k] /=; first by rewrite big_ord0 add0r.
   rewrite !big_ord0 big1 ?add0r // => i _.
   by rewrite (@nth_nseq _ _ n.+1) if_same scale0r.
 rewrite big_ord_recl /= addn0.
-have := IH p k.+1; case: split_Cpoly => p1 p2 /= {IH}IH.
+have := IH p k.+1; case: split_Cpoly => p1 p2 /= {}IH.
 rewrite !big_ord_recl /= scale0r add0r addn0 -addrA.
 congr (_ + _).
 apply: etrans.

@@ -12,7 +12,9 @@ Export V.
 
 Open Scope fexpr_scope.
 
-Notation " x * 2^ y " := (Interval_specific_ops.Float x%bigZ y%bigZ) (at level 0) : sollya.
+Declare Scope sollya.
+Notation " x * 2^ y " := 
+  (Interval_specific_ops.Float x%bigZ y%bigZ) (at level 0) : sollya.
 Notation " [ x ; y ] " :=  (Interval_interval_float.Ibnd x y) : sollya.
 Notation "[| x1 , x2 , .. , xn |]" := (x1 :: x2 :: .. [:: xn] ..) : sollya.
 
@@ -66,7 +68,8 @@ Time Definition ex2_cms :=
 
 Lemma ex2_correct : cms_correct 15 vmz25 vz25 atan ex2_cms.
 Proof.
-rewrite (_ : ex2_cms = mk_cms 165%bigZ 15 vmz25 vz25 (atan(x))%fexpr); last first.
+rewrite (_ : ex2_cms = 
+              mk_cms 165%bigZ 15 vmz25 vz25 (atan(x))%fexpr); last first.
   by vm_cast_no_check (refl_equal ex2_cms).
 have-> : atan = (fexpr_eval ex2).
   by apply: refl_equal.
@@ -261,7 +264,8 @@ Time Definition ex9_cms :=
   Eval vm_compute in mk_cms prec 10 (-1)%Z 0%Z ex9.
 
 Lemma ex9_correct :
-       cms_correct 10 (-1)%Z 0%Z (fun x => sqrt (x + 100001/100000) * sin x)%R ex9_cms.
+       cms_correct 10 (-1)%Z 0%Z 
+          (fun x => sqrt (x + 100001/100000) * sin x)%R ex9_cms.
 Proof.
 have-> : (fun x => sqrt (x + 100001/100000) * sin x)%R = fexpr_eval ex9.
   by apply: refl_equal.
@@ -370,7 +374,8 @@ Compute solve prec 3 Iab tang If 8.
 
 Lemma tang_correct x :
  ((-10831 / 1000000) <= x <= (10831 / 1000000) ->
-  (-23 / (27 * Rpower 2 33%R)) <= (exp x - 1 - (x + 8388676/ Rpower 2 24 * x * x +
+  (-23 / (27 * Rpower 2 33%R)) <= (exp x - 1 -
+                                      (x + 8388676/ Rpower 2 24 * x * x +
                                            11184876 / Rpower 2 26 * x * x * x))
                       <= (23 / (27 * Rpower 2 33)))%R.
 Proof.
@@ -414,8 +419,9 @@ Let k := 25%Z.
 
 Lemma daumas_correct x :
  (((- 1) / 30)  <= x <= (1 / 30) ->
-  (IZR (-1) / IZR (2 ^ k)) <= (atan x - (x - 11184811/33554432 * x * x * x 
-                                           - 13421773/67108864 * x * x * x * x * x))
+  (IZR (-1) / IZR (2 ^ k)) <= 
+     (atan x - (x - 11184811/33554432 * x * x * x 
+                                    - 13421773/67108864 * x * x * x * x * x))
    <= (IZR (1) / IZR (2 ^ k)))%R.
 Proof.
 move=> H.

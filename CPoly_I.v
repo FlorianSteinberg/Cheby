@@ -10,9 +10,12 @@ Import Prenex Implicits.
 Import GRing.Theory.
 Local Open Scope ring_scope.
 Require Import ZArith.
-From Interval Require Import Interval_specific_ops Interval_missing Interval_xreal.
-From Interval Require Import Interval_definitions Interval_float_sig Interval_interval.
-From Interval Require Import Interval_interval_float_full Interval_integral Interval_bisect.
+From Interval 
+  Require Import Interval_specific_ops Interval_missing Interval_xreal.
+From Interval 
+  Require Import Interval_definitions Interval_float_sig Interval_interval.
+From Interval 
+  Require Import Interval_interval_float_full Interval_integral Interval_bisect.
 
 Module SFBI2 := SpecificFloat Interval.Interval_bigint_carrier.BigIntRadix2.
 Module I := FloatIntervalFull SFBI2.
@@ -90,7 +93,7 @@ Lemma scl2_correct x I:
 	x \contained_in I -> (x *+ 2) \contained_in (scl2 I).
 Proof.
 move=> xI.
-suff -> :(Xreal (x *+ 2)) = (Xmul (Xreal x) (Xreal (bpow radix2 1))).
+suff -> :(Xreal (x *+ 2)) = (Xmul (Xreal x) (Xreal (Raux.bpow radix2 1))).
 	by apply I.scale2_correct.
 congr Xreal.
 by have ->: (x*2 = x + x)%R by lra.
@@ -100,10 +103,11 @@ Lemma scale2_correct x z I:
 	x \contained_in I -> (x * (powerRZ 2 z)) \contained_in (I.scale2 I (F.ZtoS z)).
 Proof.
 move=> xI.
-rewrite (_ : Xreal (x * (powerRZ 2 z)) = Xmul (Xreal x) (Xreal (bpow radix2 z))).
+rewrite (_ : Xreal (x * (powerRZ 2 z)) = 
+             Xmul (Xreal x) (Xreal (Raux.bpow radix2 z))).
 	by apply I.scale2_correct.
 congr Xreal.
-by rewrite bpow_powerRZ.
+by rewrite Raux.bpow_powerRZ.
 Qed.
 
 Lemma neg_correct x I:
@@ -215,16 +219,16 @@ case E : (F.toX u) => [|x1]; last first.
   rewrite /= E1 E /z; lra.
 case E1 : (F.toX l) => [|x2].
   rewrite /= /I.sign_large_ /= !F.cmp_correct !F.fromZ_correct /= F.zero_correct /=.
-  case: Rcompare_spec; try lra.
-  case: Rcompare_spec; try lra.
+  case: Raux.Rcompare_spec; try lra.
+  case: Raux.Rcompare_spec; try lra.
   have := F.mul_correct rnd_DN prec (F.fromZ 1) l.
   have := F.mul_correct rnd_UP prec (F.fromZ 1) u.
   rewrite E1 /= E /= !F.fromZ_correct /= => -> -> //.
 rewrite /= /I.sign_large_ /= !F.cmp_correct !F.fromZ_correct /= F.zero_correct /=.
-case: Rcompare_spec; try lra.
-case: Rcompare_spec; try lra.
+case: Raux.Rcompare_spec; try lra.
+case: Raux.Rcompare_spec; try lra.
 rewrite E1 /= E /=.
-case: Rcompare_spec => /=.
+case: Raux.Rcompare_spec => /=.
 - have := F.mul_correct rnd_DN prec (F.fromZ 1) l.
   have := F.mul_correct rnd_UP prec (F.fromZ 1) u.
   rewrite E1 /= E /= !F.fromZ_correct /= => -> -> //.
@@ -327,7 +331,7 @@ Lemma Fpos_correct x : (if Fpos x then 0 < D2R x else D2R x <= 0)%R.
 Proof.
 rewrite /Fpos /D2R F.cmp_correct /= F.zero_correct /=.
 case: F.toX => //= [|r]; try lra.
-by case: Rcompare_spec; lra.
+by case: Raux.Rcompare_spec; lra.
 Qed.
 
 Definition Fneg x := if F.cmp x F.zero is Xlt then true else false.
@@ -336,7 +340,7 @@ Lemma Fneg_correct x : (if Fneg x then D2R x < 0 else 0 <= D2R x)%R.
 Proof.
 rewrite /Fneg /D2R F.cmp_correct /= F.zero_correct /=.
 case: F.toX => //= [|r]; try lra.
-by case: Rcompare_spec; lra.
+by case: Raux.Rcompare_spec; lra.
 Qed.
 
 End ExtraDef.
@@ -1076,7 +1080,7 @@ move=> iLn aLb v2nD.
 have F1 : (D2R a < D2R b)%R.
   have := F.cmp_correct a b; rewrite aLb.
   rewrite /D2R; case: F.toX; case: F.toX =>  //= r1 r2.
-  by case: Rcompare_spec.
+  by case: Raux.Rcompare_spec.
 rewrite (nth_map I0) ?size_Ischeby_nodes //.
 apply: env; last by exact: Ischeby_nodes_correct.
 apply: scheby_nodes_boundW => //.
@@ -1100,7 +1104,7 @@ move=> aLb v1D v2nD vnD vl1D -> -> jL.
 have F1 : (D2R a < D2R b)%R.
   have := F.cmp_correct a b; rewrite aLb.
   rewrite /D2R; case: F.toX; case: F.toX =>  //= r1 r2.
-  by case: Rcompare_spec.
+  by case: Raux.Rcompare_spec.
 rewrite -sdsprod_coefs //; last by apply/eqP; lra.
 rewrite /scheby_coefs /Icheby_coefs.
 have := size_ITvalue n.+1 l1 vl1.
@@ -1222,7 +1226,7 @@ case: c => P Delta aLb; case => SP [p [Sp pIP fE]] xIX XS.
 have F1 : (D2R a < D2R b)%R.
   have := F.cmp_correct a b; rewrite aLb.
   rewrite /D2R; case: F.toX; case: F.toX =>  //= r1 r2.
-  by case: Rcompare_spec.
+  by case: Raux.Rcompare_spec.
 have F2 : D2R a != D2R b by apply/eqP; lra.
 have F3 : D2R b != D2R a by rewrite eq_sym.
 have [] := fE x.
@@ -1315,7 +1319,7 @@ move=> aLb.
 have F1 : (D2R a < D2R b)%R.
   have := F.cmp_correct a b; rewrite aLb.
   rewrite /D2R; case: F.toX; case: F.toX =>  //= r1 r2.
-  by case: Rcompare_spec.
+  by case: Raux.Rcompare_spec.
 have F2 : D2R a != D2R b by apply/eqP; lra.
 have F3 : D2R b != D2R a by rewrite eq_sym.
 split; first by rewrite /= size_nseq.
@@ -1519,7 +1523,7 @@ move=> aLb sp sP pIP xIab.
 have F1 : (D2R a < D2R b)%R.
   have := F.cmp_correct a b; rewrite aLb.
   rewrite /D2R; case: F.toX; case: F.toX =>  //= r1 r2.
-  by case: Rcompare_spec.
+  by case: Raux.Rcompare_spec.
 rewrite /eval_range_poly.
 case: n P p sP sp pIP => [/= [] // [] // _ _ _ /=|].
   by rewrite F.fromZ_correct /= big_ord0 hornerE; toR; lra.
@@ -1593,16 +1597,16 @@ move=> aLb.
 have F1 : (D2R a < D2R b)%R.
   have := F.cmp_correct a b; rewrite aLb.
   rewrite /D2R; case: F.toX; case: F.toX =>  //= r1 r2.
-  by case: Rcompare_spec.
+  by case: Raux.Rcompare_spec.
 have F2 : D2R a != D2R b by apply/eqP; lra.
 case: c => P Delta [Hs [p [H1p H2p H3p]]] Hi Hx.
 have Hy : x \contained_in I.bnd a b.
   case: i Hi Hx; rewrite //= => l u.
   rewrite !F.cmp_correct /= !F.real_correct.
   (do 4! case: F.toX => //=);
-     try (by move=> r1 r2; case: Rcompare_spec => //; lra);
-     try (by move=> r1 r2 r3; case: Rcompare_spec => //; lra);
-     try (by move=> r1 r2 r3 r4; do! case: Rcompare_spec => //; lra).
+     try (by move=> r1 r2; case: Raux.Rcompare_spec => //; lra);
+     try (by move=> r1 r2 r3; case: Raux.Rcompare_spec => //; lra);
+     try (by move=> r1 r2 r3 r4; do! case: Raux.Rcompare_spec => //; lra).
 have [d [H1d ->]] := H3p _ Hy.
 rewrite /=.
 apply: add_correct => //.
@@ -1614,9 +1618,9 @@ Lemma isubset_refl i : I.subset i i.
 Proof.
 case: i => //= l u; rewrite !F.cmp_correct !F.real_correct /=.
 do 2 case: F.toX => //=.
-move=> r; case: Rcompare_spec => //; lra.
-move=> r; case: Rcompare_spec => //; lra.
-(move=> r1 r2; do 2 case: Rcompare_spec)=> //; lra.
+move=> r; case: Raux.Rcompare_spec => //; lra.
+move=> r; case: Raux.Rcompare_spec => //; lra.
+(move=> r1 r2; do 2 case: Raux.Rcompare_spec)=> //; lra.
 Qed.
 
 (* Should be something simpler *)
@@ -1636,7 +1640,7 @@ case El : (F.toX l) => [|xl] /=.
   case Eu : (F.toX u) => [|xu] //=.
     by move=> _ [_ []].
   by move=> _ [].
-case: Rcompare_spec => //=.
+case: Raux.Rcompare_spec => //=.
 rewrite /le_lower /le_upper /=.
 case Eu : (F.toX u) => [|xu] //=.
   by move=> _ _ [].
@@ -1871,7 +1875,7 @@ case: c2 => [P2 Delta2] [Sp2 [p2 [H1p2 H2p2 H3p2]]].
 have F1 : (D2R a < D2R b)%R.
   have := F.cmp_correct a b; rewrite aLb.
   rewrite /D2R; case: F.toX; case: F.toX =>  //= r1 r2.
-  by case: Rcompare_spec.
+  by case: Raux.Rcompare_spec.
 have F2 : D2R a != D2R b by apply/eqP; lra.
 have F3 : D2R b != D2R a by rewrite eq_sym.
 rewrite /cms_correct /mul_cms.
@@ -2042,7 +2046,7 @@ move=> aLd cLd HI Hp Hs Hc.
 have F1 : (D2R c < D2R d)%R.
   have := F.cmp_correct c d; rewrite cLd.
   rewrite /D2R; case: F.toX; case: F.toX =>  //= r1 r2.
-  by case: Rcompare_spec.
+  by case: Raux.Rcompare_spec.
 have F2 : D2R c != D2R d by apply/eqP; lra.
 apply: cms_correct_ext => [x Hx|].
   rewrite horner_CPolyab //.
@@ -2088,16 +2092,16 @@ move=> aLb.
 have F1 : (D2R a < D2R b)%R.
   have := F.cmp_correct a b; rewrite aLb.
   rewrite /D2R; case: F.toX; case: F.toX =>  //= r1 r2.
-  by case: Rcompare_spec.
+  by case: Raux.Rcompare_spec.
 have F2 : D2R a != D2R b by apply/eqP; lra.
 case: c => P Delta [Hs [p [H1p H2p H3p]]] Hi Hx.
 have Hy : x \contained_in I.bnd a b.
   case: i Hi Hx; rewrite //= => l u.
   rewrite !F.cmp_correct /= !F.real_correct.
   (do 4! case: F.toX => //=);
-     try (by move=> r1 r2; case: Rcompare_spec => //; lra);
-     try (by move=> r1 r2 r3; case: Rcompare_spec => //; lra);
-     try (by move=> r1 r2 r3 r4; do! case: Rcompare_spec => //; lra).
+     try (by move=> r1 r2; case: Raux.Rcompare_spec => //; lra);
+     try (by move=> r1 r2 r3; case: Raux.Rcompare_spec => //; lra);
+     try (by move=> r1 r2 r3 r4; do! case: Raux.Rcompare_spec => //; lra).
 have [d [H1d ->]] := H3p _ Hy.
 apply: add_correct => //.
 have->: (CPolyab (D2R a) (D2R b) p).[x] =
@@ -2134,7 +2138,7 @@ case El : (F.toX l) => [|xl] /=.
   case Eu : (F.toX u) => [|xu] //=.
     by move=> _ [_ []].
   by move=> _ [].
-case: Rcompare_spec => //=.
+case: Raux.Rcompare_spec => //=.
 rewrite /le_lower /le_upper /=.
 case Eu : (F.toX u) => [|xu] //=.
   by move=> _ _ [].
@@ -2174,7 +2178,7 @@ case El : (F.toX l) => [|xl] /=.
   case Eu : (F.toX u) => [|xu] //=.
     by move=> _ [_ []].
   by move=> _ [].
-case: Rcompare_spec => //=.
+case: Raux.Rcompare_spec => //=.
 rewrite /le_lower /le_upper /=.
 case Eu : (F.toX u) => [|xu] //=.
   by move=> _ _ [].
@@ -2290,7 +2294,7 @@ move=> aLb b1E vnE v2nE znE z2nE vl2E vl3E.
 have F1 : (D2R a < D2R b)%R.
   have := F.cmp_correct a b; rewrite aLb.
   rewrite /D2R; case: F.toX; case: F.toX =>  //= r1 r2.
-  by case: Rcompare_spec.
+  by case: Raux.Rcompare_spec.
 have F2 : D2R a != D2R b by apply/eqP; lra.
 have F3 : D2R b != D2R a by rewrite eq_sym.
 have Hia : D2R a \contained_in I.bnd a a.
@@ -2578,7 +2582,7 @@ move=> aLb b1E vnE v2nE znE z2nE vl2E vl3E.
 have F1 : (D2R a < D2R b)%R.
   have := F.cmp_correct a b; rewrite aLb.
   rewrite /D2R; case: F.toX; case: F.toX =>  //= r1 r2.
-  by case: Rcompare_spec.
+  by case: Raux.Rcompare_spec.
 have F2 : D2R a != D2R b by apply/eqP; lra.
 have F3 : D2R b != D2R a by rewrite eq_sym.
 have Hia : D2R a \contained_in I.bnd a a.
@@ -2847,7 +2851,7 @@ move=> aLb b1E vnE v2nE znE z2nE vl2E vl3E.
 have F1 : (D2R a < D2R b)%R.
   have := F.cmp_correct a b; rewrite aLb.
   rewrite /D2R; case: F.toX; case: F.toX =>  //= r1 r2.
-  by case: Rcompare_spec.
+  by case: Raux.Rcompare_spec.
 have F2 : D2R a != D2R b by apply/eqP; lra.
 have F3 : D2R b != D2R a by rewrite eq_sym.
 have Hia : D2R a \contained_in I.bnd a a.
@@ -3008,7 +3012,7 @@ move=> aLb vnE v2nE vl2E vl3E.
 have F1 : (D2R a < D2R b)%R.
   have := F.cmp_correct a b; rewrite aLb.
   rewrite /D2R; case: F.toX; case: F.toX =>  //= r1 r2.
-  by case: Rcompare_spec.
+  by case: Raux.Rcompare_spec.
 have F2 : D2R a != D2R b by apply/eqP; lra.
 have F3 : D2R b != D2R a by rewrite eq_sym.
 have Hia : D2R a \contained_in I.bnd a a.
@@ -3099,7 +3103,7 @@ move=> aLb vnE v2nE vl2E vl3E.
 have F1 : (D2R a < D2R b)%R.
   have := F.cmp_correct a b; rewrite aLb.
   rewrite /D2R; case: F.toX; case: F.toX =>  //= r1 r2.
-  by case: Rcompare_spec.
+  by case: Raux.Rcompare_spec.
 have F2 : D2R a != D2R b by apply/eqP; lra.
 have F3 : D2R b != D2R a by rewrite eq_sym.
 have Hia : D2R a \contained_in I.bnd a a.
@@ -3198,7 +3202,7 @@ move=> aLb vnE v2nE vl2E vl3E.
 have F1 : (D2R a < D2R b)%R.
   have := F.cmp_correct a b; rewrite aLb.
   rewrite /D2R; case: F.toX; case: F.toX =>  //= r1 r2.
-  by case: Rcompare_spec.
+  by case: Raux.Rcompare_spec.
 have F2 : D2R a != D2R b by apply/eqP; lra.
 have F3 : D2R b != D2R a by rewrite eq_sym.
 have Hia : D2R a \contained_in I.bnd a a.
@@ -3298,7 +3302,7 @@ move=> aLb vnE v2nE vl2E vl3E.
 have F1 : (D2R a < D2R b)%R.
   have := F.cmp_correct a b; rewrite aLb.
   rewrite /D2R; case: F.toX; case: F.toX =>  //= r1 r2.
-  by case: Rcompare_spec.
+  by case: Raux.Rcompare_spec.
 have F2 : D2R a != D2R b by apply/eqP; lra.
 have F3 : D2R b != D2R a by rewrite eq_sym.
 have Hia : D2R a \contained_in I.bnd a a.
@@ -3409,7 +3413,7 @@ case E1 : F.cmp; try by apply: error_cms_correct.
     case: eval_range_cms E E1 => //= u l.
     rewrite /D2R !F.real_correct F.cmp_correct; case: F.toX => [|xu] //=.
     case: F.toX => [|xl _] //.
-    case: Rcompare_spec => // -> _ H.
+    case: Raux.Rcompare_spec => // -> _ H.
     by congr (/ _); lra.
   rewrite F.cmp_correct F.zero_correct.
   case E2 : Xcmp.
@@ -3417,18 +3421,18 @@ case E1 : F.cmp; try by apply: error_cms_correct.
   - apply: const_cms_correct.
     apply: inv_correct => //=.
     rewrite /D2R; case: F.toX E2 => //= r.
-    case: Rcompare_spec => //; lra.
+    case: Raux.Rcompare_spec => //; lra.
   - apply: const_cms_correct.
     apply: inv_correct => /=.
     rewrite /D2R; case: F.toX E2 => //= r.
-    by case: Rcompare_spec => //; lra.
+    by case: Raux.Rcompare_spec => //; lra.
   move: E1 E2; rewrite F.cmp_correct; case: F.toX => //= r.
-  case: (Rcompare_spec r 0) => //.
+  case: (Raux.Rcompare_spec r 0) => //.
   apply: comp_cms_correct => //.
   case: eval_range_cms E E1 => //= l u.
   rewrite !F.cmp_correct !F.real_correct.
   case: F.toX => // r; case: F.toX => //= r1.
-  do 3 case: Rcompare_spec => //; lra.
+  do 3 case: Raux.Rcompare_spec => //; lra.
 apply: invx_cms_correct => //.
 - by exact: v2nE.
 - by exact: vl2E.
@@ -3483,6 +3487,7 @@ Inductive fexpr :=
   fvar | fconst (_ _ : Z) | fln | fsqrt | fexp | finv |
   fatan | fsin | fcos.
 
+Declare Scope fexpr_scope.
 Delimit Scope fexpr_scope with fexpr.
 
 Fixpoint fexpr_eval e :=
@@ -3636,21 +3641,21 @@ elim: e a b vl3 aLb vl3E.
         apply: eval_range_cms_correct (aLb) _ _ Hx => //.
         apply: IH2 => //.
         rewrite /= !F.cmp_correct !F.real_correct.
-        (do 2 case: F.toX) => //= r; case: Rcompare_spec => //; try lra.
-        by move=> _ r1; case: Rcompare_spec => //; lra.
+        (do 2 case: F.toX) => //= r; case: Raux.Rcompare_spec => //; try lra.
+        by move=> _ r1; case: Raux.Rcompare_spec => //; lra.
       rewrite /= (_ : fexpr_eval e2 x = D2R u); first by apply: refl_equal.
       rewrite {}/u /D2R.
       case: eval_range_cms E E1 F1 => //= l u.
       rewrite !F.real_correct !F.cmp_correct.
       by case: F.toX => // r1; case: F.toX => //= r2;
-         case: Rcompare_spec => //; lra.
+         case: Raux.Rcompare_spec => //; lra.
     apply: const_cms_correct.
     apply: fexpr_ieval_correct.
     by rewrite /= /D2R; case: F.toX => //= r; lra.
   apply: comp_cms_correct => //.
   - case: eval_range_cms E => //= [] l1 u1.
     rewrite !F.real_correct !F.cmp_correct.
-    by (do 2 case: F.toX) => //= r1 r2; do 2 case: Rcompare_spec => //; lra.
+    by (do 2 case: F.toX) => //= r1 r2; do 2 case: Raux.Rcompare_spec => //; lra.
   - by apply: IH2.
   apply: IH1 => //.
   - by congr (map _ _).
@@ -3673,6 +3678,7 @@ End CMFexpr.
 
 End CPoly_interval.
 
+Declare Scope fexpr_scope.
 Notation "a * b" := (fmul a b) : fexpr_scope.
 Notation "a / b" := (fdiv a b) : fexpr_scope.
 Notation "a + b" := (fadd a b) : fexpr_scope.
@@ -3947,7 +3953,7 @@ have [HI aLxLb _|] := boolP (I.subset _ _).
       rewrite /D2R /= /I.T.toR.
       rewrite  /= !F.cmp_correct.
       by case: F.toX => //=; case: F.toX => //= r1 r2;
-         rewrite (Rcompare_Eq r2 r2) // (Rcompare_Eq r1 r1).
+         rewrite (Raux.Rcompare_Eq r2 r2) // (Raux.Rcompare_Eq r1 r1).
     move: aLxLb aLb.
     rewrite /D2R /= /I.T.toR.
     rewrite  /= !F.cmp_correct.
@@ -3975,12 +3981,12 @@ have [] := I.midpoint_correct (I.bnd a b) => [|V1 V2].
   rewrite /D2R /= /I.T.toR.
   rewrite  /= !F.cmp_correct.
  case: F.toX => //=; case: F.toX => //= r1 r2.
- by case: Rcompare_spec => //; lra.
+ by case: Raux.Rcompare_spec => //; lra.
 rewrite -/a1 in V1 V2.
 have HH : (D2R a <= D2R ma <= D2R b)%R.
   move: aLb V2; rewrite F.cmp_correct /D2R /=.
   rewrite /I.T.toR.
-  case: (F.toX a); case: (F.toX b) => //= r1 r2; case: Rcompare_spec => //.
+  case: (F.toX a); case: (F.toX b) => //= r1 r2; case: Raux.Rcompare_spec => //.
   by case: (F.toX ma).
 have [HH1|HH1]: (D2R a <= x <= D2R ma \/ D2R ma <= x <= D2R b)%R.
       by lra.

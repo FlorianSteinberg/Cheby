@@ -1882,17 +1882,17 @@ have Pi : perm_eq [:: a, x, y & l] [:: x, y, a & l].
   rewrite (@perm_cat2r _ l [::a; x; y] [::x; y; a]).
   by rewrite (perm_catC [::a] [::x; y]).
 apply: IH => //.
-- have /perm_eq_uniq-> := Pi.
+- have /perm_uniq-> := Pi.
   by case/andP: Ul.
 - move=> i Hi.
   apply: Hb.
-  by rewrite inE -(perm_eq_mem Pi) Hi orbT.
+  by rewrite inE -(perm_mem Pi) Hi orbT.
 - move=> i Hi.
   have Fp : b1 <= (prev - k) * var + acc <= b2.
    by apply: Hc; rewrite inE eqxx.
   have Fi : b1 <= (i - k) * var + acc <= b2.
     apply: Hc.
-    by rewrite inE -(perm_eq_mem Pi) Hi orbT.
+    by rewrite inE -(perm_mem Pi) Hi orbT.
   by nra.
 - by lra.
 - move=> m Hm mB.
@@ -1938,7 +1938,7 @@ rewrite -!(@iddiff_diff b1 b2 c1 c2) //; first last.
   move: Hi; rewrite !(inE, mem_rcons). 
   by do 3 (case: (_ \in _) || case: (_ == _); rewrite ?orbT //=).
 - suff: uniq (y :: rcons (a :: l) x) by case/andP.
-  suff /perm_eq_uniq<- : perm_eq [:: x, y, a & l] (y :: rcons (a :: l) x) by [].
+  suff /perm_uniq<- : perm_eq [:: x, y, a & l] (y :: rcons (a :: l) x) by [].
   by rewrite perm_sym (@perm_rcons _ _ (y :: a :: l)).
 - move=> m z Hm Bz; apply: Pe => //.
   by apply: leq_trans Hm _; rewrite size_rcons.
@@ -1948,18 +1948,18 @@ rewrite -!(@iddiff_diff b1 b2 c1 c2) //; first last.
   move: Hi; rewrite !(inE, mem_rcons). 
   by do 3 (case: (_ \in _) || case: (_ == _); rewrite ?orbT //=).
 - suff: uniq (x :: rcons (a :: l) y) by case/andP.
-  suff /perm_eq_uniq<- : perm_eq [:: x, y, a & l] (x :: rcons (a :: l) y) by [].
+  suff /perm_uniq<- : perm_eq [:: x, y, a & l] (x :: rcons (a :: l) y) by [].
   by rewrite perm_cons -perm_rcons.
 rewrite /= {2 4}(_ : a = (a - 1) * 1 + 1); try lra.
 have Pi : perm_eq [:: x, y, a & l] [:: a, x, y & l].
   rewrite (perm_cat2r _ [:: x; y; a] [:: a; x; y]) .
   by rewrite (perm_rcons a [:: x; y]).
 apply: (@iddiff_rec_le b1 b2 c1 c2) => //; try lra.
-- by rewrite -(perm_eq_uniq Pi).
-- by move=> i Hi; apply: Pb; rewrite (perm_eq_mem Pi).
+- by rewrite -(perm_uniq Pi).
+- by move=> i Hi; apply: Pb; rewrite (perm_mem Pi).
 move=> i Hi.
 suff: b1 <= i <= b2 by lra.
-by apply: Pb; rewrite (perm_eq_mem Pi).
+by apply: Pb; rewrite (perm_mem Pi).
 Qed.
 
 Lemma ddiff_ge b1 b2 c1 c2 f x y l :

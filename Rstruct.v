@@ -20,7 +20,8 @@ liability. See the COPYING file for more details.
 
 Require Import Rdefinitions Raxioms RIneq Rbasic_fun Zwf.
 Require Import Epsilon FunctionalExtensionality Ranalysis1 Rsqrt_def.
-From mathcomp Require Import ssreflect ssrfun ssrbool eqtype ssrnat seq choice bigop.
+From mathcomp Require Import ssreflect ssrfun ssrbool.
+From mathcomp Require Import eqtype ssrnat seq choice bigop.
 From mathcomp Require Import ssrnum ssralg fintype poly mxpoly.
 From mathcomp Require Import div.
 
@@ -265,13 +266,13 @@ Canonical Structure R_realFieldType := [realFieldType of R].
  
 Lemma Rarchimedean_axiom : Num.archimedean_axiom R_realFieldType.
 Proof.
-move=> x; exists (Z.abs_nat (up x) + 2)%N.
+move=> x; exists (Z.abs_nat (up x) + 2)%nat.
 have [Hx1 Hx2]:= (archimed x).
 have Hz (z : Z): z = (z - 1 + 1)%Z by rewrite Zplus_comm Zplus_minus.
 have Zabs_nat_Zopp z : Z.abs_nat (- z)%Z = Z.abs_nat z by case: z.
 apply/RltbP/Rabs_def1.
-  apply: (Rlt_trans _ ((Z.abs_nat (up x))%:R)%R); last first.
-    rewrite -[((Z.abs_nat _)%:R)%R]Rplus_0_r mulrnDr.
+  apply: (Rlt_trans _ ((Z.abs_nat (up x))%:R)%RR); last first.
+    rewrite -[((Z.abs_nat _)%:R)%RR]Rplus_0_r mulrnDr.
     by apply/Rplus_lt_compat_l/Rlt_0_2.
   apply: (Rlt_le_trans _ (IZR (up x)))=> //.
   elim/(well_founded_ind (Zwf_well_founded 0)): (up x) => z IHz.
@@ -289,7 +290,7 @@ apply: (Rlt_le_trans _ (IZR (up x) - 1)).
   case: (Z_lt_le_dec 0 z) => [zp | zn].
   rewrite [z]Hz Zabs_nat_Zopp plus_IZR.
   rewrite Zabs_nat_Zplus //; last exact: Zlt_0_le_0_pred.
-    rewrite plusE -Rplus_assoc -addnA [(_ + 2)%N]addnC addnA mulrnDr.
+    rewrite plusE -Rplus_assoc -addnA [(_ + 2)%nat]addnC addnA mulrnDr.
     apply: Rplus_lt_compat_r; rewrite -Zabs_nat_Zopp.
     apply: IHz; split; first exact: Zlt_le_weak.
     exact: Zlt_pred.
@@ -319,7 +320,7 @@ Qed.
  
 Lemma continuity_sum (I : finType) F (P : pred I):
 (forall i, P i -> continuity (F i)) ->
-continuity (fun x => (\sum_(i | P i) ((F i) x)))%R.
+continuity (fun x => (\sum_(i | P i) ((F i) x)))%RR.
 Proof.
 move=> H; elim: (index_enum I)=> [|a l IHl].
   set f:= fun _ => _.
@@ -327,20 +328,20 @@ move=> H; elim: (index_enum I)=> [|a l IHl].
   by apply: (continuity_eq Hf); exact: continuity_const.
 set f := fun _ => _.
 case Hpa: (P a).
-  have Hf: (fun x => F a x + \sum_(i <- l | P i) F i x)%R =1 f.
+  have Hf: (fun x => F a x + \sum_(i <- l | P i) F i x)%RR =1 f.
     by move=> x; rewrite /f big_cons Hpa.
   apply: (continuity_eq Hf); apply: continuity_plus=> //.
   exact: H.
-have Hf: (fun x => \sum_(i <- l | P i) F i x)%R =1 f.
+have Hf: (fun x => \sum_(i <- l | P i) F i x)%RR =1 f.
   by move=> x; rewrite /f big_cons Hpa.
 exact: (continuity_eq Hf).
 Qed.
  
-Lemma continuity_exp f n: continuity f -> continuity (fun x => (f x)^+ n)%R.
+Lemma continuity_exp f n: continuity f -> continuity (fun x => (f x)^+ n)%RR.
 Proof.
 move=> Hf; elim: n=> [|n IHn]; first exact: continuity_const.
 set g:= fun _ => _.
-have Hg: (fun x=> f x * f x ^+ n)%R =1 g.
+have Hg: (fun x=> f x * f x ^+ n)%RR =1 g.
   by move=> x; rewrite /g exprS.
 by apply: (continuity_eq Hg); exact: continuity_mult.
 Qed.
@@ -348,19 +349,19 @@ Qed.
 Lemma Rreal_closed_axiom : Num.real_closed_axiom R_archiFieldType.
 Proof.
 move=> p a b; rewrite !ler_eqVlt.
-case Hpa: ((p.[a])%R == 0%R).
+case Hpa: (p.[a] == 0)%RR.
   by move=> ? _ ; exists a=> //; rewrite lerr ler_eqVlt.
-case Hpb: ((p.[b])%R == 0%R).
+case Hpb: (p.[b] == 0)%RR.
   by move=> ? _; exists b=> //; rewrite lerr ler_eqVlt andbT.
 case Hab: (a == b).
   by move=> _; rewrite (eqP Hab) eq_sym Hpb (ltrNge 0) /=; case/andP=> /ltrW ->.
 rewrite eq_sym Hpb /=; clear=> /RltbP Hab /andP [] /RltbP Hpa /RltbP Hpb.
-suff Hcp: continuity (fun x => (p.[x])%R).
+suff Hcp: continuity (fun x => (p.[x])%RR).
   have [z [[Hza Hzb] /eqP Hz2]]:= IVT _ a b Hcp Hab Hpa Hpb.
   by exists z=> //; apply/andP; split; apply/RlebP.
 rewrite -[p]coefK poly_def.
 set f := fun _ => _.
-have Hf: (fun (x : R) => \sum_(i < size p) (p`_i * x^+i))%R =1 f.
+have Hf: (fun (x : R) => \sum_(i < size p) (p`_i * x^+i))%RR =1 f.
   move=> x; rewrite /f horner_sum.
   by apply: eq_bigr=> i _; rewrite hornerZ hornerXn.
 apply: (continuity_eq Hf); apply: continuity_sum=> i _.

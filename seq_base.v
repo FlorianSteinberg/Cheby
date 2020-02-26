@@ -32,9 +32,8 @@ rewrite -(@polybase_widen p (maxn (size p) (size q))); last by rewrite leq_maxl.
 rewrite -(@polybase_widen q (maxn (size p) (size q))); last by rewrite leq_maxr.
 elim: (maxn (size p) (size q)) => [ | n ih]; first by rewrite !big_ord0 rm0.
 rewrite !big_ord_recr/= ih coefD scalerDl.
-rewrite -addrA.
-rewrite ![p`_n *: F n  + _]addrC.
-by rewrite !addrA.
+rewrite -!addrA; congr (_ + _).
+by rewrite addrCA.
 Qed.
 
 Lemma sumrZ a (p: {poly R}):

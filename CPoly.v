@@ -674,3 +674,22 @@ End pTab.
 
 Notation "''T^(' a ',' b ')_' n" := (pTab a b n)
   (at level 3, n at level 2, format "''T^(' a ',' b ')_' n").
+
+Require Import Rstruct.
+
+Section Int.
+
+Variable R: fieldType.
+
+Lemma deriv_pT1 n: [char R]%RR =i pred0 -> (0 < n)%nat -> 
+  (2%:R^-1 *: (n.+2%:R^-1 *: 'T_n.+2 - n%:R^-1 *: 'T_n))^`() = 
+    'T_n.+1 :> {poly R}.
+Proof.
+move=> /GRing.charf0P Hf; case: n => // n _.
+rewrite !(derivB, derivZ, deriv_pT) -!scaler_nat !scalerA !mulVf ?Hf //.
+rewrite !scale1r pT_pU pUSS -addrA -opprD -mulr2n mulrnAl -mulrnBl.
+rewrite -[(_ + _) *+ _]scaler_nat scalerA mulVf ?Hf // scale1r.
+by rewrite addrAC mulr2n addrK.
+Qed.
+
+End Int.

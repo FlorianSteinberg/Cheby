@@ -722,3 +722,9 @@ apply: (Nat.div_unique _ _ _ (x %% y)).
  by apply/ltP; rewrite ltn_mod.
 by rewrite [(_ * _)%coq_nat]mulnC -[RHS]divn_eq.
 Qed.
+
+Lemma Rchar : [char R]%RR =i pred0.
+Proof.
+case => //= i; rewrite !inE.
+by rewrite (@eqr_nat [numDomainType of R] i.+1 0%nat) andbF.
+Qed.

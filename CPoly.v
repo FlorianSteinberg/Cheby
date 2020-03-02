@@ -681,11 +681,22 @@ Section Int.
 
 Variable R: fieldType.
 
-Lemma deriv_pT1 n: [char R]%RR =i pred0 -> (0 < n)%nat -> 
-  (2%:R^-1 *: (n.+2%:R^-1 *: 'T_n.+2 - n%:R^-1 *: 'T_n))^`() = 
-    'T_n.+1 :> {poly R}.
+Lemma deriv_pT0 : ('T_1)^`() = 'T_0 :> {poly R}.
+Proof. by rewrite pT1 pT0 derivX. Qed.
+
+Lemma deriv_pT1 : [char R]%RR =i pred0 -> 
+  (4%:R^-1 *: 'T_2)^`() = 'T_1 :> {poly R}.
 Proof.
-move=> /GRing.charf0P Hf; case: n => // n _.
+move=> /GRing.charf0P Hf.
+rewrite derivZ pTSS pT1 pT0 mulrnAl derivB derivMn -expr2 derivXn derivC.
+by rewrite subr0 -mulrnA -scaler_nat scalerA mulVf ?Hf ?scale1r.
+Qed.
+
+Lemma deriv_pTSS n: [char R]%RR =i pred0 -> 
+  (2%:R^-1 *: (n.+3%:R^-1 *: 'T_n.+3 - n.+1%:R^-1 *: 'T_n.+1))^`() = 
+    'T_n.+2 :> {poly R}.
+Proof.
+move=> /GRing.charf0P Hf.
 rewrite !(derivB, derivZ, deriv_pT) -!scaler_nat !scalerA !mulVf ?Hf //.
 rewrite !scale1r pT_pU pUSS -addrA -opprD -mulr2n mulrnAl -mulrnBl.
 rewrite -[(_ + _) *+ _]scaler_nat scalerA mulVf ?Hf // scale1r.

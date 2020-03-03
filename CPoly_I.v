@@ -3472,6 +3472,22 @@ Qed.
 
 End CMDiv.
 
+Section CMInt.
+
+Fixpoint Iint_Cpoly_rec i a l :=
+  if l is (b :: l1) then
+    if l1 is (c :: l2) then 
+      div (sub a c) i :: Iint_Cpoly_rec (add i I2) b l1
+    else [:: div a i; div b (add i I2)]
+  else [:: div a i].
+
+Definition Iint_Cpoly l := 
+  if l is a :: l1 then I0 :: Iint_Cpoly_rec I2 a l1
+  else [::].
+
+
+End CMDiv.
+
 Section CMFexpr.
 
 Notation D := F.type.

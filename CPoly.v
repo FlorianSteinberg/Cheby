@@ -693,14 +693,55 @@ by rewrite subr0 -mulrnA -scaler_nat scalerA mulVf ?Hf ?scale1r.
 Qed.
 
 Lemma deriv_pTSS n: [char R]%RR =i pred0 -> 
-  (2%:R^-1 *: (n.+3%:R^-1 *: 'T_n.+3 - n.+1%:R^-1 *: 'T_n.+1))^`() = 
+  (n.+3.*2%:R^-1 *: 'T_n.+3 - n.+1.*2%:R^-1 *: 'T_n.+1)^`() = 
     'T_n.+2 :> {poly R}.
 Proof.
 move=> /GRing.charf0P Hf.
-rewrite !(derivB, derivZ, deriv_pT) -!scaler_nat !scalerA !mulVf ?Hf //.
-rewrite !scale1r pT_pU pUSS -addrA -opprD -mulr2n mulrnAl -mulrnBl.
+rewrite !(derivB, derivZ, deriv_pT) -!scaler_nat !scalerA.
+do 2 rewrite -muln2 natrM invfM mulrC mulrA mulfV ?Hf // mul1r.
+rewrite -scalerBr pT_pU pUSS -addrA -opprD -mulr2n mulrnAl -mulrnBl.
 rewrite -[(_ + _) *+ _]scaler_nat scalerA mulVf ?Hf // scale1r.
 by rewrite addrAC mulr2n addrK.
+Qed.
+
+Variables a b : R.
+
+Lemma deriv_Tab : (Tab  a b )^`() = ((1 + 1) / (b - a))%:P.
+Proof. by rewrite !derivE addr0 alg_polyC. Qed.
+
+Lemma deriv_pTabn n : 
+  ('T^(a,b)_n)^`() = 2%:R / (b - a) *: (('T_n)^`() \Po Tab a b).
+Proof. by rewrite deriv_comp deriv_Tab [_ * _%:P]mulrC mul_polyC. Qed.
+
+Lemma deriv_pTab0 : a != b -> 2%:R != 0 :> R ->
+ ((b - a) / 2%:R *: 'T^(a,b)_1)^`() = 'T^(a,b)_0 :> {poly R}.
+Proof.
+move=> aDb twoNZ.
+rewrite !derivE deriv_pTabn deriv_pT0 scalerA.
+by rewrite mulrA divfK // mulfV ?scale1r // subr_eq0 eq_sym.
+Qed.
+
+Lemma deriv_pTab1 : a != b -> [char R]%RR =i pred0 -> 
+  (((b - a)/ 8%:R) *: 'T^(a,b)_2)^`() = 'T^(a,b)_1 :> {poly R}.
+Proof.
+rewrite eq_sym -subr_eq0 => bDaNeq0 Hc.
+have /GRing.charf0P Hf := Hc.
+rewrite !derivE deriv_pTabn scalerA mulrAC !mulrA [_ * 2%:R]mulrC mulfK //.
+rewrite -[8%:R]/((2 * 4)%:R) natrM invfM mulrA mulfV ?Hf // mul1r.
+by rewrite -comp_polyZ -derivZ deriv_pT1.
+Qed.
+
+Lemma deriv_pTabSS n: a != b -> [char R]%RR =i pred0 -> 
+  ((b - a) / 2%:R *: (n.+3.*2%:R^-1 *:
+    'T^(a,b)_n.+3 - n.+1.*2%:R^-1 *: 'T^(a,b)_n.+1))^`() = 
+    'T^(a,b)_n.+2 :> {poly R}.
+Proof.
+rewrite eq_sym -subr_eq0 => bDaNeq0 Hc.
+have /GRing.charf0P Hf := Hc.
+rewrite !derivE !deriv_pTabn.
+rewrite !scalerA ![_ * (_ / _)]mulrC -!scalerA -!scalerBr !scalerA.
+rewrite !divfK ?Hf // mulfV // scale1r.
+by rewrite -!comp_polyZ -comp_polyB -!derivE deriv_pTSS.
 Qed.
 
 End Int.

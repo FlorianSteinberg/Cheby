@@ -3485,8 +3485,7 @@ Definition Iint_Cpoly l :=
   if l is a :: l1 then I0 :: Iint_Cpoly_rec I2 a l1
   else [::].
 
-
-End CMDiv.
+End CMInt.
 
 Section CMFexpr.
 

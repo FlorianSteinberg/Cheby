@@ -751,7 +751,7 @@ Hypothesis fk1 : f (k.+1) = 0.
 Hypothesis fk2 : f (k.+2) = 0.
 
 
-Lemma foo : (0 < k)%N -> [char R]%RR =i pred0 -> 
+Lemma deriv_sum_pT : (0 < k)%N -> [char R]%RR =i pred0 -> 
   ((f 0 / 2%:R) *: 'T_1 + 
     \sum_(1 <= i < k.+2) ((f i.-1 - f i.+1) / (i.*2%:R)) *: 'T_i)^`() = 
     \sum_(0 <= i < k.+1) f i *: 'T_i.
@@ -777,7 +777,7 @@ apply: eq_bigr => i /andP[/andP[i_gt1 iLk _]].
 by rewrite derivE deriv_pTSS.
 Qed.
 
-Lemma bar : (0 < k)%N -> a != b -> [char R]%RR =i pred0 -> 
+Lemma deriv_sum_pTab : (0 < k)%N -> a != b -> [char R]%RR =i pred0 -> 
   (((b - a) / 2%:R * (f 0 / 2%:R)) *: 'T^(a,b)_1 + 
     \sum_(1 <= i < k.+2)
        ((b - a) / 2%:R * (f i.-1 - f i.+1) / (i.*2%:R)) *: 'T^(a,b)_i)^`() = 

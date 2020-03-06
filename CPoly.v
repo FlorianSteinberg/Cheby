@@ -692,11 +692,11 @@ rewrite derivZ pTSS pT1 pT0 mulrnAl derivB derivMn -expr2 derivXn derivC.
 by rewrite subr0 -mulrnA -scaler_nat scalerA mulVf ?Hf ?scale1r.
 Qed.
 
-Lemma deriv_pTSS n: [char R]%RR =i pred0 -> 
-  (n.+3.*2%:R^-1 *: 'T_n.+3 - n.+1.*2%:R^-1 *: 'T_n.+1)^`() = 
-    'T_n.+2 :> {poly R}.
+Lemma deriv_pTSS n: (1 < n)%nat -> [char R]%RR =i pred0 -> 
+  (n.+1.*2%:R^-1 *: 'T_n.+1 - n.-1.*2%:R^-1 *: 'T_n.-1)^`() = 
+    'T_n :> {poly R}.
 Proof.
-move=> /GRing.charf0P Hf.
+case: n => [] // [] // n _ /GRing.charf0P Hf.
 rewrite !(derivB, derivZ, deriv_pT) -!scaler_nat !scalerA.
 do 2 rewrite -muln2 natrM invfM mulrC mulrA mulfV ?Hf // mul1r.
 rewrite -scalerBr pT_pU pUSS -addrA -opprD -mulr2n mulrnAl -mulrnBl.
@@ -731,17 +731,85 @@ rewrite -[8%:R]/((2 * 4)%:R) natrM invfM mulrA mulfV ?Hf // mul1r.
 by rewrite -comp_polyZ -derivZ deriv_pT1.
 Qed.
 
-Lemma deriv_pTabSS n: a != b -> [char R]%RR =i pred0 -> 
-  ((b - a) / 2%:R *: (n.+3.*2%:R^-1 *:
-    'T^(a,b)_n.+3 - n.+1.*2%:R^-1 *: 'T^(a,b)_n.+1))^`() = 
-    'T^(a,b)_n.+2 :> {poly R}.
+Lemma deriv_pTabSS n: (1 < n)%nat -> a != b -> [char R]%RR =i pred0 -> 
+  ((b - a) / 2%:R *: (n.+1.*2%:R^-1 *:
+    'T^(a,b)_n.+1 - n.-1.*2%:R^-1 *: 'T^(a,b)_n.-1))^`() = 
+    'T^(a,b)_n :> {poly R}.
 Proof.
-rewrite eq_sym -subr_eq0 => bDaNeq0 Hc.
+rewrite eq_sym -subr_eq0 => n_gt1 bDaNeq0 Hc.
 have /GRing.charf0P Hf := Hc.
 rewrite !derivE !deriv_pTabn.
 rewrite !scalerA ![_ * (_ / _)]mulrC -!scalerA -!scalerBr !scalerA.
 rewrite !divfK ?Hf // mulfV // scale1r.
 by rewrite -!comp_polyZ -comp_polyB -!derivE deriv_pTSS.
 Qed.
+
+Variable f : nat -> R.
+
+Variable k : nat.
+Hypothesis fk1 : f (k.+1) = 0.
+Hypothesis fk2 : f (k.+2) = 0.
+
+
+Lemma foo : (0 < k)%N -> [char R]%RR =i pred0 -> 
+  ((f 0 / 2%:R) *: 'T_1 + 
+    \sum_(1 <= i < k.+2) ((f i.-1 - f i.+1) / (i.*2%:R)) *: 'T_i)^`() = 
+    \sum_(0 <= i < k.+1) f i *: 'T_i.
+Proof.
+move=> k_gt0 Hc.
+have /GRing.charf0P Hf := Hc.
+under eq_bigr ? rewrite mulrBl scalerBl.
+rewrite sumrB.
+rewrite big_add1.
+have <-/= := @big_add1 _ _ _ 1 k.+4.-1 xpredT (fun i => (f i / i.-1.*2%:R) *: 'T_i.-1).
+rewrite big_ltn // big_ltn //.
+rewrite [\sum_(_ <= _ < _.+3) _]big_nat_recr //= fk2 mul0r scale0r addr0.
+rewrite [\sum_(_ <= _ < _.+2) _]big_nat_recr //= fk1 mul0r scale0r addr0.
+rewrite -!addrA -sumrB.
+under eq_bigr ? rewrite -!scalerA -scalerBr.
+rewrite !derivE !deriv_pT0 -[_ *: _^`()]scalerA -derivE deriv_pT1 //.
+rewrite addrA -scalerDl -mulrDr -mulr2n -mulr_natl mulfV ?Hf // mulr1.
+rewrite (big_morph _ (@derivD R) (@deriv0 R)).
+rewrite [RHS]big_ltn //; congr (_ + _).
+rewrite [RHS]big_ltn //; congr (_ + _).
+rewrite [RHS]big_nat_cond [LHS]big_nat_cond.
+apply: eq_bigr => i /andP[/andP[i_gt1 iLk _]].
+by rewrite derivE deriv_pTSS.
+Qed.
+
+Lemma bar : (0 < k)%N -> a != b -> [char R]%RR =i pred0 -> 
+  (((b - a) / 2%:R * (f 0 / 2%:R)) *: 'T^(a,b)_1 + 
+    \sum_(1 <= i < k.+2)
+       ((b - a) / 2%:R * (f i.-1 - f i.+1) / (i.*2%:R)) *: 'T^(a,b)_i)^`() = 
+    \sum_(0 <= i < k.+1) f i *: 'T^(a,b)_i.
+Proof.
+move => k_gt0 aDb Hc.
+have /GRing.charf0P Hf := Hc.
+under eq_bigr ? rewrite mulrBr mulrBl scalerBl.
+rewrite sumrB.
+rewrite big_add1.
+have <-/= := @big_add1 _ _ _ 1 k.+4.-1 xpredT 
+             (fun i => ((b - a) / 2%:R  * f i / i.-1.*2%:R) *: 'T^(a,b)_i.-1).
+rewrite big_ltn // big_ltn //.
+rewrite [\sum_(_ <= _ < _.+3) _]big_nat_recr //= fk2 mulr0 mul0r scale0r addr0.
+rewrite [\sum_(_ <= _ < _.+2) _]big_nat_recr //= fk1 mulr0 mul0r scale0r addr0.
+rewrite -!addrA -sumrB.
+under eq_bigr ? rewrite -!scalerA -scalerBr.
+rewrite !derivE.
+rewrite addrA -scalerDl mulrA -mulrDr -mulrA mulrC.
+rewrite -[_ *:  'T^(a,b)_1^`()]scalerA.
+rewrite -[_ *: 'T^(a,b)_1^`()]derivE deriv_pTab0 ?Hf //.
+rewrite -mulr2n -mulr_natl mulfV ?Hf // mulr1.
+rewrite [RHS]big_ltn //; congr (_ _ _).
+rewrite [_ * f 1]mulrC -2!mulrA -invfM ?Hf // -natrM -scalerA.
+rewrite -derivE deriv_pTab1 //.
+rewrite [RHS]big_ltn //; congr (_ _ _).
+rewrite (big_morph _ (@derivD R) (@deriv0 R)).
+rewrite [RHS]big_nat_cond [LHS]big_nat_cond.
+apply: eq_bigr => i /andP[/andP[i_gt1 iLk _]].
+by rewrite -!scalerBr !scalerA mulrC -scalerA derivE deriv_pTabSS.
+Qed.
+
+
 
 End Int.

@@ -3515,68 +3515,123 @@ End CMDiv.
 
 Section CMInt.
 
-Fixpoint Rint_Cpoly_rec (i a : R) (l : seq R) : seq R :=
-  if l is (b :: l1) then
+Fixpoint int_Cpoly_rec (i a : R) (l : seq R) : seq R :=
+ (if l is (b :: l1) then
     if l1 is (c :: l2) then 
-      (a - c) / i :: Rint_Cpoly_rec (i + 2) b l1
+      (a - c) / i :: int_Cpoly_rec (i + 2) b l1
     else [:: a / i; b / (i + 2)]
-  else [:: a / i].
+  else [:: a / i])%R.
 
-Lemma Rint_Cpoly_rec0 (i a : R) : Rint_Cpoly_rec i a [::] = [::a  / i].
+Lemma int_Cpoly_rec0 (i a : R) : int_Cpoly_rec i a [::] = [:: (a  / i)%R].
 Proof. by []. Qed.
 
-Lemma Rint_Cpoly_rec1 (i a b : R) :
-   Rint_Cpoly_rec i a [:: b] =  [:: a / i; b / (i + 2)].
+Lemma int_Cpoly_rec1 (i a b : R) :
+   (int_Cpoly_rec i a [:: b] =  [:: a / i; b / (i + 2)])%R.
 Proof. by []. Qed.
 
-
-Lemma Rint_Cpoly_recSS (i a b c : R) (l : seq R) :
-   Rint_Cpoly_rec i a (b :: c :: l) = 
-     (a - c) / i :: Rint_Cpoly_rec (i + 2) b (c :: l).
+Lemma int_Cpoly_recSS (i a b c : R) (l : seq R) :
+   int_Cpoly_rec i a (b :: c :: l) = 
+     ((a - c) / i :: int_Cpoly_rec (i + 2) b (c :: l))%R.
 Proof. by []. Qed.
 
-
-Lemma Rint_Cpoly_rec_correct i j a l : 
+Lemma int_Cpoly_rec_correct i j a l : 
   (j <= size l)%nat -> 
-  (Rint_Cpoly_rec i a l)`_ j = ((a :: l)`_j - (a :: l)`_j.+2) / (i + 2 * j%:R).
+  (int_Cpoly_rec i a l)`_ j =
+   (((a :: l)`_j - (a :: l)`_j.+2) / (i + 2 * j%:R))%R.
 Proof.
-elim: l i j a; first by move=> i [|j] //= a; rewrite subr0 mulr0 addr0.
+elim: l i j a. 
+  by move=> i [|j] //= a _; congr (_ / _)%R; toR; lra.
 move=> b [|c l] IH i j a.
-  rewrite Rint_Cpoly_rec1 /=.
-  case: j=> [|[|]] //=; first by rewrite subr0 mulr0 addr0.
-  by rewrite subr0 mulr1.
-rewrite Rint_Cpoly_recSS.
-case: j => [|j] H; first by rewrite mulr0 addr0.
+  rewrite int_Cpoly_rec1 /=.
+  by case: j=> [|[|]] _ //=; congr (_ / _)%R; toR; lra.
+rewrite int_Cpoly_recSS.
+case: j => [|j] H.
+  by congr (_ / _)%R; toR; lra.
 rewrite -nth_behead IH //=.
-by rewrite -addrA -add1n natrD mulrDr mulr1.
+congr (_ / _)%R.
+by rewrite (natrD _ 1%nat); toR; lra.
 Qed.
 
-Definition Rint_Cpoly (l : seq R) : seq R := 
-  if l is a :: l1 then 0 :: Rint_Cpoly_rec 2 a l1
+Definition int_Cpoly (l : seq R) : seq R := 
+  if l is a :: l1 then 0 :: int_Cpoly_rec 2 a l1
   else [:: 0].
 
-Lemma Rint_Cpoly0_correct l : (Rint_Cpoly l)`_ 0 = 0.
+Lemma int_Cpoly0_correct l : (int_Cpoly l)`_ 0 = 0.
 Proof. by case: l. Qed.
 
-Lemma Rint_Cpoly_correct j l : 
+Lemma int_Cpoly_correct j l : 
   (j < size l)%nat -> 
-  (Rint_Cpoly l)`_ j.+1 = (l`_j - l`_j.+2) / (2 * j.+1%:R).
+  ((int_Cpoly l)`_ j.+1 = (l`_j - l`_j.+2) / (2 * j.+1%:R))%R.
 Proof.
 case: l => // a l H.
-rewrite /Rint_Cpoly -nth_behead Rint_Cpoly_rec_correct //.
-by rewrite -[j.+1]add1n natrD mulrDr mulr1.
+rewrite /int_Cpoly -nth_behead int_Cpoly_rec_correct //.
+congr (_ / _)%R.
+by rewrite (natrD _ 1%nat); toR; lra.
 Qed.
 
-Fixpoint Iint_Cpoly_rec i a l :=
+Fixpoint int_Ipoly_rec i a l :=
   if l is (b :: l1) then
     if l1 is (c :: l2) then 
-      div (sub a c) i :: Iint_Cpoly_rec (add i I2) b l1
+      div (sub a c) i :: int_Ipoly_rec (add i I2) b l1
     else [:: div a i; div b (add i I2)]
   else [:: div a i].
 
-Definition Iint_Cpoly l := 
-  if l is a :: l1 then I0 :: Iint_Cpoly_rec I2 a l1
-  else [::].
+Lemma int_Ipoly_recSS i a b c l :
+   int_Ipoly_rec i a (b :: c :: l) = 
+     (div (sub a c) i :: int_Ipoly_rec (add i I2) b (c :: l))%R.
+Proof. by []. Qed.
+
+Lemma int_Ipoly_rec_contains n i ii a ia l il : 
+  size l = n -> size il = n ->
+  i \contained_in ii -> a \contained_in ia -> l \lcontained_in il ->
+  int_Cpoly_rec i a l \lcontained_in int_Ipoly_rec ii ia il.
+Proof.
+elim: n i ii a ia l il => //=.
+  move=> i ii a ia [|//] [] //= _ _ iH aH _ [|k] //=.
+  by apply: div_correct.
+move=> n IH i ii a ia [|b [|c l]] // [|ib [|ic il]] //.
+- move=> /= _ _ iH aH /(_ 0%nat) bH [|[|]] //=.
+  - by apply: div_correct.
+  - apply: div_correct => //.
+    apply: add_correct => //.
+    by apply: I.fromZ_correct.
+  move=> k; rewrite !nth_nil.
+  by apply: I.fromZ_correct.
+- by move<-.
+- by move<-.
+rewrite int_Cpoly_recSS int_Ipoly_recSS => sL sIL iH aH bclH [|k].
+  apply: div_correct => //.
+  apply: sub_correct => //.
+  by apply: (bclH 1%nat).
+apply: IH => //.
+- by case: sL.
+- by case: sIL.
+- apply: add_correct => //.
+    by apply: I.fromZ_correct.
+  by apply: (bclH 0%nat).
+by move=> u; apply: (bclH u.+1).
+Qed.
+
+Definition int_Ipoly l := 
+  if l is a :: l1 then I0 :: int_Ipoly_rec I2 a l1
+  else [:: I0].
+
+Lemma int_Ipol_contains n l il : 
+  size l = n -> size il = n -> l \lcontained_in il ->
+  int_Cpoly l \lcontained_in int_Ipoly il.
+Proof.
+case: n l il => [|n] [|a l] [|ia il] //= lS ilS slH [|k].
+- by apply: I.fromZ_correct.
+- rewrite /= !nth_nil.
+  by apply: I.fromZ_correct.
+- by apply: I.fromZ_correct.
+apply: int_Ipoly_rec_contains (_ : size l = n) _ _ _ _ _.
+- by case: lS.
+- by case: ilS.
+- by apply: I.fromZ_correct.
+- by apply: (slH 0%nat).
+by move=> i; apply: (slH i.+1).
+Qed.
 
 End CMInt.
 

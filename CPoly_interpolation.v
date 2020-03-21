@@ -265,6 +265,33 @@ apply: (@is_derive_ext _ _
 by apply: is_derive_horner.
 Qed.
 
+Lemma continuous_horner (p : {poly R}) x : continuous (horner p) x.
+Proof.
+elim/poly_ind: p => /= [|p c IH].
+  apply: continuous_ext => [y|]; first by rewrite !hornerE.
+  by apply: continuous_const.
+apply: continuous_ext => [y|]; first by rewrite !hornerE.
+apply: continuous_plus; last by exact: continuous_const.
+by apply: continuous_mult => //; exact: continuous_id.
+Qed.
+
+Lemma integrable_horner (p : {poly R}) x1 x2 : ex_RInt (horner p) x1 x2.
+Proof.
+apply: ex_RInt_continuous => x _.
+by exact: continuous_horner.
+Qed.
+
+Lemma RInt_Derive_horner (p : {poly R}) a b : 
+  RInt (horner (p^`())) a b = (p.[b] - p.[a])%R.
+Proof.
+rewrite -RInt_Derive //.
+- by apply: RInt_ext => x; rewrite Derive_horner.
+- by move=> x _; apply: ex_derive_horner.
+move=> x _.
+apply: continuous_ext; first by move=> y; rewrite Derive_horner.
+apply: continuous_horner.
+Qed.
+
 Definition has_zeros f n a b := 
   exists l : seq R,
    [/\  uniq l,

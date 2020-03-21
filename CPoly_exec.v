@@ -135,6 +135,21 @@ rewrite -(@polybase_widen _ _ _ (size l)).
 by rewrite size_opp size_Poly.
 Qed.
 
+Definition scal_Cpoly := lscal_poly.
+
+Lemma size_scal_Cpoly k (l : seq R) : size (scal_Cpoly k l) = size l.
+Proof. by elim: l => //=  _ l ->. Qed.
+
+Lemma scal_Cpoly_spec k (l : seq R): CPoly (scal_Cpoly k l) = k *: (CPoly l).
+Proof.
+rewrite /scal_Cpoly /CPoly.
+under eq_bigr ? rewrite -coef_Poly.
+rewrite lscal_poly_spec //=.
+rewrite size_scal_Cpoly scaler_sumr //.
+apply: eq_bigr => i _ //=.
+by rewrite coefZ coef_Poly scalerA.
+Qed.
+
 Definition add_Cpoly := ladd_poly.
 
 Lemma size_add_Cpoly (l1 l2 : seq R) : 

@@ -1469,6 +1469,32 @@ by rewrite H2d1 H2d2 hornerE; toR; lra.
 Qed.
 
 (*****************************************************************************)
+(* Scaling                                                                   *)
+(*****************************************************************************)
+
+Fixpoint Iscal_Cpoly k l :=
+  if l is a :: l1 then mul k a :: Iscal_Cpoly k l1 else [::].
+
+Lemma size_Iscal_Cpoly k P : size (Iscal_Cpoly k P) = size P.
+Proof. by elim: P => //= _ l ->. Qed.
+
+Lemma Iscal_Cpoly_correct  k p K P :
+  size p = size P ->
+  k \contained_in K ->
+  p \lcontained_in P ->
+  scal_Cpoly k p \lcontained_in Iscal_Cpoly K P.
+Proof.
+move=> sH kCK.
+elim: p P sH => [|a p]; first by case.
+move=> IH [|A P] //= [] sH sI [|i] /=.
+  apply: mul_correct => //.
+  by apply: (sI 0%nat).
+apply: IH => // j.
+by apply: (sI j.+1).
+Qed.
+
+
+(*****************************************************************************)
 (* Subtraction Chebyshev model                                               *)
 (*****************************************************************************)
 
@@ -3522,6 +3548,13 @@ Fixpoint int_Cpoly_rec (i a : R) (l : seq R) : seq R :=
     else [:: a / i; b / (i + 2)]
   else [:: a / i])%R.
 
+Lemma size_int_Cpoly_rec (i a : R) (l : seq R) :
+  size (int_Cpoly_rec i a l) = (size l).+1.
+Proof.
+elim: l i a => //= b [|c l] // IH i a.
+by have /= -> := IH (i + 2) b.
+Qed.
+
 Lemma int_Cpoly_rec0 (i a : R) : int_Cpoly_rec i a [::] = [:: (a  / i)%R].
 Proof. by []. Qed.
 
@@ -3552,39 +3585,142 @@ congr (_ / _)%R.
 by rewrite (natrD _ 1%nat); toR; lra.
 Qed.
 
-Definition int_Cpoly (l : seq R) : seq R := 
-  if l is a :: l1 then 0 :: int_Cpoly_rec 2 a l1
+Definition int_Cpoly a b (l : seq R) : seq R := 
+  if l is c :: l1 then 
+     0 :: scal_Cpoly  ((b - a) / 2)%R 
+    (add_Cpoly
+     ((c / 2) :: (nseq (size l1) 0))%R
+     (int_Cpoly_rec 2 c l1))
   else [:: 0].
 
-Lemma int_Cpoly0_correct l : (int_Cpoly l)`_ 0 = 0.
-Proof. by case: l. Qed.
+Lemma size_cons (A : Type) (a : A) l : size (a :: l) = (size l).+1.
+Proof. by []. Qed.
 
-Lemma int_Cpoly_correct j l : 
-  (j < size l)%nat -> 
-  ((int_Cpoly l)`_ j.+1 = (l`_j - l`_j.+2) / (2 * j.+1%:R))%R.
+Lemma size_int_Cpoly (a b : R) (l : seq R) :
+  size (int_Cpoly a b l) = (size l).+1.
 Proof.
-case: l => // a l H.
-rewrite /int_Cpoly -nth_behead int_Cpoly_rec_correct //.
-congr (_ / _)%R.
-by rewrite (natrD _ 1%nat); toR; lra.
+case: l => // c l.
+rewrite /int_Cpoly !size_cons size_map size_add_Cpoly size_cons size_nseq.
+by rewrite size_int_Cpoly_rec maxnn.
 Qed.
 
-Fixpoint int_Ipoly_rec i a l :=
-  if l is (b :: l1) then
+Lemma int_Cpoly0_correct a b l : (int_Cpoly a b l)`_ 0 = 0.
+Proof. by case: l. Qed.
+
+Lemma int_Cpoly_correct1 a b l : 
+  ((int_Cpoly a b l)`_ 1 = 
+      ((b - a) / 2)%R * (l`_0 / 2 + (l`_0 - l`_2) / 2))%R.
+Proof.
+case: l => [/=|c [/=|d [|e l]]] //=.
+- by toR; lra.
+- by toR; rewrite Rminus_0_r.
+by toR; rewrite Rminus_0_r.
+Qed.
+
+Lemma coef_add_Cpoly (K : ringType) (l1 l2 : seq K) i :
+  (add_Cpoly l1 l2)`_i = l1`_i + l2`_i.
+Proof.
+elim: l1 l2 i => //=.
+  by move=> l2 i; rewrite nth_nil add0r.
+by move=> a l1 IH [|b l2] [|i] //=; rewrite addr0.
+Qed.
+
+Lemma int_Cpoly_correct a b j l : 
+  (j.+1 < size l)%nat -> 
+  ((int_Cpoly a b l)`_ j.+2 =
+     ((b - a) / 2)%R * ((l`_j.+1 - l`_j.+3) / (2 * j.+2%:R)))%R.
+Proof.
+case: l => // c [|d [|e l]] //.
+  case: j => //= _; toR.
+  rewrite (_ : (2 + 2 = 4)%R); last by lra.
+  rewrite (_ : (2 * (1 + 1) = 4)%R); last by lra.
+  by lra.
+move=> sH; rewrite /= !ltnS in sH.
+rewrite /int_Cpoly int_Cpoly_recSS.
+rewrite -[_ `_ j.+2]/ ((scal_Cpoly ((b - a) / 2)%R
+   (add_Cpoly (nseq (size [:: d, e & l]) 0)
+      (int_Cpoly_rec (2 + 2) d (e :: l))))`_j).
+rewrite (nth_map 0); last first.
+  rewrite size_add_Cpoly size_nseq.
+  by apply: leq_ltn_trans _ (leq_maxl _ _).
+rewrite coef_add_Cpoly nth_nseq int_Cpoly_rec_correct //=.
+rewrite ltnS sH add0r.
+congr (_ * (_ / _)%R).
+rewrite (natrD _ 2%nat); toR; lra.
+Qed.
+
+Lemma divE x y : y != 0 -> (x / y)%R = x / y.
+Proof. by move=> yNz;toR; rewrite /Rinvx ifT. Qed.
+
+Lemma natr_posR i : (0 <= i%:R)%R.
+Proof.
+by elim: i => [|i]; rewrite ?natrS; toR; try lra.
+Qed.
+
+Lemma int_Cpoly_deriv a b l : a != b ->
+  (CPolyab a b (int_Cpoly a b l))^`() = CPolyab a b l.
+Proof.
+move=> aDb.
+case: l => [|c [|d l]].
+- by rewrite /= /CPolyab /= big_ord1 big_ord0 scale0r deriv0.
+- rewrite /CPolyab /= big_ord_recr /= !big_ord1 /= scale0r add0r.
+  rewrite mulrC -scalerA derivZ; congr (_ _ _); first by toR; lra.
+  rewrite -deriv_pTab0 //.
+  congr ((_ *: _)^`()).
+    by toR; rewrite /Rinvx ifT //; apply/eqP; lra.
+  by apply/eqP; toR; lra.
+rewrite /CPolyab size_int_Cpoly !size_cons.
+have <- := @big_mkord _ _ _ _ predT 
+                 (fun i => (int_Cpoly a b (c :: d :: l))`_i *: 'T^(a,b)_i).
+have <- := @big_mkord _ _ _ _ predT 
+                 (fun i => (c :: d :: l)`_i *: 'T^(a,b)_i).
+rewrite -[RHS]deriv_sum_pTab //.
+- congr (_ _).
+  rewrite [LHS]big_ltn // [in LHS]big_ltn // [in RHS]big_ltn //.
+  rewrite !addrA; congr (_ + _); last first.
+    rewrite big_nat_cond [RHS]big_nat_cond.
+    apply: eq_bigr => [] [|[|i]] //; rewrite andbT !ltnS => /andP[_ iLl].
+    rewrite int_Cpoly_correct //.
+    congr (_ *: _).
+    rewrite (_ : (2 * i.+2%:R)%R =(i.+2).*2%:R); last first.
+      by rewrite -addnn natrD; toR; lra.
+    rewrite -!divE; try by (toR; lra).
+      by apply/eqP; toR; lra.
+    apply/eqP.
+    by rewrite -addnn natrD !natrS; have := natr_posR i; toR; lra.
+  rewrite int_Cpoly0_correct scale0r add0r int_Cpoly_correct1.
+  rewrite -scalerDl; congr ( _ *: _).
+  set x := _ `_ _; set y := _ `_ _.
+  rewrite -!divE //; try by apply/eqP; toR; lra.
+  by toR; lra.
+- by rewrite nth_default.
+- by rewrite nth_default.
+by apply: Rchar.
+Qed.
+
+Fixpoint Iint_Cpoly_rec i a l :=
+ if l is (b :: l1) then
     if l1 is (c :: l2) then 
-      div (sub a c) i :: int_Ipoly_rec (add i I2) b l1
+      div (sub a c) i :: Iint_Cpoly_rec (add i I2) b l1
     else [:: div a i; div b (add i I2)]
   else [:: div a i].
 
-Lemma int_Ipoly_recSS i a b c l :
-   int_Ipoly_rec i a (b :: c :: l) = 
-     (div (sub a c) i :: int_Ipoly_rec (add i I2) b (c :: l))%R.
+Lemma size_Iint_Cpoly_rec i a l :
+  size (Iint_Cpoly_rec i a l) = (size l).+1.
+Proof.
+elim: l i a => //= b [|c l] // IH i a.
+by have /= -> := IH (add i I2) b.
+Qed.
+
+Lemma Iint_Cpoly_recSS i a b c l :
+   Iint_Cpoly_rec i a (b :: c :: l) = 
+     (div (sub a c) i :: Iint_Cpoly_rec (add i I2) b (c :: l))%R.
 Proof. by []. Qed.
 
-Lemma int_Ipoly_rec_contains n i ii a ia l il : 
+Lemma Iint_Cpoly_rec_contains n i ii a ia l il : 
   size l = n -> size il = n ->
   i \contained_in ii -> a \contained_in ia -> l \lcontained_in il ->
-  int_Cpoly_rec i a l \lcontained_in int_Ipoly_rec ii ia il.
+  int_Cpoly_rec i a l \lcontained_in Iint_Cpoly_rec ii ia il.
 Proof.
 elim: n i ii a ia l il => //=.
   move=> i ii a ia [|//] [] //= _ _ iH aH _ [|k] //=.
@@ -3599,7 +3735,7 @@ move=> n IH i ii a ia [|b [|c l]] // [|ib [|ic il]] //.
   by apply: I.fromZ_correct.
 - by move<-.
 - by move<-.
-rewrite int_Cpoly_recSS int_Ipoly_recSS => sL sIL iH aH bclH [|k].
+rewrite int_Cpoly_recSS Iint_Cpoly_recSS => sL sIL iH aH bclH [|k].
   apply: div_correct => //.
   apply: sub_correct => //.
   by apply: (bclH 1%nat).
@@ -3612,22 +3748,48 @@ apply: IH => //.
 by move=> u; apply: (bclH u.+1).
 Qed.
 
-Definition int_Ipoly l := 
-  if l is a :: l1 then I0 :: int_Ipoly_rec I2 a l1
+Definition Iint_Cpoly A B l := 
+  if l is a :: l1 then 
+  I0 :: Iscal_Cpoly  (div (sub B A) I2)%R 
+     (Iadd_Cpoly  
+       ((div a I2) :: (nseq (size l1) I0))%R
+       (Iint_Cpoly_rec I2 a l1))
   else [:: I0].
 
-Lemma int_Ipol_contains n l il : 
-  size l = n -> size il = n -> l \lcontained_in il ->
-  int_Cpoly l \lcontained_in int_Ipoly il.
+Lemma size_Iint_Cpoly a b l :
+  size (Iint_Cpoly a b l) = (size l).+1.
 Proof.
-case: n l il => [|n] [|a l] [|ia il] //= lS ilS slH [|k].
+case: l => // c l.
+rewrite /Iint_Cpoly !size_cons size_Iscal_Cpoly size_Iadd_Cpoly.
+by rewrite size_cons size_nseq size_Iint_Cpoly_rec maxnn.
+Qed.
+
+Lemma Iint_Cpol_contains n a ia b ib l il : 
+  size l = n -> size il = n -> 
+  a \contained_in ia -> b \contained_in ib -> l \lcontained_in il ->
+  int_Cpoly a b l \lcontained_in Iint_Cpoly ia ib il.
+Proof.
+case: n l il => [|n] [|c l] [|ic il] // lS ilS aH bH slH [|k].
 - by apply: I.fromZ_correct.
 - rewrite /= !nth_nil.
   by apply: I.fromZ_correct.
 - by apply: I.fromZ_correct.
-apply: int_Ipoly_rec_contains (_ : size l = n) _ _ _ _ _.
-- by case: lS.
-- by case: ilS.
+rewrite /int_Cpoly /Iint_Cpoly.
+have [{}lS] := lS; have [{}ilS] := ilS.
+apply: Iscal_Cpoly_correct.
+  rewrite  size_add_Cpoly  size_Iadd_Cpoly /= !size_nseq.
+  by rewrite size_int_Cpoly_rec size_Iint_Cpoly_rec lS ilS.
+- apply: div_correct; first by apply: sub_correct.
+  by apply: I.fromZ_correct.
+apply: Iadd_Cpoly_correct => //=.
+- by rewrite !size_nseq lS ilS.
+- by rewrite size_int_Cpoly_rec size_Iint_Cpoly_rec lS ilS.
+- case => [|i] /=.
+    apply: div_correct; first by apply: (slH 0%nat).
+    by apply: I.fromZ_correct.
+  by rewrite !nth_nseq !if_same; apply: I.fromZ_correct.
+apply: Iint_Cpoly_rec_contains => //.
+- by rewrite lS ilS.
 - by apply: I.fromZ_correct.
 - by apply: (slH 0%nat).
 by move=> i; apply: (slH i.+1).

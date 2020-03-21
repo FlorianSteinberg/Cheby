@@ -3698,6 +3698,24 @@ rewrite -[RHS]deriv_sum_pTab //.
 by apply: Rchar.
 Qed.
 
+Check cms_correct.
+
+Lemma Rint_Cpoly (a b : D) l (a1 := D2R a) (b1 := D2R b) :
+  (a1 != b1)%R ->
+  RInt (horner (CPolyab a1 b1 l)) a1 b1 = 
+    (CPolyab a1 b1 (int_Cpoly a1 b1 l)).[b1] - 
+    (CPolyab a1 b1 (int_Cpoly a1 b1 l)).[a1].
+Proof.
+move=> aDb.
+toR; rewrite -[(_ + - _)%R]RInt_Derive_horner.
+apply: RInt_ext => x H.
+congr horner.
+by rewrite int_Cpoly_deriv.
+Qed.
+
+
+
+
 Fixpoint Iint_Cpoly_rec i a l :=
  if l is (b :: l1) then
     if l1 is (c :: l2) then 

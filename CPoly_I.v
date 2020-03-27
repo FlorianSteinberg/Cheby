@@ -1,4 +1,5 @@
 From mathcomp Require Import all_ssreflect all_algebra.
+
 Require Import String Rstruct Reals Psatz under.
 Require Import Poly_complements CPoly CPoly_exec CPoly_interpolation.
 Require Import Coquelicot.Coquelicot.
@@ -3698,13 +3699,11 @@ rewrite -[RHS]deriv_sum_pTab //.
 by apply: Rchar.
 Qed.
 
-Check cms_correct.
-
-Lemma Rint_Cpoly (a b : D) l (a1 := D2R a) (b1 := D2R b) :
-  (a1 != b1)%R ->
-  RInt (horner (CPolyab a1 b1 l)) a1 b1 = 
-    (CPolyab a1 b1 (int_Cpoly a1 b1 l)).[b1] - 
-    (CPolyab a1 b1 (int_Cpoly a1 b1 l)).[a1].
+Lemma Rint_Cpoly (a b a1 b1 : R) l :
+  a != b ->
+  RInt (horner (CPolyab a b l)) a1 b1 = 
+    (CPolyab a b (int_Cpoly a b l)).[b1] - 
+    (CPolyab a b (int_Cpoly a b l)).[a1].
 Proof.
 move=> aDb.
 toR; rewrite -[(_ + - _)%R]RInt_Derive_horner.
@@ -3712,9 +3711,6 @@ apply: RInt_ext => x H.
 congr horner.
 by rewrite int_Cpoly_deriv.
 Qed.
-
-
-
 
 Fixpoint Iint_Cpoly_rec i a l :=
  if l is (b :: l1) then
@@ -3782,7 +3778,7 @@ rewrite /Iint_Cpoly !size_cons size_Iscal_Cpoly size_Iadd_Cpoly.
 by rewrite size_cons size_nseq size_Iint_Cpoly_rec maxnn.
 Qed.
 
-Lemma Iint_Cpol_contains n a ia b ib l il : 
+Lemma Iint_Cpoly_contains n a ia b ib l il : 
   size l = n -> size il = n -> 
   a \contained_in ia -> b \contained_in ib -> l \lcontained_in il ->
   int_Cpoly a b l \lcontained_in Iint_Cpoly ia ib il.
@@ -3811,6 +3807,201 @@ apply: Iint_Cpoly_rec_contains => //.
 - by apply: I.fromZ_correct.
 - by apply: (slH 0%nat).
 by move=> i; apply: (slH i.+1).
+Qed.
+
+Lemma foo a b c L :
+  (a <= b <= c)%R -> 
+  a \contained_in L -> c \contained_in L -> b \contained_in L.
+Proof.
+case: L => //= l u; do 2 case: F.toX => //; move=> *; lra.
+Qed.
+
+Definition int_cms a b (c : cms) d :=
+  let: CMS P Delta := c in
+  let P1 := Iint_Cpoly (I.bnd a a) (I.bnd b b) P in
+  let P2 := Isub_Cpoly P1 [:: IsCshaw (I.bnd a a) (I.bnd b b) P1 d] in
+  let Delta1 := mul Delta (sub (I.bnd a b) d) in
+  let Delta2 := I.abs Delta1 in
+  CMS P2 (I.join (I.neg Delta2) Delta2).
+
+Lemma subset_contains d i1 i2 :
+   I.subset i1 i2 -> d \contained_in i1 -> d \contained_in i2.
+Proof.
+move/I.subset_correct; case: i1; case: i2 => //= l2 u2 l1 u1.
+rewrite /le_lower /=.
+case El1 : (F.toX l1) => [|l1E]; case El2 : (F.toX l2) => [|l2E];
+case Eu1 : (F.toX u1) => [|u1E]; case Eu2 : (F.toX u2) => [|u2E] //=; lra.
+Qed.
+
+Lemma interval_r_connect x y z i :
+   (x <= y <= z)%R -> 
+   x \contained_in i -> z \contained_in i -> y \contained_in i.
+Proof.
+case: i => //= l u xLyLz.
+case El : (F.toX l) => [|lE]; case Eu : (F.toX u) => [|uE] //=; lra.
+Qed.
+
+Lemma int_cms_correct n a b c d id f :
+   (D2R a) != (D2R b) ->
+   d \contained_in id ->
+   I.subset id (I.bnd a b) ->
+   cms_correct n a b f c -> 
+   (forall x y, x \contained_in I.bnd a b -> x \contained_in I.bnd a b ->
+        ex_RInt f x y) ->
+   cms_correct n.+1 a b (RInt f d) (int_cms a b c id).
+Proof.
+move=> aDb dH idS.
+have dabH : d \contained_in I.bnd a b by apply: subset_contains idS _.
+case: c => P Delta [sPH [p [spH pH ecH]]] iH; split.
+  by rewrite size_Isub_Cpoly size_Iint_Cpoly sPH /= maxnSS maxn0.
+exists
+ (sub_Cpoly 
+ (int_Cpoly (D2R a) (D2R b) p)
+  [::(CPolyab (D2R a) (D2R b) (int_Cpoly (D2R a) (D2R b) p)).[d]]); split.
+- by rewrite size_sub_Cpoly size_int_Cpoly spH maxnSS maxn0.
+- apply: Isub_Cpoly_correct => //.
+  - by rewrite size_int_Cpoly size_Iint_Cpoly spH sPH.
+  - by apply: Iint_Cpoly_contains spH sPH _ _ _ => //; apply: FtoI_correct.
+  case=> /=.
+    apply: IsCshaw_correct => //; try by apply FtoI_correct.
+      by rewrite size_int_Cpoly size_Iint_Cpoly sPH spH.    
+    by apply: Iint_Cpoly_contains spH sPH _ _ _ => //; apply: FtoI_correct.
+  by move=> i /=; rewrite !nth_nil; apply: I.fromZ_correct.
+move=> x xH; set v := (_.[_]).
+exists (RInt f d x - v)%R; split; last by lra.
+rewrite {}/v horner_CPolyab sub_Cpoly_spec CPolyC.
+rewrite 2!hornerE hornerC -!horner_CPolyab -Rint_Cpoly //.
+rewrite -[(_ - _)%R](@RInt_minus _ f); last 2 first.
+- by apply: iH.
+- by apply: integrable_horner.
+have [->| [dLx|xLd]] : (d = x \/ (d < x) \/ (x < d))%R by lra.
+- rewrite RInt_point.
+  case: (ecH _ xH) => t [] tH _.
+  apply/Rabs_join/abs_correct.
+  rewrite (_ : zero = t * (d - d))%R;  last by rewrite /zero /=; lra.
+  apply: mul_correct => //.
+  by apply: sub_correct.
+- apply/Rabs_join/abs_correct.
+  case: Delta ecH => // l u ecH.
+  set f1 : R -> R := (fun _ => _); set v : R := RInt _ _ _.
+  suff [d1 [d1H ->]] :
+     exists d1, d1 \contained_in (I.bnd l u) /\ v = d1 * (x - d).
+    apply: mul_correct => //.
+    by apply: sub_correct.
+  have f1H : ex_RInt f1 d x.
+    apply: ex_RInt_minus; first by apply: iH.
+    by apply: integrable_horner.
+  exists (v / (x - d))%R; split; last first.
+    by toR; field; lra.
+  red => /=; case El: F.toX => [|xl]; case Eu: F.toX => [|xu] //; split => //.
+  - have : (v <= RInt (fun=> xu) d x)%R.
+      apply: RInt_le => //; try lra; first by apply: ex_RInt_const.
+      rewrite /f1 => x1 x1H.
+      case: (ecH _ (_ : x1 \contained_in _)).
+        by apply: interval_r_connect (_ : (d <= x1 <= x)%R) _ _ => //; lra.
+      move=> x2 [x2H ->].
+      suff: (x2 <= xu)%R by rewrite /minus /plus /opp /=; toR; lra.
+      by case: x2H; rewrite /= Eu.
+    rewrite RInt_const /scal /= /mult /=.
+    rewrite {1}(_ : v = (v / (x - d) * (x - d))%R); try nra.
+    by field; lra.
+  - have : (RInt (fun=> xl) d x <= v)%R.
+      apply: RInt_le => //; try lra; first by apply: ex_RInt_const.
+      rewrite /f1 => x1 x1H.
+      case: (ecH _ (_ : x1 \contained_in _)).
+        by apply: interval_r_connect (_ : (d <= x1 <= x)%R) _ _ => //; lra.
+      move=> x2 [x2H ->].
+      suff: (xl <= x2)%R by rewrite /minus /plus /opp /=; toR; lra.
+      by case: x2H; rewrite /= El.
+    rewrite RInt_const /scal /= /mult /=.
+    rewrite {1}(_ : v = (v / (x - d) * (x - d))%R); try nra.
+    by field; lra.
+  - have : (RInt (fun=> xl) d x <= v)%R.
+      apply: RInt_le => //; try lra; first by apply: ex_RInt_const.
+      rewrite /f1 => x1 x1H.
+      case: (ecH _ (_ : x1 \contained_in _)).
+        by apply: interval_r_connect (_ : (d <= x1 <= x)%R) _ _ => //; lra.
+      move=> x2 [x2H ->].
+      suff: (xl <= x2)%R by rewrite /minus /plus /opp /=; toR; lra.
+      by case: x2H; rewrite /= El.
+    rewrite RInt_const /scal /= /mult /=.
+    rewrite {1}(_ : v = (v / (x - d) * (x - d))%R); try nra.
+    by field; lra.  
+  have : (v <= RInt (fun=> xu) d x)%R.
+    apply: RInt_le => //; try lra; first by apply: ex_RInt_const.
+    rewrite /f1 => x1 x1H.
+    case: (ecH _ (_ : x1 \contained_in _)).
+      by apply: interval_r_connect (_ : (d <= x1 <= x)%R) _ _ => //; lra.
+    move=> x2 [x2H ->].
+    suff: (x2 <= xu)%R by rewrite /minus /plus /opp /=; toR; lra.
+    by case: x2H; rewrite /= Eu.
+  rewrite RInt_const /scal /= /mult /=.
+  rewrite {1}(_ : v = (v / (x - d) * (x - d))%R); try nra.
+  by field; lra.
+apply/Rabs_join/abs_correct.
+case: Delta ecH => // l u ecH.
+set f1 : R -> R := (fun _ => _); set v : R := RInt _ _ _.
+suff [d1 [d1H ->]] :
+  exists d1, d1 \contained_in (I.bnd l u) /\ v = d1 * (x - d).
+  apply: mul_correct => //.
+  by apply: sub_correct.
+have f1H : ex_RInt f1 x d.
+  apply: ex_RInt_minus; first by apply: iH.
+  by apply: integrable_horner.
+have f1NH : ex_RInt f1 d x.
+  apply: ex_RInt_minus; first by apply: iH.
+  by apply: integrable_horner.
+exists (v / (x - d))%R; split; last first.
+  by toR; field; lra.
+red => /=; case El: F.toX => [|xl]; case Eu: F.toX => [|xu] //; split => //.
+- have : (- v <= RInt (fun=> xu) x d)%R.
+    rewrite [(- _)%R](@opp_RInt_swap _ (_ : R -> R)) //.
+    apply: RInt_le => //; try lra; first by apply: ex_RInt_const.
+    rewrite /f1 => x1 x1H.
+    case: (ecH _ (_ : x1 \contained_in _)).
+      by apply: interval_r_connect (_ : (x <= x1 <= d)%R) _ _ => //; lra.
+    move=> x2 [x2H ->].
+    suff: (x2 <= xu)%R by rewrite /minus /plus /opp /=; toR; lra.
+    by case: x2H; rewrite /= Eu.
+  rewrite RInt_const /scal /= /mult /=.
+  rewrite {1}(_ : v = (v / (x - d) * (x - d))%R); try nra.
+  by field; lra.
+- have : (RInt (fun=> xl) x d <= - v)%R.
+    rewrite [(- _)%R](@opp_RInt_swap _ (_ : R -> R)) //.
+    apply: RInt_le => //; try lra; first by apply: ex_RInt_const.
+    rewrite /f1 => x1 x1H.
+    case: (ecH _ (_ : x1 \contained_in _)).
+      by apply: interval_r_connect (_ : (x <= x1 <= d)%R) _ _ => //; lra.
+    move=> x2 [x2H ->].
+    suff: (xl <= x2)%R by rewrite /minus /plus /opp /=; toR; lra.
+      by case: x2H; rewrite /= El.
+  rewrite RInt_const /scal /= /mult /=.
+  rewrite {1}(_ : v = (v / (x - d) * (x - d))%R); try nra.
+  by field; lra.
+- have : (RInt (fun=> xl) x d <= - v)%R.
+    rewrite [(- _)%R](@opp_RInt_swap _ (_ : R -> R)) //.
+    apply: RInt_le => //; try lra; first by apply: ex_RInt_const.
+    rewrite /f1 => x1 x1H.
+    case: (ecH _ (_ : x1 \contained_in _)).
+      by apply: interval_r_connect (_ : (x <= x1 <= d)%R) _ _ => //; lra.
+    move=> x2 [x2H ->].
+    suff: (xl <= x2)%R by rewrite /minus /plus /opp /=; toR; lra.
+      by case: x2H; rewrite /= El.
+  rewrite RInt_const /scal /= /mult /=.
+  rewrite {1}(_ : v = (v / (x - d) * (x - d))%R); try nra.
+  by field; lra.
+have : (- v <= RInt (fun=> xu) x d)%R.
+  rewrite [(- _)%R](@opp_RInt_swap _ (_ : R -> R)) //.
+  apply: RInt_le => //; try lra; first by apply: ex_RInt_const.
+  rewrite /f1 => x1 x1H.
+  case: (ecH _ (_ : x1 \contained_in _)).
+    by apply: interval_r_connect (_ : (x <= x1 <= d)%R) _ _ => //; lra.
+  move=> x2 [x2H ->].
+  suff: (x2 <= xu)%R by rewrite /minus /plus /opp /=; toR; lra.
+  by case: x2H; rewrite /= Eu.
+rewrite RInt_const /scal /= /mult /=.
+rewrite {1}(_ : v = (v / (x - d) * (x - d))%R); try nra.
+by field; lra.
 Qed.
 
 End CMInt.

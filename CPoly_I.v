@@ -1,5 +1,4 @@
 From mathcomp Require Import all_ssreflect all_algebra.
-
 Require Import String Rstruct Reals Psatz under.
 Require Import Poly_complements CPoly CPoly_exec CPoly_interpolation.
 Require Import Coquelicot.Coquelicot.
@@ -3539,6 +3538,67 @@ apply: inv_cms_correct => //.
 Qed.
 
 End CMDiv.
+
+Section CMbelast.
+
+Definition belast_cms (c : cms) :=
+  let: CMS P Delta := c in
+  let P1 := behead (seq.belast I0 P) in
+  let Delta1 := add Delta (mul (last I0 P) Im11) in
+  CMS P1 Delta1.
+
+Lemma belast_cms_correct n a b c f :
+   (F.cmp a b = Xlt)%R ->
+   cms_correct n.+1 a b f c -> cms_correct n a b f (belast_cms c).
+Proof.
+move=> aLb.
+have F1 : (D2R a < D2R b)%R.
+  have := F.cmp_correct a b; rewrite aLb.
+  rewrite /D2R; case: F.toX; case: F.toX =>  //= r1 r2.
+  by case: Raux.Rcompare_spec.
+case: c => P Delta [PS [p [pS pH xH]]].
+split; first by rewrite size_behead size_belast PS.
+exists (behead (seq.belast 0%R p)); split.
+- by rewrite size_behead size_belast pS.
+- have : 0 \contained_in I0 by apply: I.fromZ_correct.
+  move: PS pS pH.
+  rewrite -[0]/0%R.
+  elim: n.+2 {xH}p P 0%R I0 => //; first by case=> // [] [].
+  move=> m IH [|x p] // [|X P] // d D [PS] [pS] iH dH i.
+  rewrite !nth_behead /=. 
+  have := iH i; rewrite !lastI.
+  rewrite !nth_rcons !size_belast PS pS.
+  case: leqP => // H.
+  by rewrite !nth_default ?size_belast ?PS ?pS.
+move=> x xI.
+have [d [dI fxE]] := xH _ xI.
+exists (d + last 0 p * ('T^(D2R a, D2R b)_n.+1).[x]); split.
+  apply: add_correct => //.
+  apply: mul_correct => //.
+    rewrite (last_nth 0%R) (last_nth I0) PS pS.
+    by have := pH n.+1.
+    red.
+  rewrite /= !F.fromZ_correct horner_comp -CPoly_trigo.pT_Cheby.
+    by apply: COS_bound.
+  apply: Tab_bound => //.
+  move: xI aLb.
+  rewrite F.cmp_correct I.bnd_correct /= /D2R.
+  by do 2 case: F.toX.
+have aDb : D2R a != D2R b by apply/eqP; toR; lra.
+rewrite {}fxE (CPolyabE _ pS) //.
+have /CPolyabE-> //: size (behead (seq.belast 0 p)) = n.+1.
+  by rewrite size_behead size_belast pS.
+case: {pH xH}p pS => //= y p [pS].
+rewrite big_ord_recr /=.
+rewrite !hornerE /= !Rplus_assoc; congr (_.[_] + _)%R.
+  apply: eq_bigr => [] [i iH] _ /=.
+  by rewrite lastI // nth_rcons size_belast pS iH.
+rewrite Rplus_comm.
+congr (_ + _ * _)%RR.
+by rewrite (last_nth 0) pS.
+Qed.
+
+End CMbelast.
 
 Section CMInt.
 

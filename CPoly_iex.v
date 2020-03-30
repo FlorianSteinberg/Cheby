@@ -25,6 +25,30 @@ Section Examples.
 
 Let prec := 165%bigZ.
 
+Ltac l_tac := 
+  let u := fresh "u" in 
+  (set u := I.lower _; vm_compute in u; rewrite {}/u;
+   rewrite /I.T.toR /SFBI2.toX;
+   set u := SFBI2.toF _; vm_compute in u; rewrite {}/u;
+  rewrite /Interval_definitions.FtoX;
+  rewrite /Interval_definitions.FtoR;
+  set u := Z.pow_pos _; vm_compute in u; rewrite {}/u;
+  set u := Z.pow_pos _; vm_compute in u; rewrite {}/u;
+  rewrite /Interval_xreal.proj_val;
+  lra).
+
+Ltac r_tac :=
+  let u := fresh "u" in 
+  (set u := I.upper _; vm_compute in u; rewrite {}/u;
+   rewrite /I.T.toR /SFBI2.toX;
+   set u := SFBI2.toF _; vm_compute in u; rewrite {}/u;
+   rewrite /Interval_definitions.FtoX;
+   rewrite /Interval_definitions.FtoR;
+   set u := Z.pow_pos _; vm_compute in u; rewrite {}/u;
+   set u := Z.pow_pos _; vm_compute in u; rewrite {}/u;
+   rewrite /Interval_xreal.proj_val;
+   lra).
+
 Notation " 'RInt[' a , b '](' e ')' " :=
     (iintz a b e)
   : iexpr_scope.
@@ -47,32 +71,11 @@ Proof.
 apply: empty_interval.
 have ->: RInt (fun x : R => x) 0 1 = iexpr_eval ex1 by [].
 apply: (@mk_iexpr_ieval_correct_r prec 10) => //.
-- rewrite /ex1 /iintz /iexpr_wf.
-  set u := _ && _; vm_compute in u; rewrite {}/u.
-  set u := SFBI2.cmp _ _; vm_compute in u; rewrite {}/u.
-  set u := I.convert _; vm_compute in u; rewrite {}/u.
-- move=> x y _ _.
-  rewrite /fexpr_eval.
+- refine (fun x y _ _ => _).
   apply: ex_RInt_continuous => z _.
   by apply: continuous_id.
-- set u := I.lower _; vm_compute in u; rewrite {}/u.
-  rewrite /I.T.toR /SFBI2.toX.
-  set u := SFBI2.toF _; vm_compute in u; rewrite {}/u.
-  rewrite /Interval_definitions.FtoX.
-  rewrite /Interval_definitions.FtoR.
-  set u := Z.pow_pos _; vm_compute in u; rewrite {}/u.
-  set u := Z.pow_pos _; vm_compute in u; rewrite {}/u.
-  rewrite /Interval_xreal.proj_val.
-  lra.
-set u := I.upper _; vm_compute in u; rewrite {}/u.
-rewrite /I.T.toR /SFBI2.toX.
-set u := SFBI2.toF _; vm_compute in u; rewrite {}/u.
-rewrite /Interval_definitions.FtoX.
-rewrite /Interval_definitions.FtoR.
-set u := Z.pow_pos _; vm_compute in u; rewrite {}/u.
-set u := Z.pow_pos _; vm_compute in u; rewrite {}/u.
-rewrite /Interval_xreal.proj_val.
-lra.
+- l_tac.
+r_tac.
 Qed.
 
 Definition fI := 
@@ -143,24 +146,8 @@ apply; rewrite {u}/ex2.
   refine (fun x1 y1 _ _ => _).
   by apply: ex_RInt_ex.
 - vm_cast_no_check (refl_equal true).
-- set u := I.lower _; vm_compute in u; rewrite {}/u.
-  rewrite /I.T.toR /SFBI2.toX.
-  set u := SFBI2.toF _; vm_compute in u; rewrite {}/u.
-  rewrite /Interval_definitions.FtoX.
-  rewrite /Interval_definitions.FtoR.
-  set u := Z.pow_pos _; vm_compute in u; rewrite {}/u.
-  set u := Z.pow_pos _; vm_compute in u; rewrite {}/u.
-  rewrite /Interval_xreal.proj_val.
-  lra.
-set u := I.upper _; vm_compute in u; rewrite {}/u.
-rewrite /I.T.toR /SFBI2.toX.
-set u := SFBI2.toF _; vm_compute in u; rewrite {}/u.
-rewrite /Interval_definitions.FtoX.
-rewrite /Interval_definitions.FtoR.
-set u := Z.pow_pos _; vm_compute in u; rewrite {}/u.
-set u := Z.pow_pos _; vm_compute in u; rewrite {}/u.
-rewrite /Interval_xreal.proj_val.
-lra.
+- by l_tac.
+by r_tac.
 Qed.
 
 Definition ex3 := (RInt[0, 1, 1, 2](fI) +
@@ -172,6 +159,8 @@ Eval vm_compute in mk_iexpr_ieval prec 20 ex3.
 
 Definition eval_ex3 :=
   Eval vm_compute in mk_iexpr_ieval prec 20 ex3.
+
+Print eval_ex3.
 
 Eval lazy iota delta
   [fconstq fconstz iexpr_eval fexpr_eval ex3 fI iintq 
@@ -187,7 +176,7 @@ have-> : RInt fR 0 1 = (RInt fR (0/1) (1/2) + RInt fR (1/2) (1/1))%R.
   - by apply: ex_RInt_ex.
   by apply: ex_RInt_ex.
 have := (@mk_iexpr_ieval_correct_r prec 20 _ _ ex3).
-set u := mk_iexpr_ieval _ _ _.
+set u := mk_iexpr_ieval _ _ _;
 have -> : u = eval_ex3 by vm_cast_no_check (refl_equal u).
 apply; rewrite {u}/ex3.
 - apply: add_iexpr_wf.
@@ -198,24 +187,9 @@ apply; rewrite {u}/ex3.
       (refl_equal Interval_xreal.Xlt)).
     by [].
 - vm_cast_no_check (refl_equal true).
-- set u := I.lower _; vm_compute in u; rewrite {}/u.
-  rewrite /I.T.toR /SFBI2.toX.
-  set u := SFBI2.toF _; vm_compute in u; rewrite {}/u.
-  rewrite /Interval_definitions.FtoX.
-  rewrite /Interval_definitions.FtoR.
-  set u := Z.pow_pos _; vm_compute in u; rewrite {}/u.
-  set u := Z.pow_pos _; vm_compute in u; rewrite {}/u.
-  rewrite /Interval_xreal.proj_val.
-  lra.
-set u := I.upper _; vm_compute in u; rewrite {}/u.
-rewrite /I.T.toR /SFBI2.toX.
-set u := SFBI2.toF _; vm_compute in u; rewrite {}/u.
-rewrite /Interval_definitions.FtoX.
-rewrite /Interval_definitions.FtoR.
-set u := Z.pow_pos _; vm_compute in u; rewrite {}/u.
-set u := Z.pow_pos _; vm_compute in u; rewrite {}/u.
-rewrite /Interval_xreal.proj_val.
-lra.
+- by l_tac.
+by r_tac.
 Qed.
+
 
 End Examples.

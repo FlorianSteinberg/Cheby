@@ -3911,7 +3911,7 @@ Lemma int_cms_correct n a b c d id f :
    d \contained_in id ->
    I.subset id (I.bnd a b) ->
    cms_correct n a b f c -> 
-   (forall x y, x \contained_in I.bnd a b -> x \contained_in I.bnd a b ->
+   (forall x y, x \contained_in I.bnd a b -> y \contained_in I.bnd a b ->
         ex_RInt f x y) ->
    cms_correct n.+1 a b (RInt f d) (int_cms a b c id).
 Proof.
@@ -4363,9 +4363,9 @@ Fixpoint iexpr_wf e :=
       let b := F.max (I.upper (v1 prec)) (I.upper (v2 prec)) in
       let t := F.cmp a b in
       if t is Xlt then
-    (forall x y, (x \contained_in (I.bnd a b) -> (x \contained_in I.bnd a b) ->
+    (forall x y, (x \contained_in (I.bnd a b) -> (y \contained_in I.bnd a b) ->
              ex_RInt (fexpr_eval f) x y))
-      else False else False
+      else True else True
 | iln e => (iexpr_wf e)
 | isqrt e => (iexpr_wf e)
 | iexp e => (iexpr_wf e)
@@ -4428,7 +4428,6 @@ match e with
 | icos e => I.cos prec (iexpr_ieval n b1 vn v2n zn z2n (vl1 : seq ID) e)
 end.
 
-
 Lemma iexpr_ieval_correct n b1 vn v2n zn z2n (vl1 : seq ID) e :
        b1 = odd n.+1 ->
        INR n.+2 \contained_in vn ->
@@ -4458,33 +4457,33 @@ elim: e => //.
   case E3: F.cmp => H //.
   apply: (@eval_shaw_cms_correct n.+1) => //; last first.
     case: (iv2) E2 => //= [] l1 u1.
-      rewrite !F.cmp_correct !F.min_correct !F.max_correct !F.real_correct.
-      case: F.toX => //= xl1; case: F.toX => //= xu1 _.
-      case: (iv1) E1 => //= [] l2 u2.
-      rewrite !F.real_correct.
-      case: F.toX => //= xl2; case: F.toX => //= xu2 _.
-      by case: Raux.Rcompare_spec => //=; rewrite  /Rmin;
-         case: Rle_dec; try lra ;
-         case: Raux.Rcompare_spec => //=; rewrite  /Rmax;
+    rewrite !F.cmp_correct !F.min_correct !F.max_correct !F.real_correct.
+    case: F.toX => //= xl1; case: F.toX => //= xu1 _.
+    case: (iv1) E1 => //= [] l2 u2.
+    rewrite !F.real_correct.
+    case: F.toX => //= xl2; case: F.toX => //= xu2 _.
+    by case: Raux.Rcompare_spec => //=; rewrite  /Rmin;
+  case: Rle_dec; try lra ;
+  case: Raux.Rcompare_spec => //=; rewrite  /Rmax;
          case: Rle_dec => //; lra.
-    apply: belast_cms_correct => //.
-    apply: int_cms_correct => //.
-    - apply/eqP; move: E3; rewrite /D2R F.cmp_correct /=.
-      (do 2 case: F.toX) => //= u v.
-      by case: Raux.Rcompare_spec => //; lra.
-    - case: (iv1) E1 => //= [] l1 u1.
-      rewrite !F.cmp_correct !F.min_correct !F.max_correct !F.real_correct.
-      case: F.toX => //= xl1; case: F.toX => //= xu1 _.
-      case: (iv2) E2 => //= [] l2 u2.
-      rewrite !F.real_correct.
-      case: F.toX => //= xl2; case: F.toX => //= xu2 _.
-      by case: Raux.Rcompare_spec => //=; rewrite  /Rmin;
-         case: Rle_dec; try lra ;
-         case: Raux.Rcompare_spec => //=; rewrite  /Rmax;
-         case: Rle_dec => //; lra.
+  apply: belast_cms_correct => //.
+  apply: int_cms_correct => //.
+  - apply/eqP; move: E3; rewrite /D2R F.cmp_correct /=.
+    (do 2 case: F.toX) => //= u v.
+    by case: Raux.Rcompare_spec => //; lra.
+  - case: (iv1) E1 => //= [] l1 u1.
+    rewrite !F.cmp_correct !F.min_correct !F.max_correct !F.real_correct.
+    case: F.toX => //= xl1; case: F.toX => //= xu1 _.
+    case: (iv2) E2 => //= [] l2 u2.
+    rewrite !F.real_correct.
+    case: F.toX => //= xl2; case: F.toX => //= xu2 _.
+    by case: Raux.Rcompare_spec => //=; rewrite  /Rmin;
+       case: Rle_dec; try lra ;
+       case: Raux.Rcompare_spec => //=; rewrite  /Rmax;
+       case: Rle_dec => //; lra.
     apply: fexpr_cms_correct => //.   
-      by [].
     by [].
+  by [].
 - by move => i H H1 /=; apply/ln_correct/H.
 - by move => i H H1; apply/sqrt_correct/H.
 - by move => i H H1; apply/exp_correct/H.

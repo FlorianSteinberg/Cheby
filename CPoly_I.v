@@ -1098,6 +1098,7 @@ Hypothesis env: If \is_envelope_of[a, b] f.
 
 Definition Isvalue_list n v2n := [seq If i | i <- Ischeby_nodes a b n v2n].
 
+
 Lemma Isvalue_list_correct n v2n i: (i < n)%nat ->
   (F.cmp a b = Xlt) ->
   (2 * INR n)%R \contained_in v2n ->
@@ -3907,7 +3908,7 @@ case El : (F.toX l) => [|lE]; case Eu : (F.toX u) => [|uE] //=; lra.
 Qed.
 
 Lemma int_cms_correct n a b c d id f :
-   (D2R a) != (D2R b) ->
+   F.cmp a b = Xlt ->
    d \contained_in id ->
    I.subset id (I.bnd a b) ->
    cms_correct n a b f c -> 
@@ -3915,7 +3916,12 @@ Lemma int_cms_correct n a b c d id f :
         ex_RInt f x y) ->
    cms_correct n.+1 a b (RInt f d) (int_cms a b c id).
 Proof.
-move=> aDb dH idS.
+move=> aLb dH idS.
+have F1 : (D2R a < D2R b)%R.
+  have := F.cmp_correct a b; rewrite aLb.
+  rewrite /D2R; case: F.toX; case: F.toX =>  //= r1 r2.
+  by case: Raux.Rcompare_spec.
+have F2 : D2R a != D2R b by apply/eqP; lra.
 have dabH : d \contained_in I.bnd a b by apply: subset_contains idS _.
 case: c => P Delta [sPH [p [spH pH ecH]]] iH; split.
   by rewrite size_Isub_Cpoly size_Iint_Cpoly sPH /= maxnSS maxn0.
@@ -4468,9 +4474,6 @@ elim: e => //.
          case: Rle_dec => //; lra.
   apply: belast_cms_correct => //.
   apply: int_cms_correct => //.
-  - apply/eqP; move: E3; rewrite /D2R F.cmp_correct /=.
-    (do 2 case: F.toX) => //= u v.
-    by case: Raux.Rcompare_spec => //; lra.
   - case: (iv1) E1 => //= [] l1 u1.
     rewrite !F.cmp_correct !F.min_correct !F.max_correct !F.real_correct.
     case: F.toX => //= xl1; case: F.toX => //= xu1 _.

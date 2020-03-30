@@ -220,6 +220,9 @@ Section Example8.
 (* The precision *)
 Let prec := 165%bigZ.
 
+Eval vm_compute in 
+eval_range_cms prec (mk_cms prec 10 (-1)%Z 0%Z (PI)%fexpr).
+
 Definition ex8 := (sqrt('x + c(100001,100000)))%fexpr.
 
 Print ex8.
@@ -231,9 +234,9 @@ Time Definition ex8_cms :=
   Eval vm_compute in mk_cms prec 10 (-1)%Z 0%Z ex8.
 
 Lemma ex8_correct :
-       cms_correct 10 (-1)%Z 0%Z (fun x => sqrt (x + 100001/100000))%R ex8_cms.
+       cms_correct 10 (-1)%Z 0%Z (fun x => sqrt (x + 1.00001))%R ex8_cms.
 Proof.
-have-> : (fun x => sqrt (x + 100001/100000)) = fexpr_eval ex8.
+have-> : (fun x => sqrt (x + 1.00001)) = fexpr_eval ex8.
   by apply: refl_equal.
 have-> : ex8_cms = mk_cms prec 10 (-1)%Z 0%Z ex8.
   by vm_cast_no_check (refl_equal ex8_cms).
@@ -265,9 +268,9 @@ Time Definition ex9_cms :=
 
 Lemma ex9_correct :
        cms_correct 10 (-1)%Z 0%Z 
-          (fun x => sqrt (x + 100001/100000) * sin x)%R ex9_cms.
+          (fun x => sqrt (x + 1.00001) * sin x)%R ex9_cms.
 Proof.
-have-> : (fun x => sqrt (x + 100001/100000) * sin x)%R = fexpr_eval ex9.
+have-> : (fun x => sqrt (x + 1.00001) * sin x)%R = fexpr_eval ex9.
   by apply: refl_equal.
 have-> : ex9_cms = mk_cms prec 10 (-1)%Z 0%Z ex9.
   by vm_cast_no_check (refl_equal ex9_cms).

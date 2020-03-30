@@ -81,13 +81,18 @@ have /= := I.inv_correct prec I (Xreal x) xI.
 by rewrite /Xinv'; case: is_zero => //; case: I.inv.
 Qed.
 
-Lemma div_correct x y I J:
-	x \contained_in I -> y \contained_in J -> (x / y)%R \contained_in (div I J).
+Lemma div_correct_prec p x y I J:
+	x \contained_in I -> y \contained_in J -> 
+    (x / y)%R \contained_in (I.div p I J).
 Proof.
 move=> xI yJ.
-have /= := I.div_correct prec I J (Xreal x) (Xreal y) xI yJ.
+have /= := I.div_correct p I J (Xreal x) (Xreal y) xI yJ.
 by rewrite /Xdiv'; case: is_zero => //; case: I.div.
 Qed.
+
+Lemma div_correct x y I J:
+	x \contained_in I -> y \contained_in J -> (x / y)%R \contained_in (div I J).
+Proof. by apply: div_correct_prec. Qed.
 
 Lemma scl2_correct x I:
 	x \contained_in I -> (x *+ 2) \contained_in (scl2 I).
@@ -4078,8 +4083,15 @@ Inductive fexpr :=
   fadd  (_ _ : fexpr) |
   fsub  (_ _ : fexpr) |
   fcomp (_ _ : fexpr) |
-  fvar | fconst (_ _ : Z) | fln | fsqrt | fexp | finv |
+  fvar | fconst (v : R) (iv : F.precision -> ID) 
+                (H : forall p, v \contained_in iv p) |
+  fln | fsqrt | fexp | finv |
   fatan | fsin | fcos.
+
+Definition fconstz (v : Z) := fconst (fun => I.fromZ_correct v).
+Definition fconstq (v1 : Z) (v2 : Z) :=
+  fconst (fun p => 
+     div_correct_prec p (I.fromZ_correct v1) (I.fromZ_correct v2)).
 
 Declare Scope fexpr_scope.
 Delimit Scope fexpr_scope with fexpr.
@@ -4092,8 +4104,7 @@ Fixpoint fexpr_eval e :=
 | fsub  e1 e2 => (fun x => (fexpr_eval e1 x) -  (fexpr_eval e2 x))
 | fcomp e1 e2 => (fexpr_eval e1) \o (fexpr_eval e2)
 | fvar => (fun x => x)
-| fconst v1 v2 => (fun x => if Z.eqb v2 1%Z  then (IZR v1)
-                             else (IZR v1 / IZR v2)%R)
+| fconst v1 _ _ => (fun x => v1)
 | fln => ln
 | fsqrt => sqrt
 | fexp => exp
@@ -4111,8 +4122,7 @@ match e with
 | fsub  e1 e2 => (fun i => sub (fexpr_ieval e1 i) (fexpr_ieval e2 i))
 | fcomp e1 e2 => (fexpr_ieval e1) \o (fexpr_ieval e2)
 | fvar => (fun x => x)
-| fconst z1 z2 => (fun x => if Z.eqb z2 1 then I.fromZ z1
-                            else div (I.fromZ z1) (I.fromZ z2))
+| fconst _ v2 _ => (fun x => v2 prec)
 | fln => I.ln prec
 | fsqrt => I.sqrt prec
 | fexp => I.exp prec
@@ -4137,10 +4147,7 @@ elim: e i x.
 - move=> e1 IH1 e2 IH2 i x Hx.
   by apply/IH1/IH2.
 - by [].
-- move=> z1 z2 i x Hx.
-  rewrite /fexpr_eval /fexpr_ieval.
-  case: Z.eqb_spec => [_|z2D1]; first by apply: I.fromZ_correct.
-  by apply: div_correct; apply: I.fromZ_correct.
+- by move=> v iv H i c xH; apply: H.
 - by move => i x Hx; apply: ln_correct.
 - by move => i x Hx; apply: sqrt_correct.
 - by move => i x Hx; apply: exp_correct.
@@ -4185,8 +4192,7 @@ match e with
          else error_cms n
   else error_cms n
 | fvar => var_cms a b n
-| fconst z1 z2 => const_cms n (if Z.eqb z2 1 then I.fromZ z1
-                               else div (I.fromZ z1) (I.fromZ z2))
+| fconst _ v _ => const_cms n (v prec)
 | fln => ln_cms a b n vn vl2 vl3
 | fsqrt => sqrt_cms a b n vn vl2 vl3
 | fexp => exp_cms a b vn vl2 vl3
@@ -4255,10 +4261,8 @@ elim: e a b vl3 aLb vl3E.
   apply: IH1 => //.
   - by congr (map _ _).
 - by move=> a b vl3 aLb vl3E; apply: var_cms_correct.
-- move=> z1 z2 a b vl3 aLb vl3E.
-  apply: const_cms_correct.
-  case: Z.eqb_spec => [_|_]; first by apply: I.fromZ_correct.
-  by apply: div_correct; apply: I.fromZ_correct.
+- move=> z1 z2 H a b vl3 aLb vl3E.
+  by apply: const_cms_correct.
 - by move=> a b vl3 aLb vl3E; apply: ln_cms_correct v2nE _ _.
 - by move=> a b vl3 aLb vl3E; apply: sqrt_cms_correct v2nE _ _.
 - by move=> a b vl3 aLb vl3E; apply: exp_cms_correct v2nE _ _.
@@ -4270,6 +4274,260 @@ Qed.
 
 End CMFexpr.
 
+Section CMIexpr.
+
+Notation D := F.type.
+
+(* language *)
+
+Inductive iexpr :=
+  imul  (_ _ : iexpr) |
+  idiv  (_ _ : iexpr) |
+  iadd  (_ _ : iexpr) |
+  isub  (_ _ : iexpr) |
+  iconst (v : R) (iv : F.precision -> ID) 
+                (H : forall p, v \contained_in iv p) |
+  iint (v1 : R) (iv1 : F.precision -> ID) 
+                (H1 : forall p, v1 \contained_in iv1 p)
+      (v2 : R) (iv2 : F.precision -> ID) 
+                (H2 : forall p, v2 \contained_in iv2 p)  
+                (_ : fexpr)        
+                 |
+  iln (_ : iexpr) | isqrt (_ : iexpr) | iexp (_ : iexpr) | 
+  iinv (_ : iexpr) |
+  iatan (_ : iexpr) | isin (_ : iexpr) | icos (_ : iexpr).
+
+Definition iconstz (v : Z) := iconst (fun => I.fromZ_correct v).
+Definition iconstq (v1 : Z) (v2 : Z) :=
+  iconst (fun p => 
+     div_correct_prec p (I.fromZ_correct v1) (I.fromZ_correct v2)).
+
+Definition iintz (v1 v2 : Z) := 
+   iint (fun => I.fromZ_correct v1) (fun => I.fromZ_correct v2).
+Definition iintq (v1 v2 v3 v4 : Z) :=
+  iint (fun p => 
+     div_correct_prec p (I.fromZ_correct v1) (I.fromZ_correct v2))
+       (fun p => 
+     div_correct_prec p (I.fromZ_correct v3) (I.fromZ_correct v4)).
+
+Declare Scope iexpr_scope.
+Delimit Scope iexpr_scope with iexpr.
+
+Fixpoint iexpr_eval e :=
+(match e with
+| imul e1 e2 => (iexpr_eval e1) *  (iexpr_eval e2)
+| idiv e1 e2 => (iexpr_eval e1) /  (iexpr_eval e2)
+| iadd e1 e2 => (iexpr_eval e1) +  (iexpr_eval e2)
+| isub e1 e2 => (iexpr_eval e1) -  (iexpr_eval e2)
+| iconst v1 _ _ => v1
+| iint v1 _ _ v2 _ _ f => RInt (fun x => fexpr_eval f x) v1 v2
+| iln e => ln (iexpr_eval e)
+| isqrt e => sqrt (iexpr_eval e)
+| iexp e => exp (iexpr_eval e)
+| iinv e => Rinv (iexpr_eval e)
+| iatan e => atan (iexpr_eval e)
+| isin e => sin (iexpr_eval e)
+| icos e => cos (iexpr_eval e)
+end)%R.
+
+Fixpoint iexpr_icheck e :=
+(match e with
+| imul e1 e2 => (iexpr_icheck e1) || (iexpr_icheck e2)
+| idiv e1 e2 => (iexpr_icheck e1) || (iexpr_icheck e2)
+| iadd e1 e2 => (iexpr_icheck e1) || (iexpr_icheck e2)
+| isub e1 e2 => (iexpr_icheck e1) || (iexpr_icheck e2)
+| iconst v1 _ _ => false
+| iint v1 _ _ v2 _ _ f => true
+| iln e => (iexpr_icheck e)
+| isqrt e => (iexpr_icheck e)
+| iexp e => (iexpr_icheck e)
+| iinv e => (iexpr_icheck e)
+| iatan e => (iexpr_icheck e)
+| isin e => (iexpr_icheck e)
+| icos e => (iexpr_icheck e)
+end)%R.
+
+Definition mk_wf e1 e2 f1 f2 :=
+  if iexpr_icheck e1 then if iexpr_icheck e2 then f1 /\ f2 else f1 else f2.
+
+Fixpoint iexpr_wf e :=
+(match e with
+| imul e1 e2 => mk_wf e1 e2 (iexpr_wf e1) (iexpr_wf e2)
+| idiv e1 e2 => mk_wf e1 e2 (iexpr_wf e1) (iexpr_wf e2)
+| iadd e1 e2 => mk_wf e1 e2 (iexpr_wf e1) (iexpr_wf e2)
+| isub e1 e2 => mk_wf e1 e2 (iexpr_wf e1) (iexpr_wf e2)
+| iconst v1 _ _ => True
+| iint _ v1 _  _ v2 _ f => 
+    if I.bounded (v1 prec) && I.bounded (v2 prec) then
+      let a := F.min (I.lower (v1 prec)) (I.lower (v2 prec)) in
+      let b := F.max (I.upper (v1 prec)) (I.upper (v2 prec)) in
+      let t := F.cmp a b in
+      if t is Xlt then
+    (forall x y, (x \contained_in (I.bnd a b) -> (x \contained_in I.bnd a b) ->
+             ex_RInt (fexpr_eval f) x y))
+      else False else False
+| iln e => (iexpr_wf e)
+| isqrt e => (iexpr_wf e)
+| iexp e => (iexpr_wf e)
+| iinv e => (iexpr_wf e)
+| iatan e => (iexpr_wf e)
+| isin e => (iexpr_wf e)
+| icos e => (iexpr_wf e)
+end)%R.
+
+Lemma iexpr_icheck_correct e :
+  iexpr_icheck e = false -> iexpr_wf e <-> true.
+Proof.
+by elim: e => //=; rewrite /mk_wf;
+   move=> e1 e1H e2 e2H; case: iexpr_icheck e1H => // ->.
+Qed.
+
+Lemma mk_wf_correct e1 e2 :
+ mk_wf e1 e2 (iexpr_wf e1) (iexpr_wf e2) <-> (iexpr_wf e1) /\ (iexpr_wf e2).
+Proof.
+rewrite /mk_wf.
+have := @iexpr_icheck_correct e1; have := @iexpr_icheck_correct e2;
+do 2 case: iexpr_icheck => //; intuition.
+Qed.
+
+Fixpoint iexpr_ieval n b1 vn v2n zn z2n (vl1 : seq ID) e :=
+match e with
+| imul e1 e2 => mul 
+         (iexpr_ieval n b1 vn v2n zn z2n (vl1 : seq ID) e1) 
+         (iexpr_ieval n b1 vn v2n zn z2n (vl1 : seq ID) e2)
+| idiv e1 e2 => div
+         (iexpr_ieval n b1 vn v2n zn z2n (vl1 : seq ID) e1) 
+         (iexpr_ieval n b1 vn v2n zn z2n (vl1 : seq ID) e2)
+| iadd e1 e2 => add 
+         (iexpr_ieval n b1 vn v2n zn z2n (vl1 : seq ID) e1) 
+         (iexpr_ieval n b1 vn v2n zn z2n (vl1 : seq ID) e2)
+| isub  e1 e2 => sub 
+         (iexpr_ieval n b1 vn v2n zn z2n (vl1 : seq ID) e1) 
+         (iexpr_ieval n b1 vn v2n zn z2n (vl1 : seq ID) e2)
+| iconst _ v2 _ => (v2 prec)
+| iint _ v1 _ _ v2 _ e => 
+    if I.bounded (v1 prec) && I.bounded (v2 prec) then
+      let a := F.min (I.lower (v1 prec)) (I.lower (v2 prec)) in
+      let b := F.max (I.upper (v1 prec)) (I.upper (v2 prec)) in
+      let t := F.cmp a b in
+      if t is Xlt then
+        let vl2 := 
+           ITvalues n.+2 (nseq n.+2 I1) 
+                   (Icheby_nodes n.+2 v2n) in
+        let vl3 := Ischeby_nodes a b n.+2 v2n in
+        let c := fexpr_cms n.+1 b1 vn zn z2n a b vl1 vl2 vl3 e in
+        eval_shaw_cms a b (belast_cms (int_cms a b c (v1 prec))) (v2 prec)
+      else Interval_interval_float.Inan
+    else Interval_interval_float.Inan
+| iln e => I.ln prec (iexpr_ieval n b1 vn v2n zn z2n (vl1 : seq ID) e)
+| isqrt e => I.sqrt prec (iexpr_ieval n b1 vn v2n zn z2n (vl1 : seq ID) e)
+| iexp e => I.exp prec (iexpr_ieval n b1 vn v2n zn z2n (vl1 : seq ID) e)
+| iinv e => I.inv prec (iexpr_ieval n b1 vn v2n zn z2n (vl1 : seq ID) e)
+| iatan e => I.atan prec (iexpr_ieval n b1 vn v2n zn z2n (vl1 : seq ID) e)
+| isin e => I.sin prec (iexpr_ieval n b1 vn v2n zn z2n (vl1 : seq ID) e)
+| icos e => I.cos prec (iexpr_ieval n b1 vn v2n zn z2n (vl1 : seq ID) e)
+end.
+
+
+Lemma iexpr_ieval_correct n b1 vn v2n zn z2n (vl1 : seq ID) e :
+       b1 = odd n.+1 ->
+       INR n.+2 \contained_in vn ->
+       (2 * INR n.+2) \contained_in v2n ->
+       zn = Pos.of_nat n.+2 ->
+       z2n = Pos.of_nat n.+1.*2.+1 ->
+       vl1 = Icheby_nodes n.+2 v2n ->
+  iexpr_wf e ->
+  (iexpr_eval e) \contained_in
+    (iexpr_ieval n b1 vn v2n zn z2n (vl1 : seq ID) e).
+Proof.
+move=> b1E n2H n22H zn2 z2nE vl1E.
+elim: e => //.
+- move=> e1 IH1 e2 IH2 /mk_wf_correct[e1W e2W].
+  by apply: mul_correct (IH1 _) (IH2 _).
+- move=> e1 IH1 e2 IH2 /mk_wf_correct[e1W e2W].
+  by apply: div_correct (IH1 _) (IH2 _).
+- move=> e1 IH1 e2 IH2 /mk_wf_correct[e1W e2W].
+  by apply: add_correct (IH1 _) (IH2 _).
+- move=> e1 IH1 e2 IH2 /mk_wf_correct[e1W e2W].
+  by apply: sub_correct (IH1 _) (IH2 _).
+- by move=> v iv H _; apply: H.
+- move=> v1 iv1 v1H v2 iv2 v2H e.
+  rewrite /iexpr_wf /iexpr_eval /iexpr_ieval.
+  case E1: I.bounded; last by [].
+  case E2: I.bounded; last by [].
+  case E3: F.cmp => H //.
+  apply: (@eval_shaw_cms_correct n.+1) => //; last first.
+    case: (iv2) E2 => //= [] l1 u1.
+      rewrite !F.cmp_correct !F.min_correct !F.max_correct !F.real_correct.
+      case: F.toX => //= xl1; case: F.toX => //= xu1 _.
+      case: (iv1) E1 => //= [] l2 u2.
+      rewrite !F.real_correct.
+      case: F.toX => //= xl2; case: F.toX => //= xu2 _.
+      by case: Raux.Rcompare_spec => //=; rewrite  /Rmin;
+         case: Rle_dec; try lra ;
+         case: Raux.Rcompare_spec => //=; rewrite  /Rmax;
+         case: Rle_dec => //; lra.
+    apply: belast_cms_correct => //.
+    apply: int_cms_correct => //.
+    - apply/eqP; move: E3; rewrite /D2R F.cmp_correct /=.
+      (do 2 case: F.toX) => //= u v.
+      by case: Raux.Rcompare_spec => //; lra.
+    - case: (iv1) E1 => //= [] l1 u1.
+      rewrite !F.cmp_correct !F.min_correct !F.max_correct !F.real_correct.
+      case: F.toX => //= xl1; case: F.toX => //= xu1 _.
+      case: (iv2) E2 => //= [] l2 u2.
+      rewrite !F.real_correct.
+      case: F.toX => //= xl2; case: F.toX => //= xu2 _.
+      by case: Raux.Rcompare_spec => //=; rewrite  /Rmin;
+         case: Rle_dec; try lra ;
+         case: Raux.Rcompare_spec => //=; rewrite  /Rmax;
+         case: Rle_dec => //; lra.
+    apply: fexpr_cms_correct => //.   
+      by [].
+    by [].
+- by move => i H H1 /=; apply/ln_correct/H.
+- by move => i H H1; apply/sqrt_correct/H.
+- by move => i H H1; apply/exp_correct/H.
+- by move => i H H1; apply/inv_correct/H.
+- by move => i H H1; apply/atan_correct/H.
+- by move => i H H1; apply/sin_correct/H.
+by move => i H H1; apply/cos_correct/H.
+Qed.
+
+Definition mk_iexpr_ieval n := 
+  let b1 := odd n.+1 in
+  let vn := I.fromZ (Z.of_nat n.+2) in
+  let v2n := I.fromZ (Z.of_nat (n.+2).*2) in
+  let zn := Pos.of_nat n.+2 in
+  let z2n := Pos.of_nat n.+1.*2.+1 in
+  let vl1 := Icheby_nodes n.+2 v2n in
+  iexpr_ieval n b1 vn v2n zn z2n (vl1 : seq ID).
+
+Lemma mk_iexpr_ieval_correct n e :
+  iexpr_wf e -> (iexpr_eval e) \contained_in (mk_iexpr_ieval n e).
+Proof.
+move=> eW; apply: iexpr_ieval_correct => //.
+  suff ->: INR n.+2 = IZR (Z.of_nat n.+2) by apply: I.fromZ_correct.
+  by rewrite IZR_Zof_nat; toR.
+suff ->: (2 * INR n.+2)%R = IZR (Z.of_nat (n.+2).*2) by apply: I.fromZ_correct.
+by rewrite IZR_Zof_nat -addnn natrD; toR; lra.
+Qed.
+
+Lemma mk_iexpr_ieval_correct_r n a b e :
+  (iexpr_wf e -> 
+  I.bounded (mk_iexpr_ieval n e) ->
+  a <= D2R (I.lower (mk_iexpr_ieval n e)) ->
+   D2R (I.upper (mk_iexpr_ieval n e)) <= b ->
+  a <= (iexpr_eval e) <= b)%R.
+Proof.
+move=> eW eI aL bG.
+have := mk_iexpr_ieval_correct n eW.
+move: eI aL bG; case: mk_iexpr_ieval => //= l u.
+rewrite /D2R !F.real_correct.
+by case: F.toX => //= xl; case: F.toX => //= xu _; lra.
+Qed.
+
+End CMIexpr.
 
 End CPoly_interval.
 
@@ -4291,12 +4549,13 @@ Notation " 'exp(' e ')' " := (fcomp fexp e)
 Notation " '1/x' " := (finv) : fexpr_scope.
 Notation "'/(' x ')'" := (fcomp finv x)
    (format "/( x )" ): fexpr_scope.
-Notation "'c(' x , y ')'" := (fconst x y)
+Notation "'c(' x , y ')'" := (fconstq x y)
    (format "c( x ,  y ) " ): fexpr_scope.
-Notation "'c(' x ')'" := (fconst x 1)
+Notation "'c(' x ')'" := (fconstz x)
    (format "c( x ) " ): fexpr_scope.
-Notation " '1' " := (fconst 1 1) : fexpr_scope.
-Notation " '2' " := (fconst 2 1) : fexpr_scope.
+Notation " '1' " := (fconstz 1) : fexpr_scope.
+Notation " '2' " := (fconstz 2) : fexpr_scope.
+Notation " 'PI' " := (fconst (I.pi_correct)) : fexpr_scope.
 Notation " 'atan(x)'" := (fatan) (at level 10) : fexpr_scope .
 Notation " 'atan(' e ')'" := (fcomp fatan e)
   (format "'atan(' e ')'" ) : fexpr_scope.
@@ -4307,6 +4566,41 @@ Notation " 'cos(x)'" := (fcos) (at level 10) : fexpr_scope .
 Notation " 'cos(' e ')'" := (fcomp fcos e)
   (format "'cos(' e ')'" ) : fexpr_scope.
 Delimit Scope fexpr_scope with fexpr.
+
+Declare Scope iexpr_scope.
+Notation "a * b" := (imul a b) : iexpr_scope.
+Notation "a / b" := (idiv a b) : iexpr_scope.
+Notation "a + b" := (iadd a b) : iexpr_scope.
+Notation "a - b" := (isub a b) : iexpr_scope.
+Notation " 'RInt[' a , b , c , d '](' e ')' " :=
+    (iintq a b c d e)
+  : iexpr_scope.
+Notation " 'RInt[' a , b '](' e ')' " :=
+    (iintz a b e)
+  : iexpr_scope.
+Notation " 'ln(' e ')' " := (iln e)
+  (format "'ln(' e ')' " ) : iexpr_scope.
+Notation " 'sqrt(' e ')' " := (isqrt e)
+  (format "'sqrt(' e ')' " ) : iexpr_scope.
+Notation " 'exp(' e ')' " := (iexp e)
+  (format "'exp(' e ')'" ) : iexpr_scope.
+Notation "'/(' x ')'" := (iinv x)
+   (format "/( x )" ): iexpr_scope.
+Notation "'c(' x , y ')'" := (iconstq x y)
+   (format "c( x ,  y ) " ): iexpr_scope.
+Notation "'c(' x ')'" := (iconstz x)
+   (format "c( x ) " ): iexpr_scope.
+Notation " '1' " := (iconstz 1) : iexpr_scope.
+Notation " '2' " := (iconstz 2) : iexpr_scope.
+Notation " 'PI' " := (iconst (I.pi_correct)) : iexpr_scope.
+Notation " 'atan(' e ')'" := (iatan e)
+  (format "'atan(' e ')'" ) : iexpr_scope.
+Notation " 'sin(' e ')'" := (isin e)
+  (format "'sin(' e ')'" ) : iexpr_scope.
+Notation " 'cos(' e ')'" := (icos e)
+  (format "'cos(' e ')'" ) : iexpr_scope.
+Delimit Scope iexpr_scope with iexpr.
+
 
 Section Solver.
 

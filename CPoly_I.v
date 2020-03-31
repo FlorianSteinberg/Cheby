@@ -3912,8 +3912,7 @@ Lemma int_cms_correct n a b c d id f :
    d \contained_in id ->
    I.subset id (I.bnd a b) ->
    cms_correct n a b f c -> 
-   (forall x y, x \contained_in I.bnd a b -> y \contained_in I.bnd a b ->
-        ex_RInt f x y) ->
+   ex_RInt f (D2R a) (D2R b) ->
    cms_correct n.+1 a b (RInt f d) (int_cms a b c id).
 Proof.
 move=> aLb dH idS.
@@ -3943,7 +3942,29 @@ exists (RInt f d x - v)%R; split; last by lra.
 rewrite {}/v horner_CPolyab sub_Cpoly_spec CPolyC.
 rewrite 2!hornerE hornerC -!horner_CPolyab -Rint_Cpoly //.
 rewrite -[(_ - _)%R](@RInt_minus _ f); last 2 first.
-- by apply: iH.
+- have [->| [dLx|xLd]] : (d = x \/ (d < x) \/ (x < d))%R by lra.
+  * by apply: ex_RInt_point.
+  * apply: ex_RInt_Chasles_1; last first.
+      apply: ex_RInt_Chasles_2; last by exact: iH.
+      move: aLb dabH.
+      rewrite F.cmp_correct /D2R /=;
+      by case: F.toX => //= ar; case: F.toX.
+    split; first by lra.
+    move: aLb xH.
+    rewrite F.cmp_correct /D2R /=.
+    case: F.toX => //= ar; case: F.toX => // br.
+    by case: Raux.Rcompare_spec => //=; lra.
+  apply: ex_RInt_swap.
+  apply: ex_RInt_Chasles_1; last first.
+    apply: ex_RInt_Chasles_2; last by exact: iH.
+    move: aLb xH.
+    rewrite F.cmp_correct /D2R /=.
+    by case: F.toX => //= ar; case: F.toX.
+  split; first by lra.
+  move: aLb dabH.
+  rewrite F.cmp_correct /D2R /=.
+  case: F.toX => //= ar; case: F.toX => // br.
+  by case: Raux.Rcompare_spec => //=; lra.
 - by apply: integrable_horner.
 have [->| [dLx|xLd]] : (d = x \/ (d < x) \/ (x < d))%R by lra.
 - rewrite RInt_point.
@@ -3960,7 +3981,17 @@ have [->| [dLx|xLd]] : (d = x \/ (d < x) \/ (x < d))%R by lra.
     apply: mul_correct => //.
     by apply: sub_correct.
   have f1H : ex_RInt f1 d x.
-    apply: ex_RInt_minus; first by apply: iH.
+    apply: ex_RInt_minus.
+      apply: ex_RInt_Chasles_1; last first.
+        apply: ex_RInt_Chasles_2; last by exact: iH.
+        move: aLb dabH.
+        rewrite F.cmp_correct /D2R /=.
+        by case: F.toX => //= ar; case: F.toX.
+      split; first by lra.
+      move: aLb xH.
+      rewrite F.cmp_correct /D2R /=.
+      case: F.toX => //= ar; case: F.toX => // br.
+      by case: Raux.Rcompare_spec => //=; lra.
     by apply: integrable_horner.
   exists (v / (x - d))%R; split; last first.
     by toR; field; lra.
@@ -4017,11 +4048,19 @@ suff [d1 [d1H ->]] :
   apply: mul_correct => //.
   by apply: sub_correct.
 have f1H : ex_RInt f1 x d.
-  apply: ex_RInt_minus; first by apply: iH.
+  apply: ex_RInt_minus.
+    apply: ex_RInt_Chasles_1; last first.
+      apply: ex_RInt_Chasles_2; last by exact: iH.
+      move: aLb xH.
+      rewrite F.cmp_correct /D2R /=.
+      by case: F.toX => //= ar; case: F.toX.
+    split; first by lra.
+    move: aLb dabH.
+    rewrite F.cmp_correct /D2R /=.
+    case: F.toX => //= ar; case: F.toX => // br.
+    by case: Raux.Rcompare_spec => //=; lra.
   by apply: integrable_horner.
-have f1NH : ex_RInt f1 d x.
-  apply: ex_RInt_minus; first by apply: iH.
-  by apply: integrable_horner.
+have f1NH : ex_RInt f1 d x by apply: ex_RInt_swap.
 exists (v / (x - d))%R; split; last first.
   by toR; field; lra.
 red => /=; case El: F.toX => [|xl]; case Eu: F.toX => [|xu] //; split => //.
@@ -4368,9 +4407,7 @@ Fixpoint iexpr_wf e :=
       let a := F.min (I.lower (v1 prec)) (I.lower (v2 prec)) in
       let b := F.max (I.upper (v1 prec)) (I.upper (v2 prec)) in
       let t := F.cmp a b in
-      if t is Xlt then
-    (forall x y, (x \contained_in (I.bnd a b) -> (y \contained_in I.bnd a b) ->
-             ex_RInt (fexpr_eval f) x y))
+      if t is Xlt then ex_RInt (fexpr_eval f) (D2R a) (D2R b)
       else True else True
 | iln e => (iexpr_wf e)
 | isqrt e => (iexpr_wf e)

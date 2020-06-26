@@ -34,14 +34,12 @@ Lemma pT_Cheby n (x: R):
 	(-1 <= x <= 1)%R -> Cheby n x = ('T_n).[x].
 Proof.
 move => ineq.
-elim: n {-2}(n) (leqnn n) => [n ass | n ih k ineqk].
-	have/eqP-> : n == 0%nat by rewrite -leqn0.
-	by rewrite Cheby_0; try lra; rewrite pT0 hornerC.
-rewrite leq_eqVlt in ineqk; case/orP: ineqk => [/eqP eqn | ineqk]; last by rewrite ih.
-case E: n => [ | m]; first by	rewrite eqn E Cheby_1; try lra; first by rewrite pT1 hornerX.
-rewrite eqn E pTSS Cheby_rec; try lra.
+elim/ltn_ind : n => [] [|[|n]] IH.
+- by rewrite Cheby_0; try lra; rewrite pT0 hornerC.
+- by	rewrite Cheby_1; try lra; rewrite pT1 hornerX.
+rewrite pTSS Cheby_rec; try lra.
 rewrite hornerD hornerM mulr2n hornerD hornerX hornerN.
-by rewrite -!ih; toR; try lra; rewrite E.
+by rewrite -!IH; toR; try lra; rewrite E.
 Qed.
 End Cheby_rec.
 

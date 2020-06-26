@@ -614,7 +614,8 @@ Lemma eval_atan_rec_cor m m1 bv i j x res :
   res = (\poly_(u < (m - m1).+1) coef_poly_atan m (u + m1)).[x] ->
   eval_atan_rec m1 bv i j x res = (\poly_(i < m.+1) coef_poly_atan m i).[x].
 Proof.
-elim: {m1}(S _) {-2}m1 (leqnn m1.+1) bv i j res => 
+have [v VV] := ubnP (m1.+1).
+elim: v m1 VV bv i j res => 
    // v IH [|[|m1]] /= mLv bv i j res iE m1Lm mE jE bvE resE.
 - rewrite resE subn0; congr (_.[_]).
   by apply: eq_poly => i1; rewrite addn0.

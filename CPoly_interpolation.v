@@ -1160,7 +1160,8 @@ Lemma dsprod_cheby_eq n (p : {poly R}) :
    (size p <= n.+1)%nat ->
    p = \sum_(i < n.+1) (dsprod_coef p n i) *: 'T_i.
 Proof.
-elim: {p}size {-2 3}p (leqnn (size p)) => // [p|k IH p pLk kLn].
+have [k pLs] := ubnPleq (size p).
+elim: k p pLs  => [p|k IH p pLk kLn].
   rewrite size_poly_leq0 => /eqP-> _.
   apply: sym_equal; apply: big1 => i _.
   by rewrite /dsprod_coef dsprod_cheby0 Rmult_0_r scale0r.
@@ -1287,7 +1288,8 @@ Lemma sdsprod_cheby_eq a b n (p : {poly R}) :
    p = \sum_(i < n.+1) (sdsprod_coef a b p n i) *: 'T^(a, b)_i.
 Proof.
 move=> aDb.
-elim: {p}size {-2 3}p (leqnn (size p)) => // [p|k IH p pLk kLn].
+have [k pLs] := ubnPleq (size p).
+elim: k p pLs  => [p|k IH p pLk kLn].
   rewrite size_poly_leq0 => /eqP-> _.
   apply: sym_equal; apply: big1 => i _.
   by rewrite /sdsprod_coef sdsprod_cheby0 Rmult_0_r scale0r.

@@ -91,7 +91,8 @@ Lemma Cshaw_spec (k : seq R) r :
 Proof.
 rewrite /Cshaw /CPoly.
 rewrite horner_sum; under eq_bigr ? rewrite hornerZ.
-elim: {k}S {-2}k (leqnn (size k).+1) => // n IH [|a [|b k]] H.
+have [n sLn] := ubnP (size k).
+elim: n k sLn => // n IH [|a [|b k]] H.
 - by rewrite big_ord0 /= !rm0.
 - by rewrite /= !rm0 big_ord_recr big_ord0 /= pT0 hornerC rm1 rm0.
 have /IH/=/eqP : (size (b :: k) < n)%N by rewrite -ltnS.
@@ -114,6 +115,7 @@ rewrite !mulr2n !(mulrDl, mulrDr, opprB, opprD, mulNr ) -!addrA.
 do 40 (congr (_ + _); [idtac] || rewrite [RHS]addrC -![in RHS]addrA).
 by rewrite opprK addrC addrK.
 Qed.
+
 End CSHAW.
 
 Section CP2P.

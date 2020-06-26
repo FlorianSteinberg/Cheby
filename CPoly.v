@@ -43,20 +43,16 @@ Notation "'T_ n" := (pT n)
 
 Lemma horner1_pT n : ('T_n).[1: R] = 1.
 Proof.
-elim: n {-2}n (leqnn n) => [[] // _ |n IH]; first by rewrite pT0 hornerC.
-move=> m; rewrite leq_eqVlt; case/orP => [|Hm]; last first.
-  by apply: IH; rewrite -ltnS.
-move/eqP->; case: n IH=> [|n] IH; first by rewrite pT1 hornerX.
+elim/ltn_ind: n => [] [|[|n]] IH; first by rewrite pT0 hornerC.
+  by rewrite pT1 hornerX.
 rewrite pTSS hornerD hornerN mulrnAl hornerMn.
 by rewrite -commr_polyX hornerMX !IH // !mulr1 mulrS [1+ _]addrC addrK.
 Qed.
 
 Lemma hornerN1_pT n : ('T_n).[-1: R] = (-1) ^+ n.
 Proof.
-elim: n {-2}n (leqnn n) => [[] // _ |n IH]; first by rewrite pT0 hornerC.
-move=> m; rewrite leq_eqVlt; case/orP => [|Hm]; last first.
-  by apply: IH; rewrite -ltnS.
-move/eqP->; case: n IH=> [|n] IH; first by rewrite pT1 hornerX.
+elim/ltn_ind : n => [] [|[|n]] IH; first by rewrite pT0 hornerC.
+  by rewrite pT1 hornerX.
 rewrite pTSS hornerD hornerN mulrnAl hornerMn.
 rewrite -commr_polyX hornerMX !IH //.
 by rewrite !exprS !(mulN1r, mulrN1, opprK) mulr2n addrK.
@@ -64,11 +60,8 @@ Qed.
 
 Lemma commr_pT p n : GRing.comm p ('T_n).
 Proof.
-elim: n {-2}n (leqnn n)=> [[] // _ |n IH m].
-  by rewrite pT0; apply: commr1.
-rewrite leq_eqVlt; case/orP=> [/eqP->|Hm]; last first.
-  by apply: IH; rewrite -ltnS.
-case: n IH=> [|n] IH; first by rewrite pT1; apply: commr_polyX.
+elim/ltn_ind : n => [] [|[|n]] IH; first by rewrite pT0; apply: commr1.
+  by rewrite pT1; apply: commr_polyX.
 rewrite pTSS; apply: commrD; last by apply: commrN; apply: IH.
 by rewrite mulrnAl; apply: commrMn; apply: commrM;
  [exact: commr_polyX | apply: IH].
@@ -94,10 +87,7 @@ Proof. by []. Qed.
 
 Lemma horner1_pU n : ('U_n).[1] = n.+1%:R.
 Proof.
-elim: n {-2}n (leqnn n)=> [[] // _ |n IH]; first by rewrite hornerC.
-move=> m; rewrite leq_eqVlt; case/orP=> [/eqP->|Hm]; last first.
-  by apply: IH; rewrite -ltnS.
-case: n IH=> [|n] IH.
+elim/ltn_ind : n => [] [|[|n]] IH; first by rewrite hornerC.
   by rewrite pU1 hornerMn hornerX.
 rewrite pUSS hornerD hornerN mulrnAl hornerMn.
 rewrite -commr_polyX hornerMX mulr1 !IH //.
@@ -108,11 +98,8 @@ Qed.
 
 Lemma commr_pU p n : GRing.comm p ('U_n).
 Proof.
-elim: n {-2}n (leqnn n)=> [[] // _ |n IH]; first  by exact: commr1.
-move=> m; rewrite leq_eqVlt; case/orP=> [|Hm]; last first.
-  by apply: IH; rewrite -ltnS.
-move/eqP->; case: n IH=> [|n] IH.
-   rewrite pU1; apply: commrMn; exact: commr_polyX.
+elim/ltn_ind : n => [] [|[|n]] IH; first  by exact: commr1.
+  by rewrite pU1; apply: commrMn; exact: commr_polyX.
 rewrite pUSS; apply: commrD; last by apply: commrN; apply: IH.
 by rewrite mulrnAl; apply: commrMn; apply: commrM;
    [exact: commr_polyX | apply: IH].
@@ -121,11 +108,9 @@ Qed.
 Lemma pT_pU n : 'T_n.+1 = 'U_n.+1 - 'X * 'U_n.
 Proof.
 have F: pU 1 - 'X * pU 0 = 'X by rewrite pU1 pU0 mulr1 addrK.
-elim: n {-2}n (leqnn n)=> [[] // _ |m IH]; first by rewrite pT1 F.
-move=> n; rewrite leq_eqVlt; case/orP=> [|Hn]; last first.
-  by apply: IH; rewrite -ltnS.
-move/eqP->; rewrite pTSS pUSS IH // mulrDr -!addrA; congr (_ + _).
-case: m IH=> [_|m IH].
+elim/ltn_ind : n  => [] [|n] IH; first by rewrite pT1 F.
+rewrite pTSS pUSS IH // mulrDr -!addrA; congr (_ + _). 
+case: n IH => [_|m IH].
   rewrite pT0 pU0 pU1 addrC mulrN; congr (_ - _).
   by rewrite mulr1 mulrnAl mulrnAr.
 rewrite IH // pUSS addrC opprD -!addrA; congr (_ + _).
@@ -135,17 +120,13 @@ Qed.
 
 Lemma deriv_pT n: ('T_n.+1)^`() = 'U_n *+ n.+1.
 Proof.
-elim: n {-2}n (leqnn n)=> [[] // _ |m IH].
-  by rewrite pT1 derivX.
-move=> n; rewrite leq_eqVlt; case/orP=> [|Hn]; last first.
-  by apply: IH; rewrite -ltnS.
-move/eqP->; rewrite pTSS derivD derivM derivMn derivX !IH //.
-rewrite pT_pU.
-case: m IH=> [_|m IH].
+elim/ltn_ind : n => [] [|n] IH; first by rewrite pT1 derivX.
+rewrite pTSS derivD derivM derivMn derivX !IH // pT_pU.
+case: n IH => [_|n IH].
   by rewrite pU0 pU1 pT0 derivN derivC subr0 mulr_natl mulrnBl !mulr1 addrK.
 rewrite derivN IH // pUSS mulr_natl !(mulrnDl, mulrnBl).
 rewrite !(mulrnAl, mulrnAr) -!mulrnA.
-set x := 'X * _; set y := pU m.
+set x := 'X * _; set y := pU n.
 rewrite -[x *+ _ + _ *+ _]addrC -3!addrA addrC.
 rewrite addrA -[(2 * 2)%N]/(2 + 2)%N mulrnDr.
 rewrite mulNrn addrK.
@@ -159,11 +140,8 @@ Lemma coef_pU : forall n i,
     if (n < i)%N || odd (n + i) then 0 else
     let k := (n - i)./2 in ((-1)^+k * (2^i * 'C(n-k,k))%:R).
 Proof.
-move=> n; elim: n {-2}n (leqnn n)=> [[] // _ |m IH].
-  by case=>[|i]; rewrite pU0 ?coefC //= mul1r.
-move=> n; rewrite leq_eqVlt; case/orP=> [/eqP->|Hn]; last first.
-  by apply: IH; rewrite -ltnS.
-case: m IH=> [_ i|m IH i].
+elim/ltn_ind => [] [|[|n]] IH i.
+- by case: i => [|i]; rewrite pU0 ?coefC //= mul1r.
   by rewrite coefMn coefX; case: i=> [|[|i]] //=;
      rewrite ?mul0rn //= -mulr_natl mulr1 mul1r.
 rewrite pUSS coefB mulrnAl coefMn coefXM !IH //.
@@ -171,12 +149,12 @@ case: i=> [|i].
   rewrite !addn0 mul0rn sub0r subn0 /=; case O1: (odd _).
     by rewrite oppr0.
   rewrite !mul1n /= exprS !mulNr subSS mul1r.
-  rewrite -{2 6}[m]odd_double_half O1 add0n subSn -addnn ?leq_addr //.
+  rewrite -{2 6}[n]odd_double_half O1 add0n subSn -addnn ?leq_addr //.
   by rewrite  addnK !binn.
 rewrite !addSn !addnS /=; case O1: (odd _); last first.
    by rewrite !orbT mul0rn  subrr.
 rewrite !orbF !subSS; case: leqP=> Hm; last first.
-  rewrite ltnS (leq_trans _ Hm); last by  exact: (leq_addl 2 m).
+  rewrite ltnS (leq_trans _ Hm); last by  exact: (leq_addl 2 n).
   by rewrite mul0rn  sub0r oppr0.
 rewrite ltnS.
 move: Hm; rewrite leq_eqVlt; case/orP=> [/eqP->|].
@@ -185,21 +163,21 @@ rewrite ltnS leq_eqVlt; case/orP; [move/eqP->|move=>Him].
   by rewrite leqnn subSnn !subn0 expr0 !bin0
              subr0 !mul1r !muln1 -mulr_natl -natrM expnS.
 rewrite leqNgt Him /= subSn; last by exact: ltnW.
-have->: ((m - i).+1./2 = (m - i)./2.+1).
- rewrite -{1}[(m-i)%N]odd_double_half.
- rewrite (odd_sub (ltnW _)) // -odd_add O1.
+have->: ((n - i).+1./2 = (n - i)./2.+1).
+ rewrite -{1}[(n - i)%N]odd_double_half.
+ rewrite (oddB (ltnW _)) // -oddD O1.
  by rewrite /= (half_bit_double _ false).
-have->: ((m - i.+1)./2 = (m - i)./2).
- rewrite subnS -{1}[(m-i)%N]odd_double_half.
- rewrite (odd_sub (ltnW _)) // -odd_add O1.
+have->: ((n - i.+1)./2 = (n - i)./2).
+ rewrite subnS -{1}[(n - i)%N]odd_double_half.
+ rewrite (oddB (ltnW _)) // -oddD O1.
  by rewrite /= (half_bit_double _ false).
-set u := (m - i)./2.
+set u := (n - i)./2.
 rewrite !subSS subSn.
   rewrite binS mulnDr mulrnDr mulrDr; congr (_ + _).
     by rewrite -mulrnAr -mulr_natl -natrM mulnA expnS.
   by rewrite -mulN1r mulrA exprS.
-apply: (leq_trans (half_leq (leq_subr i m))).
-by rewrite -{2}[m]odd_double_half -addnn addnA leq_addl.
+apply: (leq_trans (half_leq (leq_subr i n))).
+by rewrite -{2}[n]odd_double_half -addnn addnA leq_addl.
 Qed.
 
 Lemma coef_pUn n : ('U_n)`_n = (2^n)%:R.
@@ -234,7 +212,7 @@ rewrite -natrB; last first.
   by apply: leq_bin2l; apply: leq_sub2r.
 congr (_%:R).
 have F: (n-i = (n-i)./2.*2)%N
-   by rewrite-{1}[(n-i)%N]odd_double_half odd_sub // -odd_add O1.
+   by rewrite-{1}[(n-i)%N]odd_double_half oddB // -oddD O1.
 set u := (n - i)./2.
 have F1: (u <= n)%N.
   by apply: leq_trans (leq_subr i _); rewrite F -addnn leq_addl.
@@ -289,7 +267,7 @@ case: i L1 O1 => [|i L1 O1].
 set u := (n.+1 -i.+1)./2.
 have F: (n.+1 - i.+1 = u.*2)%N.
   by rewrite-{1}[(n.+1 - i.+1)%N]odd_double_half
-             /u odd_sub // -odd_add (negPf O1).
+             /u oddB // -oddD (negPf O1).
 have->: (n.+1 - u = i.+1 + u)%N.
   rewrite -{1}(subnK L1) [(_ + i.+1)%N]addnC.
   by rewrite -addnBA;
@@ -340,14 +318,12 @@ Notation "'T_ n " := (pT _ n)
   (at level 3, n at level 2, format "''T_' n").
 
 Lemma induc2 (P: nat -> Prop):
-	P 0%nat -> P 1%nat -> (forall n, P n -> P (n.+1) -> P (n.+2)) -> forall n, P n.
+	P 0%nat -> P 1%nat -> 
+  (forall n, P n -> P (n.+1) -> P (n.+2)) -> forall n, P n.
 Proof.
 move=> HP0 HP1 HPn n.
-elim: n {-2}n (leqnn n) => [[|n] // |[ih [|[|n]] ineq // | ]].
-move => n ih [] // m ineq.
-rewrite leq_eqVlt in ineq.
-case /orP: ineq => [/eqP -> | ineq ]; last by apply ih.
-by apply /HPn/ih => //; apply /ih.
+elim/ltn_ind : n => [] [|[|n]] IH //.
+by apply: HPn; apply: IH.
 Qed.
 
 Section LINEAR_INDEPENDENCE.
@@ -417,14 +393,6 @@ Lemma pT_eq0 (p: {poly R}):
 	p = 0 <-> \sum_(i < size p) p`_i *: 'T_i = 0.
 Proof. by rewrite pT_eq size_poly0 big_ord0. Qed.
 End LINEAR_INDEPENDENCE.
-
-Lemma inducleq (P: nat -> Prop):
-	P 0%nat -> (forall m: nat, (forall n, (n <= m)%nat -> P n) -> P m.+1) -> forall n, P n.
-Proof.
-move => P0 induc n.
-elim: {n}n.+1 {-2}n (ltnSn n) => [[]//| n ih [|m] // ineq].
-by apply/induc => n1 Hn1; apply/ih/(leq_ltn_trans Hn1).
-Qed.
 
 Section Multiplication.
 
@@ -513,15 +481,15 @@ Qed.
 Lemma mul_pT n m :
 	2%:R *: 'T_n * 'T_m = 'T_(n + m) + 'T_(absn m n) :> {poly R}.
 Proof.
-elim: {n}n.+1 {-2}n (ltnSn n) => // k ih [_|[_|n H]].
+elim/ltn_ind : n m => // [] [|[|n]] IH m.
 - by rewrite pT0 absn0 mulr2n scalerDl scale1r mulrDl mul1r.
 - rewrite pT1 scaler_nat add1n.
-	case: m ih => [ih | m ih]; first by rewrite pT0 pT1 /absn rm1 mulr2n.
+	case: m => [|m]; first by rewrite pT0 pT1 /absn rm1 mulr2n.
 	by rewrite absnS1 pTSS -addrA [-'T_m + 'T_m]addrC subrr rm0.
 rewrite pTSS scalerDr mulrDl -!scalerAl mulNr.
-rewrite scalerN !scalerAl ih; last by rewrite -ltnS ltnW.
+rewrite scalerN !scalerAl IH; last by rewrite -ltnS ltnW.
 rewrite -scaler_nat -!scalerAl -mulrA -commr_polyX.
-rewrite  scalerAl scalerAl scalerAl ih //.
+rewrite  scalerAl scalerAl scalerAl IH //.
 rewrite !addSn pTSS scalerDr mulrDl -scalerAl commr_polyX.
 rewrite scalerAl scaler_nat -!addrA.
 congr (_ + _).

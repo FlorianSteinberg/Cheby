@@ -2525,8 +2525,8 @@ Lemma Ieval_atan_rec_correct m mZ bv i iZ j jZ x xI xI2 res resI :
    \contained_in
    Ieval_atan_rec m mZ bv iZ jZ xI xI2 resI.
 Proof.
-elim: {m}m.+1 {-2}m (ltnSn m) mZ bv i iZ j jZ x xI xI2 res resI
-   => //= k IH [|[|m]] //= mLk mZ bv i iZ j jZ x xI xI2 res resI
+elim/ltn_ind: m mZ bv i iZ j jZ x xI xI2 res resI
+   =>  [] [|[|m]] IH //= mZ bv i iZ j jZ x xI xI2 res resI
       mZE iZE jZE xC x2C resC.
   by  apply mul_correct.
 have F : 
@@ -2540,7 +2540,6 @@ have F :
   + by rewrite mZE Pos2Z.inj_succ Zpos_P_of_succ_nat; lia.
   by rewrite iZE !(Pos2Z.inj_succ, Zpos_P_of_succ_nat); lia.
 apply IH => //.
-  + by rewrite ltnS in mLk; apply: leq_trans mLk.
   + by rewrite mZE Pos2Z.inj_succ Zpos_P_of_succ_nat; lia.
   + by rewrite iZE /= Pos2Z.inj_succ Zpos_P_of_succ_nat; lia.
 apply: add_correct.
@@ -2556,8 +2555,7 @@ by apply: I.fromZ_correct.
 Qed.
 
 Lemma Ieval_atan_correct m x xI :
-   x \contained_in xI ->
-   eval_atan m x \contained_in Ieval_atan m xI.
+   x \contained_in xI -> eval_atan m x \contained_in Ieval_atan m xI.
 Proof.
 move=> xIxI.
 apply: Ieval_atan_rec_correct => //.

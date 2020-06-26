@@ -23,15 +23,17 @@ Require Import Epsilon FunctionalExtensionality Ranalysis1 Rsqrt_def.
 From mathcomp Require Import ssreflect ssrfun ssrbool.
 From mathcomp Require Import eqtype ssrnat seq choice bigop.
 From mathcomp Require Import ssrnum ssralg fintype poly mxpoly.
-From mathcomp Require Import div.
+From mathcomp Require Import div order.
 
-Require Import Rtrigo1 Reals.
+Require Import Rtrigo1 Reals Lra.
+Require Import Reals Coquelicot.Coquelicot Psatz.
+
 Delimit Scope ring_scope with RR.
 
 Set Implicit Arguments.
 Unset Strict Implicit.
 Unset Printing Implicit Defensive.
-Import GRing.Theory Num.Def Num.Theory.
+Import Order.TTheory GRing.Theory Num.Def Num.Theory.
 
 
 Local Open Scope R_scope.
@@ -242,29 +244,56 @@ move=> H; apply/andP; split; [apply/eqP|apply/RlebP].
 exact: Rlt_le.
 Qed.
  
-Definition R_numMixin := NumMixin Rleb_norm_add addr_Rgtb0 Rnorm0_eq0
-Rleb_leVge RnormM Rleb_def Rltb_def.
-Canonical Structure R_numDomainType := NumDomainType R R_numMixin.
+Definition R_numMixin := NumMixin Rleb_norm_add addr_Rgtb0 Rnorm0_eq0.
 
-Lemma RleP : forall x y, reflect (Rle x y) (Num.le x y).
-Proof. exact: RlebP. Qed.
- 
-Lemma RltP : forall x y, reflect (Rlt x y) (Num.lt x y).
-Proof. exact: RltbP. Qed.
- 
-Canonical Structure R_numFieldType := [numFieldType of R].
- 
-Lemma Rreal_axiom (x : R) : (Rleb 0 x) || (Rleb x 0).
+Fact Rle_0D x y : Rleb 0 x -> Rleb 0 y -> Rleb 0 (x + y).
+Proof. by move=> /RlebP Hx /RlebP Hy; apply/RlebP; lra. Qed.
+
+Fact Rle_0M x y : Rleb 0 x -> Rleb 0 y -> Rleb 0 (x * y).
+Proof. by move=> /RlebP Hx /RlebP Hy; apply/RlebP; nra. Qed.
+
+Fact Rle_0A x : Rleb 0 x -> Rleb x 0 -> x = 0.
+Proof. by move=> /RlebP Hx /RlebP Hy; nra. Qed.
+
+Fact Rle_0B x y : Rleb 0 (y - x) = Rleb x y.
+Proof. by apply/RlebP/RlebP; lra. Qed.
+
+Fact Rle_0X x : Rleb 0 x || Rleb x 0.
 Proof.
-case: (Rle_dec 0 x)=> [/RlebP ->|] //.
-by move/Rnot_le_lt/Rlt_le/RlebP=> ->; rewrite orbT.
+case: (Rle_dec 0 x) => [/RlebP->//|H]; rewrite orbC.
+by have /RlebP-> : x <= 0 by lra.
 Qed.
- 
-Canonical Structure R_realDomainType := RealDomainType R Rreal_axiom.
- 
-Canonical Structure R_realFieldType := [realFieldType of R].
- 
-Lemma Rarchimedean_axiom : Num.archimedean_axiom R_realFieldType.
+
+Fact Rle0_Rabs x : Rleb 0 x -> Rabs x = x.
+Proof. by move=> /RlebP/Rabs_pos_eq. Qed.
+
+Fact Rlt_def x y : (Rltb x y) = (y != x) && (Rleb x y).
+Proof.
+apply/RltbP/andP => [xLy|[/eqP yDx /RlebP xLy]]; last by lra.
+  split; first by apply/eqP; lra.
+by apply/RlebP; lra.
+Qed.
+
+Definition RLeMixin : realLeMixin R_idomainType := 
+  RealLeMixin Rle_0D Rle_0M Rle_0A Rle_0B Rle_0X
+              Rabs_Ropp Rle0_Rabs Rlt_def.
+Lemma Rleb_total : total Rleb.
+Proof.
+move=> a b; have [/RlebP->//|/RlebP->//] : a <= b \/ b <= a by lra.
+by rewrite orbT.
+Qed.
+
+Canonical RporderType := POrderType ring_display R RLeMixin.
+Canonical RlatticeType := LatticeType R RLeMixin.
+Canonical RdistrLatticeType := DistrLatticeType R RLeMixin.
+Canonical RorderType := OrderType R Rleb_total.
+Canonical RnumDomainType := NumDomainType R RLeMixin.
+Canonical RnormedZmodType := NormedZmodType R R RLeMixin.
+Canonical RnumFieldType := [numFieldType of R].
+Canonical RrealDomainType := [realDomainType of R].
+Canonical RrealFieldType := [realFieldType of R].
+
+Lemma Rarchimedean_axiom : Num.archimedean_axiom RrealFieldType.
 Proof.
 move=> x; exists (Z.abs_nat (up x) + 2)%nat.
 have [Hx1 Hx2]:= (archimed x).
@@ -282,7 +311,7 @@ apply/RltbP/Rabs_def1.
     apply/Rplus_le_compat_r/IHz; split; first exact: Zlt_le_weak.
     exact: Zlt_pred.
   apply: (Rle_trans _ (IZR 0)); first exact: IZR_le.
-  by apply/RlebP/(ler0n R_numDomainType (Z.abs_nat z)).
+  by apply/RlebP/(ler0n RnumDomainType (Z.abs_nat z)).
 apply: (Rlt_le_trans _ (IZR (up x) - 1)).
   apply: Ropp_lt_cancel; rewrite Ropp_involutive.
   rewrite Ropp_minus_distr /Rminus -opp_IZR -{2}(Z.opp_involutive (up x)).
@@ -300,7 +329,7 @@ apply: (Rlt_le_trans _ (IZR (up x) - 1)).
   rewrite mulrnDr; apply: (Rlt_le_trans _ 2).
     by rewrite -{1}[1]Rplus_0_r; apply/Rplus_lt_compat_l/Rlt_0_1.
   rewrite -[2]Rplus_0_l; apply: Rplus_le_compat_r.
-  by apply/RlebP/(ler0n R_numDomainType (Z.abs_nat _)).
+  by apply/RlebP/(ler0n RnumDomainType (Z.abs_nat _)).
 apply: Rminus_le.
 rewrite /Rminus Rplus_assoc [- _ + _]Rplus_comm -Rplus_assoc -!/(Rminus _ _).
 exact: Rle_minus.
@@ -348,13 +377,13 @@ Qed.
  
 Lemma Rreal_closed_axiom : Num.real_closed_axiom R_archiFieldType.
 Proof.
-move=> p a b; rewrite !ler_eqVlt.
+move=> p a b; rewrite !le_eqVlt.
 case Hpa: (p.[a] == 0)%RR.
-  by move=> ? _ ; exists a=> //; rewrite lerr ler_eqVlt.
+  by move=> ? _ ; exists a=> //; rewrite lexx le_eqVlt.
 case Hpb: (p.[b] == 0)%RR.
-  by move=> ? _; exists b=> //; rewrite lerr ler_eqVlt andbT.
+  by move=> ? _; exists b=> //; rewrite lexx le_eqVlt andbT.
 case Hab: (a == b).
-  by move=> _; rewrite (eqP Hab) eq_sym Hpb (ltrNge 0) /=; case/andP=> /ltrW ->.
+  by move=> _; rewrite (eqP Hab) eq_sym Hpb (ltNge 0) /=; case/andP=> /ltW ->.
 rewrite eq_sym Hpb /=; clear=> /RltbP Hab /andP [] /RltbP Hpa /RltbP Hpb.
 suff Hcp: continuity (fun x => (p.[x])%RR).
   have [z [[Hza Hzb] /eqP Hz2]]:= IVT _ a b Hcp Hab Hpa Hpb.
@@ -464,8 +493,6 @@ Qed.
 Lemma Rabs_exprN1 n : Rabs ((-1) ^+ n)%RR = 1.
 Proof. by rewrite Rabs_expr Rabs_Ropp Rabs_R1 expr1n. Qed.
 
-Require Import Reals Coquelicot.Coquelicot Psatz.
-
 Lemma continuous_continuity_pt f t : 
   continuous f t -> continuity_pt f t.
 Proof.
@@ -483,12 +510,6 @@ Lemma eqR_leb a b : (a == b) = (Rleb a b && Rleb b a).
 Proof.
 apply/eqP/andP=> [->|[/RlebP H /RlebP]]; try lra.
 by split; apply/RlebP; lra.
-Qed.
-
-Lemma Rleb_total : total Rleb.
-Proof.
-move=> a b; have [/RlebP->//|/RlebP->//] : a <= b \/ b <= a by lra.
-by rewrite orbT.
 Qed.
 
 Lemma Rleb_trans : transitive Rleb.
@@ -523,12 +544,12 @@ have Hd : a < x - d < x /\ x < x + d < b.
 apply: ex_derive_n_minus.
   exists (mkposreal _ Pd) => /= y Hy k1 Hk1.
   apply: Hf; first apply: leq_trans kLn.
-    by apply/leP.
+    by apply/ssrnat.leP.
   rewrite /ball /= /AbsRing_ball /= /abs /= /minus /plus /opp /= in Hy.
   split_Rabs; lra.
 exists (mkposreal _ Pd) => /= y Hy k1 Hk1.
 apply: Hg; first apply: leq_trans kLn.
-  by apply/leP.
+  by apply/ssrnat.leP.
 rewrite /ball /= /AbsRing_ball /= /abs /= /minus /plus /opp /= in Hy.
 split_Rabs; lra.
 Qed.
@@ -719,7 +740,7 @@ Lemma natDivP x y : (0 < y)%nat -> (x %/ y)%nat = (x / y)%nat.
 Proof.
 move=> yP.
 apply: (Nat.div_unique _ _ _ (x %% y)).
- by apply/ltP; rewrite ltn_mod.
+ by apply/ssrnat.ltP; rewrite ltn_mod.
 by rewrite [(_ * _)%coq_nat]mulnC -[RHS]divn_eq.
 Qed.
 

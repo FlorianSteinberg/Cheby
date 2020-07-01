@@ -214,7 +214,7 @@ Qed.
 
 End Interpolation.
 
-Require Import Reals Coquelicot.Coquelicot Interval.Interval_tactic Psatz.
+Require Import Reals Coquelicot.Coquelicot Interval.Missing.Coquelicot Psatz.
 Require Import Rstruct.
 
 Lemma is_derive_horner p x :
@@ -499,7 +499,7 @@ have F1 y k : (k <= n)%nat -> c1 < y < c2 ->
   rewrite /g /ierror !Derive_n_minus //.
   - exists (pos_div_2 pe) => y2 Hy2 k1 k1Ln.
     apply: deriv_f => //.
-      move/coquelicot_compl.ball_to_lra: Hy2; rewrite /= /e /Rmin.
+      move/ball_to_lra: Hy2; rewrite /= /e /Rmin.
       by case: Rle_dec; lra.
     by apply: leq_trans kLn; apply/leP.
   - by exists pe => *; apply: ex_derive_n_horner.
@@ -507,8 +507,8 @@ have F1 y k : (k <= n)%nat -> c1 < y < c2 ->
     apply: ex_derive_n_minus.
       exists (pos_div_2 (pos_div_2 pe)) => y3 Hy3 k2 k2Ln.
       apply: deriv_f => //.
-      move/coquelicot_compl.ball_to_lra: Hy2.
-      move/coquelicot_compl.ball_to_lra: Hy3; rewrite /= /e /Rmin.
+      move/ball_to_lra: Hy2.
+      move/ball_to_lra: Hy3; rewrite /= /e /Rmin.
       by case: Rle_dec; lra.
       apply: leq_trans kLn.
       by apply: leq_trans (_ : k1 <= _)%nat; apply/leP.
@@ -523,7 +523,7 @@ have F2 y k : (k <= n)%nat -> a <= y <= b ->
      by rewrite /e /Rmin; case: Rle_dec; lra.
   pose pe := mkposreal _ He.
   apply: continuous_ext_loc.
-    exists (pos_div_2 pe) => z /coquelicot_compl.ball_to_lra /= Hz.
+    exists (pos_div_2 pe) => z /ball_to_lra /= Hz.
     apply: F1 => //.
     by move: Hz; rewrite /e /Rmin; case: Rle_dec; lra.
   repeat apply: continuous_minus.
@@ -628,7 +628,7 @@ have P_n : INR i + 1 <= INR n.
   by apply: le_INR; have /ltP := H1i; lia.
 rewrite Cheby_cos; last first.
   split; first by apply: Rdiv_le_0_compat; nra.
-  apply: Interval_generic_proof.Rdiv_ge_mult_pos; nra.
+  apply: Float.Generic_proof.Rdiv_ge_mult_pos; nra.
 apply: cos_eq_0_1; exists (Z.of_nat i).
 rewrite -INR_IZR_INZ.
 field; lra.
@@ -659,10 +659,10 @@ have F : ((1 + 2 * INR x)%R * PI /
   apply: cos_is_inj => //.
     split.
       by apply: Rdiv_le_0_compat; nra.
-    by apply: Interval_generic_proof.Rdiv_ge_mult_pos; nra.
+    by apply: Float.Generic_proof.Rdiv_ge_mult_pos; nra.
   split.
     by apply: Rdiv_le_0_compat; nra.
-  by apply: Interval_generic_proof.Rdiv_ge_mult_pos; nra.
+  by apply: Float.Generic_proof.Rdiv_ge_mult_pos; nra.
 suff : (1 + 2 * INR x) * PI = (1 + 2 * INR y) * PI.
   by nra.
 have F1 x1 : x1 / (2 * INR n) * (2 * INR n) = x1.
@@ -727,7 +727,7 @@ have F4 : 0 < / n`!%:R.
 have [/eqP-> | Hc] := boolP (ierror f (cheby_nodes n) x == 0).
   rewrite Rabs_R0.
   apply: Rmult_le_pos => //.
-  apply: Interval_missing.Rdiv_pos_compat; try lra.
+  apply: Stdlib.Rdiv_pos_compat; try lra.
   rewrite natr_INR.
   apply/lt_0_INR/leP/neq0_lt0n/eqP/eqP.
   by rewrite muln_eq0 negb_or -!lt0n expn_gt0 fact_gt0.
@@ -740,7 +740,7 @@ rewrite natrM.
 rewrite Rmult_comm/Rdiv Rinv_mult_distr; try lra.
 rewrite -!Rmult_assoc.
 apply: Rmult_le_compat; last by apply: Hy; lra.
-- apply: Interval_missing.Rmult_le_pos_pos => //.
+- apply: Stdlib.Rmult_le_pos_pos => //.
     rewrite Rmult_1_r.
     by apply: Rabs_pos.
 - by lra.
@@ -883,7 +883,7 @@ have F5 : 0 < (b - a) ^+ n.
 have [/eqP-> | Hc] := boolP (ierror f (scheby_nodes a b n) x == 0).
   rewrite Rabs_R0.
   apply: Rmult_le_pos => //.
-  apply: Interval_missing.Rdiv_pos_compat; try lra.
+  apply: Stdlib.Rdiv_pos_compat; try lra.
   rewrite natr_INR.
   apply/lt_0_INR/leP/neq0_lt0n/eqP/eqP.
   by rewrite muln_eq0 negb_or -!lt0n expn_gt0 fact_gt0.
@@ -896,7 +896,7 @@ rewrite natrM.
 rewrite Rmult_comm/Rdiv Rinv_mult_distr; try lra.
 rewrite -!Rmult_assoc.
 apply: Rmult_le_compat; last by apply: Hy; lra.
-- apply: Interval_missing.Rmult_le_pos_pos => //.
+- apply: Stdlib.Rmult_le_pos_pos => //.
     rewrite Rmult_1_r.
     by apply: Rabs_pos.
   by lra.
@@ -1660,10 +1660,10 @@ apply: etrans.
     by nra.
   - by rewrite Rmin_left in Hx; lra.
   - apply: continuous_ext=> [z|].
-      by rewrite -coquelicot_compl.Derive_nS.
+      by rewrite -Derive_nS.
     by apply: Df.
   - apply: ex_derive_ext => [z|].
-      by rewrite -coquelicot_compl.Derive_nS.
+      by rewrite -Derive_nS.
     by apply: De (_ : (m.+2 <= size (a :: l))%nat) _.
 apply: etrans.
   apply: RInt_sum => i Hi _.
@@ -1824,11 +1824,11 @@ apply: RInt_le => //.
     nra.
   - by lra.
   - rewrite size_rcons => m t Hm tB.
-    rewrite -coquelicot_compl.Derive_nS.
+    rewrite -Derive_nS.
     apply: Df => //.
     by apply: leq_trans Hm _.
   - rewrite size_rcons => [] [|m] t Hm tB // .
-    rewrite -coquelicot_compl.ex_derive_nSS.
+    rewrite -ex_derive_nSS.
     apply: De => //.
     by rewrite !ltnS ltnW.
   - apply: ex_RInt_sum => i Hi _.
@@ -1878,11 +1878,11 @@ apply: RInt_le => //.
     nra.
   - by lra.
   - rewrite size_rcons => m t Hm tB.
-    rewrite -coquelicot_compl.Derive_nS.
+    rewrite -Derive_nS.
     apply: Df => //.
     by apply: leq_trans Hm _.
   - rewrite size_rcons => [] [|m] t Hm tB // .
-    rewrite -coquelicot_compl.ex_derive_nSS.
+    rewrite -ex_derive_nSS.
     apply: De => //.
     by rewrite !ltnS ltnW.
   - apply: ex_RInt_sum => i Hi _.
@@ -1925,14 +1925,14 @@ apply: IH => //.
   by nra.
 - by lra.
 - move=> m Hm mB.
-  rewrite -coquelicot_compl.Derive_nS.
+  rewrite -Derive_nS.
   by apply: Df.
 - move=> z zB.
-  rewrite -coquelicot_compl.Derive_nS.
+  rewrite -Derive_nS.
   by apply: Dp.
 case=> // [] [|m] z Hm tB //.
   by apply: (@De 2%nat).
-rewrite -coquelicot_compl.ex_derive_nSS.
+rewrite -ex_derive_nSS.
 by apply: De.
 Qed.
 
@@ -2157,9 +2157,9 @@ apply: Rmult_le_compat; try apply: Rabs_pos; last first.
     by apply: COS_bound.
   toR; rewrite /Rinvx ifT; last by apply/eqP; lra.
   split.
-    apply: Interval_generic_proof.Rdiv_le_mult_pos; try lra.
+    apply: Float.Generic_proof.Rdiv_le_mult_pos; try lra.
     by rewrite mulr2n; toR; lra.
-  apply: Interval_generic_proof.Rdiv_ge_mult_pos; try lra.
+  apply: Float.Generic_proof.Rdiv_ge_mult_pos; try lra.
   by rewrite mulr2n; toR; lra.
 have [->|/eqP xDb] := (x =P b); first by apply: Rmax_r.
 have [->|/eqP xDa] := (x =P a); first by apply: Rmax_l.

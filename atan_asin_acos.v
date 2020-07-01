@@ -4,7 +4,7 @@
 (******************************************************************************)
 
 From mathcomp Require Import all_ssreflect.
-Require Import Reals Coquelicot.Coquelicot Interval.Interval_tactic Psatz.
+Require Import Reals Coquelicot.Coquelicot Interval.Missing.Stdlib Psatz.
 Require Import filter_Rlt generalities.
 
 Set Bullet Behavior "None". 
@@ -35,7 +35,8 @@ Qed.
 
 (* Some extra properties of sin *)
 
-Lemma sin_is_inj x y : -(PI/2)  <= x <= PI/2 -> -(PI/2) <= y <= PI/2 -> sin x = sin y -> x = y.
+Lemma sin_is_inj x y :
+  -(PI/2)  <= x <= PI/2 -> -(PI/2) <= y <= PI/2 -> sin x = sin y -> x = y.
 Proof.
 move=> xP yP Hsin.
 have [H | [->//|H]] : (x < y) \/ (x = y) \/ (y < x) by lra.
@@ -172,7 +173,8 @@ assert (H0' := lim_atan_m_infty _ atri).
 assert (abs' : 0 < / m) by now apply Rinv_0_lt_compat.
 assert (H1 : filterlim (fun x => x / m) (Rbar_locally p_infty)
                 (Rbar_locally p_infty)).
-  replace (Rbar_locally p_infty) with (Rbar_locally (Rbar_mult p_infty (/ m))) at 2.
+  replace (Rbar_locally p_infty) with 
+    (Rbar_locally (Rbar_mult p_infty (/ m))) at 2.
     now apply filterlim_Rbar_mult_r.
   apply f_equal; simpl; case (Rle_dec 0 (/ m)).
     intros r; case (Rle_lt_or_eq_dec 0 (/ m) r); auto.
@@ -180,7 +182,8 @@ assert (H1 : filterlim (fun x => x / m) (Rbar_locally p_infty)
   now intros abs; case abs; apply Rlt_le.
 assert (H2 : filterlim (fun x => x / m) (Rbar_locally m_infty)
                 (Rbar_locally m_infty)).
-  replace (Rbar_locally m_infty) with (Rbar_locally (Rbar_mult m_infty (/ m))) at 2.
+  replace (Rbar_locally m_infty) with
+    (Rbar_locally (Rbar_mult m_infty (/ m))) at 2.
     now apply filterlim_Rbar_mult_r.
   apply f_equal; simpl; case (Rle_dec 0 (/ m)).
     intros r; case (Rle_lt_or_eq_dec 0 (/ m) r); auto.
@@ -197,7 +200,8 @@ apply (Filter_prod _ _ _ _ _ t' t).
 intros x y; exists (atan (y/m) - atan (x/m)); split.
   apply (is_RInt_derive (fun x => atan (x / m))).
     intros z _; exact (is_derive_atan_scal z).
-  intros z _; apply (ex_derive_continuous (fun x1 => /m * / ((x1 / m) ^ 2 + 1))).
+  intros z _; apply (ex_derive_continuous 
+                      (fun x1 => /m * / ((x1 / m) ^ 2 + 1))).
   auto_derive; change ((z / m) ^ 2 + 1 <> 0).
   now apply Rgt_not_eq, Rplus_le_lt_0_compat;
            [apply pow2_ge_0 | apply Rlt_0_1].
@@ -272,7 +276,7 @@ wlog : x xB / 0 < x => [H|xP].
 rewrite /asin; case: total_order_T => [[|]|_]; try lra.
 rewrite -[_ / x]Rinv_Rdiv => [||H]; try lra; last first.
   by have /sqrt_eq_0 /(_ H) : 0 <= 1 - x * x; nra.
-rewrite Interval_missing.atan_inv.
+rewrite atan_inv.
   by rewrite (_ : x * x = x ^ 2); lra.
 apply: RIneq.Rdiv_lt_0_compat => //.
 by apply: sqrt_lt_R0; nra.
@@ -512,7 +516,7 @@ wlog : x xB / 0 < x => [H|xP].
   - by rewrite acos_0 asin_0; lra.
   by apply: H; lra.
 rewrite /acos; case: total_order_T => [[|]|_]; try lra.
-rewrite asin_atan // -Interval_missing.atan_inv; last first.
+rewrite asin_atan // -atan_inv; last first.
   apply: RIneq.Rdiv_lt_0_compat => //.
   by apply: sqrt_lt_R0; nra.
 rewrite Rinv_Rdiv; try lra.

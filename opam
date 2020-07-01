@@ -20,7 +20,7 @@ depends: [
   "coq-mathcomp-ssreflect" {>= "1.10"}
   "coq-mathcomp-algebra" {>= "1.10"}
   "coq-coquelicot" {>= "3.1.0"}
-  "coq-interval" { (>= "3.4.2") }
+  "coq-interval" { (>= "4.0.0") }
 ]
 tags: [
 ]

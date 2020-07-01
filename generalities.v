@@ -1,6 +1,5 @@
 Require Import Reals Coquelicot.Coquelicot Psatz.
 Require Import arcsinh.
-Require Import Interval.Interval_tactic.
 Import mathcomp.ssreflect.ssreflect.
 
 Hint Mode ProperFilter' - + : typeclass_instances.
@@ -409,7 +408,8 @@ assert (0 < ln x).
   now rewrite <- ln_1; apply ln_increasing; auto; psatzl R.
 change (Rabs (arcsinh x / ln x - 1) < eps).
 rewrite Rabs_right; cycle 1.
-  apply Rle_ge, Raux.Rle_0_minus.
+
+  apply Rle_ge, (Rminus_le_0 1).
   apply Rmult_le_reg_r with (ln x); auto.
   unfold Rdiv; rewrite -> Rmult_1_l, Rmult_assoc, Rinv_l, Rmult_1_r; cycle 1.
     now psatzl R.

@@ -13,9 +13,10 @@ Export V.
 Open Scope fexpr_scope.
 
 Declare Scope sollya.
+
 Notation " x * 2^ y " := 
-  (Interval_specific_ops.Float x%bigZ y%bigZ) (at level 0) : sollya.
-Notation " [ x ; y ] " :=  (Interval_interval_float.Ibnd x y) : sollya.
+  (Specific_ops.Float x%bigZ y%bigZ) (at level 0) : sollya.
+Notation " [ x ; y ] " :=  (Interval.Ibnd x y) : sollya.
 Notation "[| x1 , x2 , .. , xn |]" := (x1 :: x2 :: .. [:: xn] ..) : sollya.
 
 Open Scope sollya.
@@ -57,8 +58,8 @@ Let prec := 165%bigZ.
 
 Definition ex2 := (atan(x))%fexpr.
 
-Let vmz25 := I.lower (I.neg (I.inv prec (I.fromZ 4))).
-Let vz25 := I.upper (I.inv prec (I.fromZ 4)).
+Let vmz25 := I.lower (I.neg (I.inv prec (I.fromZ prec 4))).
+Let vz25 := I.upper (I.inv prec (I.fromZ prec 4)).
 
 (* TL = chebyshevform(atan(x), 15 , [-0.25,0.25]);    *)
 (* TL[2];                                             *)
@@ -90,8 +91,8 @@ Let prec := 165%bigZ.
 
 Definition ex3 := (atan(x))%fexpr.
 
-Let vmz9 := I.lower (I.neg (I.div prec (I.fromZ 9) (I.fromZ 10))).
-Let vz9 := I.upper (I.div prec (I.fromZ 9) (I.fromZ 10)).
+Let vmz9 := I.lower (I.neg (I.div prec (I.fromZ prec 9) (I.fromZ prec 10))).
+Let vz9 := I.upper (I.div prec (I.fromZ prec 9) (I.fromZ prec 10)).
 
 (* TL = chebyshevform(atan(x), 15 , [-0.9, 0.9]);    *)
 (* TL[2];                                             *)
@@ -361,13 +362,13 @@ Section Tang.
 (* The precision *)
 Let prec := 52%bigZ.
 
-Let Iab := I.div prec (I.bnd (-10831)%Z (10831)%Z) (I.fromZ 1000000).
+Let Iab := I.div prec (I.bnd (-10831)%Z (10831)%Z) (I.fromZ prec 1000000).
 
 Let If :=
   let z := 
   I.div prec
    (I.bnd (23)%Z (23)%Z)
-   (I.fromZ (27 * 2^33)) in I.bnd (SFBI2.neg (I.lower z)) (I.lower z).
+   (I.fromZ prec (27 * 2^33)) in I.bnd (SFBI2.neg (I.lower z)) (I.lower z).
 Compute If.
  
 Definition tang := exp('x) - 1 - ('x + c(8388676, 2^24) * 'x * 'x
@@ -383,8 +384,8 @@ Lemma tang_correct x :
                       <= (23 / (27 * Rpower 2 33)))%R.
 Proof.
 move=> H.
-cheby_solve_tac prec 7 3 tang H. 
-Qed.
+cheby_solve_tac prec 7 3 tang H.
+Time Qed.
 
 End Tang.
 
@@ -429,7 +430,7 @@ Lemma daumas_correct x :
 Proof.
 move=> H.
 cheby_solve_tac prec 1%nat 3%nat daumas H.
-Qed.
+Time Qed.
 
 End Daumas.
 

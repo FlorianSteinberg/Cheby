@@ -15,8 +15,8 @@ Open Scope fexpr_scope.
 
 Declare Scope sollya.
 Notation " x * 2^ y " := 
-  (Interval_specific_ops.Float x%bigZ y%bigZ) (at level 0) : sollya.
-Notation " [ x ; y ] " :=  (Interval_interval_float.Ibnd x y) : sollya.
+  (Specific_ops.Float x%bigZ y%bigZ) (at level 0) : sollya.
+Notation " [ x ; y ] " :=  (Float.Ibnd x y) : sollya.
 Notation "[| x1 , x2 , .. , xn |]" := (x1 :: x2 :: .. [:: xn] ..) : sollya.
 
 Open Scope sollya.
@@ -30,11 +30,11 @@ Ltac l_tac :=
   (set u := I.lower _; vm_compute in u; rewrite {}/u;
    rewrite /I.T.toR /SFBI2.toX;
    set u := SFBI2.toF _; vm_compute in u; rewrite {}/u;
-  rewrite /Interval_definitions.FtoX;
-  rewrite /Interval_definitions.FtoR;
+  rewrite /Basic.FtoX;
+  rewrite /Basic.FtoR;
   set u := Z.pow_pos _; vm_compute in u; rewrite {}/u;
   set u := Z.pow_pos _; vm_compute in u; rewrite {}/u;
-  rewrite /Interval_xreal.proj_val;
+  rewrite /Xreal.proj_val;
   lra).
 
 Ltac r_tac :=
@@ -42,11 +42,11 @@ Ltac r_tac :=
   (set u := I.upper _; vm_compute in u; rewrite {}/u;
    rewrite /I.T.toR /SFBI2.toX;
    set u := SFBI2.toF _; vm_compute in u; rewrite {}/u;
-   rewrite /Interval_definitions.FtoX;
-   rewrite /Interval_definitions.FtoR;
+   rewrite /Basic.FtoX;
+   rewrite /Basic.FtoR;
    set u := Z.pow_pos _; vm_compute in u; rewrite {}/u;
    set u := Z.pow_pos _; vm_compute in u; rewrite {}/u;
-   rewrite /Interval_xreal.proj_val;
+   rewrite /Xreal.proj_val;
    lra).
 
 Notation " 'RInt[' a , b '](' e ')' " :=
@@ -106,7 +106,7 @@ apply: ex_RInt_continuous => z _.
 repeat (apply: continuous_mult || apply: continuous_plus ||
           apply: continuous_id || apply: continuous_minus ||
           apply: continuous_const || apply: continuous_opp
-          || apply: coquelicot_compl.continuous_Rinv_comp).
+          || apply: Coquelicot.continuous_Rinv_comp).
 by nra.
 Qed.
 
@@ -180,165 +180,314 @@ apply; rewrite {u}/ex3.
 by r_tac.
 Qed.
 
+Definition toI (a : SFBI2.type) := 
+  if SFBI2.real a then (FtoI a) else I.bnd I.nan I.nan.
+
+Lemma toI_correct a : 
+	Interval.contains (I.convert (toI a)) (Xreal.Xreal (SFBI2.toR a)).
+Proof.
+rewrite /toI.
+have := @FtoI_correct a.
+by case: SFBI2.real => //=; apply.
+Qed.
+
 (* Implementation naive dichotomy *)
 
 (* Integration is limited to the Float type for the moment *)
 Fixpoint split_r k (a b : SFBI2.type) f := 
  (if k is k1.+1 then
   let c := I.midpoint (I.bnd a b) in
-    if (SFBI2.cmp a c) is Interval_xreal.Xlt then
-    if (SFBI2.cmp c b) is Interval_xreal.Xlt then
+    if (SFBI2.cmp a c) is Xreal.Xlt then
+    if (SFBI2.cmp c b) is Xreal.Xlt then
+    if [&& SFBI2.real a, SFBI2.real c & SFBI2.real b] then 
            (split_r k1 a c f + split_r k1 c b f)%iexpr
-    else (iint (fun=> FtoI_correct a)
-               (fun=> FtoI_correct b) f)
-    else (iint (fun=> FtoI_correct a)
-               (fun=> FtoI_correct b) f)
-  else (iint (fun=> FtoI_correct a)
-             (fun=> FtoI_correct b) f)).
+    else (iint (fun=> toI_correct a)
+               (fun=> toI_correct b) f)
+    else (iint (fun=> toI_correct a)
+               (fun=> toI_correct b) f)
+    else (iint (fun=> toI_correct a)
+               (fun=> toI_correct b) f)
+  else (iint (fun => toI_correct a)
+             (fun=> toI_correct b) f)).
 
 Lemma split_r0 a b f : split_r 0 a b f =
- (iint (fun=> FtoI_correct a)
-             (fun=> FtoI_correct b) f).
+ (iint (fun=> toI_correct a) (fun=> toI_correct b) f).
 Proof. by []. Qed.
 
 Lemma split_rS k a b f (c := I.midpoint (I.bnd a b)): 
   split_r k.+1 a b f = 
-    if (SFBI2.cmp a c) is Interval_xreal.Xlt then
-    if (SFBI2.cmp c b) is Interval_xreal.Xlt then
+    if (SFBI2.cmp a c) is Xreal.Xlt then
+    if (SFBI2.cmp c b) is Xreal.Xlt then
+    if [&& SFBI2.real a, SFBI2.real c & SFBI2.real b] then 
            (split_r k a c f + split_r k c b f)%iexpr
-    else (iint (fun=> FtoI_correct a)
-               (fun=> FtoI_correct b) f)
-    else (iint (fun=> FtoI_correct a)
-               (fun=> FtoI_correct b) f).
+    else (iint (fun=> toI_correct a)
+               (fun=> toI_correct b) f)
+    else (iint (fun=> toI_correct a)
+               (fun=> toI_correct b) f)
+    else (iint (fun=> toI_correct a)
+               (fun=> toI_correct b) f).
 Proof. by []. Qed.
 
 Lemma RInt_split_r k a b f :
- SFBI2.cmp a b = Interval_xreal.Xlt ->
-  (iexpr_wf prec (iint (fun=> FtoI_correct a)
-             (fun=> FtoI_correct b) f)) ->
+ SFBI2.cmp a b = Xreal.Xlt -> SFBI2.real a -> SFBI2.real b ->
+  (iexpr_wf prec (iint (fun=> toI_correct a)
+             (fun=> toI_correct b) f)) ->
   iexpr_wf prec (split_r k a b f).
 Proof.
-move=> aLb pH.
+move=> aLb aF bF pH.
 suff iH : forall c d,
-   SFBI2.cmp c d = Interval_xreal.Xlt ->
+   SFBI2.cmp c d = Xreal.Xlt -> SFBI2.real c -> SFBI2.real d ->
    I.subset (I.bnd c d) (I.bnd a b) ->
    iexpr_wf prec (split_r k c d f).
   by apply: iH (isubset_refl _).
 elim: k => //.
-  move=> c d; rewrite split_r0.
-  move: aLb pH.
-  rewrite /iexpr_wf /= /I.T.toR !SFBI2.real_correct
-                       !SFBI2.cmp_correct
-                       !SFBI2.min_correct
-                       !SFBI2.max_correct.
-  case Ec : (SFBI2.toX c) => [ |cr] //=.
-  case Ed : (SFBI2.toX d) => [ |dr] //=.
-  case: Raux.Rcompare_spec => //=.
-  case Ea : (SFBI2.toX a) => [ |ar] //=.
-  case Eb : (SFBI2.toX b) => [ |br] //=.
-  case: Raux.Rcompare_spec => //.
-  rewrite /Rbasic_fun.Rmin /Rbasic_fun.Rmax.
-  case: RIneq.Rle_dec; try lra.
-  case: Raux.Rcompare_spec => //=; try lra.
-  by case: Raux.Rcompare_spec => //=; try lra;
-     case: Raux.Rcompare_spec => //=; try lra;
-     case: RIneq.Rle_dec; try lra;
-     case: Raux.Rcompare_spec => //= *; try lra;
-     apply: (@ex_RInt_Chasles_1 _ _ _ _ br); try lra;
-     apply: (@ex_RInt_Chasles_2 _ _ ar); try lra.
-move=> k IH c d cdH iH.
-have EF : iexpr_wf prec (iint (fun=> FtoI_correct c) (fun=> FtoI_correct d) f).
-  move: aLb pH cdH iH.
-  rewrite /iexpr_wf /= /I.T.toR !SFBI2.real_correct
-                       !SFBI2.cmp_correct
-                       !SFBI2.min_correct
-                       !SFBI2.max_correct.
-  case Ec : (SFBI2.toX c) => [ |cr] //=;
-  case Ed : (SFBI2.toX d) => [ |dr] //=;
-  case Ea : (SFBI2.toX a) => [ |ar] //=;
-  case Eb : (SFBI2.toX b) => [ |br] //=.
-  rewrite /Rbasic_fun.Rmin /Rbasic_fun.Rmax.
-  by (repeat ((case: RIneq.Rle_dec; try lra) ||
-          (case: Raux.Rcompare_spec => //; try lra))) => *;
-     apply: (@ex_RInt_Chasles_1 _ _ _ _ br); try lra;
-     apply: (@ex_RInt_Chasles_2 _ _ ar); try lra.
+  move=> c d cLd cF dF; move: aLb cLd pH.
+  rewrite split_r0 /iexpr_wf /toI /=.
+  rewrite  !SFBI2.cmp_correct.
+  rewrite [SFBI2.classify a]I.F'.classify_real //.
+  rewrite [SFBI2.classify b]I.F'.classify_real //.
+  rewrite [SFBI2.classify c]I.F'.classify_real //.
+  rewrite [SFBI2.classify d]I.F'.classify_real //.
+  move: (aF) (bF) (cF) (dF); rewrite 4!SFBI2.real_correct.
+  case axE : SFBI2.toX => [ | ax] // _.
+  case bxE : SFBI2.toX => [ | bx] // _.
+  case cxE : SFBI2.toX => [ | cx] // _.
+  case dxE : SFBI2.toX => [ | dx] //= _.
+  (do 2 case: Raux.Rcompare_spec => //)  => axLbx cxLdx _ _.
+  rewrite aF bF cF dF //=.
+  have aE : SFBI2.toR a = ax.
+    suff : Xreal.Xreal (SFBI2.toR a) = Xreal.Xreal ax by case.
+    by rewrite -I.F'.real_correct.
+  have bE : SFBI2.toR b = bx.
+    suff : Xreal.Xreal (SFBI2.toR b) = Xreal.Xreal bx by case.
+    by rewrite -I.F'.real_correct.
+  have cE : SFBI2.toR c = cx.
+    suff : Xreal.Xreal (SFBI2.toR c) = Xreal.Xreal cx by case.
+    by rewrite -I.F'.real_correct.
+  have dE : SFBI2.toR d = dx.
+    suff : Xreal.Xreal (SFBI2.toR d) = Xreal.Xreal dx by case.
+    by rewrite -I.F'.real_correct.
+  have minHab : SFBI2.toX (SFBI2.min a b) = Xreal.Xreal ax.
+    have := SFBI2.min_correct a b.
+    rewrite !I.F'.classify_real / Xreal.Xbind2  //=.
+    rewrite [SFBI2.toX a]I.F'.real_correct // bxE aE.
+    rewrite /Rbasic_fun.Rmin; case: RIneq.Rle_dec => //; lra.
+  have maxHab : SFBI2.toX (SFBI2.max a b) = Xreal.Xreal bx.
+    have := SFBI2.max_correct a b.
+    rewrite !I.F'.classify_real / Xreal.Xbind2  //=.
+    rewrite [SFBI2.toX a]I.F'.real_correct // bxE aE.
+    rewrite /Rbasic_fun.Rmax; case: RIneq.Rle_dec => //; lra.
+  have minHcd: SFBI2.toX (SFBI2.min c d) =  Xreal.Xreal cx.
+    have := SFBI2.min_correct c d.
+    rewrite !I.F'.classify_real / Xreal.Xbind2  //=.
+    rewrite [SFBI2.toX c]I.F'.real_correct // dxE cE.
+    rewrite /Rbasic_fun.Rmin; case: RIneq.Rle_dec => //; lra.
+  have maxHcd: SFBI2.toX (SFBI2.max c d) = Xreal.Xreal dx.
+    have := SFBI2.max_correct c d.
+    rewrite !I.F'.classify_real / Xreal.Xbind2  //=.
+    rewrite [SFBI2.toX c]I.F'.real_correct // dxE cE.
+    rewrite /Rbasic_fun.Rmax; case: RIneq.Rle_dec => //; lra.
+  have minHabE : SFBI2.toR (SFBI2.min a b) = ax.
+    suff : Xreal.Xreal (SFBI2.toR (SFBI2.min a b)) = Xreal.Xreal ax by case.
+    by rewrite -I.F'.real_correct // SFBI2.real_correct minHab.
+  have maxHabE : SFBI2.toR (SFBI2.max a b) = bx.
+    suff : Xreal.Xreal (SFBI2.toR (SFBI2.max a b)) = Xreal.Xreal bx by case.
+    by rewrite -I.F'.real_correct // SFBI2.real_correct maxHab.
+  have minHcdE : SFBI2.toR (SFBI2.min c d) = cx.
+    suff : Xreal.Xreal (SFBI2.toR (SFBI2.min c d)) = Xreal.Xreal cx by case.
+    by rewrite -I.F'.real_correct // SFBI2.real_correct minHcd.
+  have maxHcdE : SFBI2.toR (SFBI2.max c d) = dx.
+    suff : Xreal.Xreal (SFBI2.toR (SFBI2.max c d)) = Xreal.Xreal dx by case.
+    by rewrite -I.F'.real_correct // SFBI2.real_correct maxHcd.
+  rewrite I.F'.classify_real; last by rewrite SFBI2.real_correct minHab. 
+  rewrite I.F'.classify_real; last by rewrite SFBI2.real_correct maxHab. 
+  rewrite I.F'.classify_real; last by rewrite SFBI2.real_correct minHcd. 
+  rewrite I.F'.classify_real; last by rewrite SFBI2.real_correct maxHcd. 
+  rewrite minHab maxHab /= minHcd maxHcd /=.
+  by do 4 case: Raux.Rcompare_spec => //=; try lra;
+    rewrite minHabE maxHabE minHcdE maxHcdE => *;
+    apply: (@ex_RInt_Chasles_2 _ _ ax) => //; try lra;
+    apply: (@ex_RInt_Chasles_1 _ _ _ _ bx) => //; try lra.
+move=> k IH c d cLd cF dF iH.
+have EF : iexpr_wf prec (iint (fun=> toI_correct c) (fun=> toI_correct d) f).
+  move: aLb cLd pH iH => /=.
+  rewrite /iexpr_wf /toI /=.
+  rewrite  !SFBI2.cmp_correct.
+  rewrite [SFBI2.classify a]I.F'.classify_real //.
+  rewrite [SFBI2.classify b]I.F'.classify_real //.
+  rewrite [SFBI2.classify c]I.F'.classify_real //.
+  rewrite [SFBI2.classify d]I.F'.classify_real //.
+  move: (aF) (bF) (cF) (dF); rewrite 4!SFBI2.real_correct.
+  case axE : SFBI2.toX => [ | ax] // _.
+  case bxE : SFBI2.toX => [ | bx] // _.
+  case cxE : SFBI2.toX => [ | cx] // _.
+  case dxE : SFBI2.toX => [ | dx] //= _.
+  (do 2 case: Raux.Rcompare_spec => //)  => axLbx cxLdx _ _.
+  rewrite aF bF cF dF //=.
+  have aE : SFBI2.toR a = ax.
+    suff : Xreal.Xreal (SFBI2.toR a) = Xreal.Xreal ax by case.
+    by rewrite -I.F'.real_correct.
+  have bE : SFBI2.toR b = bx.
+    suff : Xreal.Xreal (SFBI2.toR b) = Xreal.Xreal bx by case.
+    by rewrite -I.F'.real_correct.
+  have cE : SFBI2.toR c = cx.
+    suff : Xreal.Xreal (SFBI2.toR c) = Xreal.Xreal cx by case.
+    by rewrite -I.F'.real_correct.
+  have dE : SFBI2.toR d = dx.
+    suff : Xreal.Xreal (SFBI2.toR d) = Xreal.Xreal dx by case.
+    by rewrite -I.F'.real_correct.
+  have minHab : SFBI2.toX (SFBI2.min a b) = Xreal.Xreal ax.
+    have := SFBI2.min_correct a b.
+    rewrite !I.F'.classify_real / Xreal.Xbind2  //=.
+    rewrite [SFBI2.toX a]I.F'.real_correct // bxE aE.
+    rewrite /Rbasic_fun.Rmin; case: RIneq.Rle_dec => //; lra.
+  have maxHab : SFBI2.toX (SFBI2.max a b) = Xreal.Xreal bx.
+    have := SFBI2.max_correct a b.
+    rewrite !I.F'.classify_real / Xreal.Xbind2  //=.
+    rewrite [SFBI2.toX a]I.F'.real_correct // bxE aE.
+    rewrite /Rbasic_fun.Rmax; case: RIneq.Rle_dec => //; lra.
+  have minHcd: SFBI2.toX (SFBI2.min c d) =  Xreal.Xreal cx.
+    have := SFBI2.min_correct c d.
+    rewrite !I.F'.classify_real / Xreal.Xbind2  //=.
+    rewrite [SFBI2.toX c]I.F'.real_correct // dxE cE.
+    rewrite /Rbasic_fun.Rmin; case: RIneq.Rle_dec => //; lra.
+  have maxHcd: SFBI2.toX (SFBI2.max c d) = Xreal.Xreal dx.
+    have := SFBI2.max_correct c d.
+    rewrite !I.F'.classify_real / Xreal.Xbind2  //=.
+    rewrite [SFBI2.toX c]I.F'.real_correct // dxE cE.
+    rewrite /Rbasic_fun.Rmax; case: RIneq.Rle_dec => //; lra.
+  have minHabE : SFBI2.toR (SFBI2.min a b) = ax.
+    suff : Xreal.Xreal (SFBI2.toR (SFBI2.min a b)) = Xreal.Xreal ax by case.
+    by rewrite -I.F'.real_correct // SFBI2.real_correct minHab.
+  have maxHabE : SFBI2.toR (SFBI2.max a b) = bx.
+    suff : Xreal.Xreal (SFBI2.toR (SFBI2.max a b)) = Xreal.Xreal bx by case.
+    by rewrite -I.F'.real_correct // SFBI2.real_correct maxHab.
+  have minHcdE : SFBI2.toR (SFBI2.min c d) = cx.
+    suff : Xreal.Xreal (SFBI2.toR (SFBI2.min c d)) = Xreal.Xreal cx by case.
+    by rewrite -I.F'.real_correct // SFBI2.real_correct minHcd.
+  have maxHcdE : SFBI2.toR (SFBI2.max c d) = dx.
+    suff : Xreal.Xreal (SFBI2.toR (SFBI2.max c d)) = Xreal.Xreal dx by case.
+    by rewrite -I.F'.real_correct // SFBI2.real_correct maxHcd.
+  rewrite I.F'.classify_real; last by rewrite SFBI2.real_correct minHab. 
+  rewrite I.F'.classify_real; last by rewrite SFBI2.real_correct maxHab. 
+  rewrite I.F'.classify_real; last by rewrite SFBI2.real_correct minHcd. 
+  rewrite I.F'.classify_real; last by rewrite SFBI2.real_correct maxHcd. 
+  rewrite minHab maxHab /= minHcd maxHcd /=.
+  do 4 case: Raux.Rcompare_spec => //=; try lra;
+    rewrite minHabE maxHabE minHcdE maxHcdE => *;
+    apply: (@ex_RInt_Chasles_2 _ _ ax) => //; try lra;
+    apply: (@ex_RInt_Chasles_1 _ _ _ _ bx) => //; try lra.
 rewrite split_rS.
 case Ecp : SFBI2.cmp => //.
 case Epd : SFBI2.cmp => //.
-by apply/mk_wf_correct; split;
-   apply: IH => //;
-   move: cdH aLb iH Ecp Epd;
-   move: (I.midpoint _) => u;
-   rewrite /= /I.T.toR !SFBI2.real_correct !SFBI2.cmp_correct;
-   repeat ((case: Raux.Rcompare_spec => //; try lra) ||
-           (case : (SFBI2.toX _) => [ |?] //=)).
+case: (boolP [&& _, _ & _]) => //.
+case/and3P=> c1F m1F d1F.
+by apply/mk_wf_correct; split; apply: IH => //;
+   move: cLd aLb iH Ecp Epd;
+   move: (I.midpoint _) m1F => u uF;
+   rewrite !SFBI2.cmp_correct !I.F'.classify_real //=;
+   rewrite !SFBI2.cmp_correct !I.F'.classify_real //=;
+   rewrite !I.F'.real_correct //=;
+   do 7 case: Raux.Rcompare_spec => //=; lra.
 Qed.
 
 Lemma eval_split_r k a b f :
-  SFBI2.cmp a b = Interval_xreal.Xlt ->
-  (iexpr_wf prec (iint (fun=> FtoI_correct a)
-             (fun=> FtoI_correct b) f)) ->
+  SFBI2.cmp a b = Xreal.Xlt -> SFBI2.real a -> SFBI2.real b ->
+  (iexpr_wf prec (iint (fun=> toI_correct a)
+             (fun=> toI_correct b) f)) ->
   iexpr_eval (split_r k a b f) =
-  iexpr_eval (iint (fun=> FtoI_correct a) (fun=> FtoI_correct b) f).
+  iexpr_eval (iint (fun=> toI_correct a) (fun=> toI_correct b) f).
 Proof.
-move=> aLb pH.
+move=> aLb aF bF pH.
 have abE : ex_RInt (fexpr_eval f) (I.T.toR a) (I.T.toR b).
   move: aLb pH; rewrite /iexpr_wf.
-  rewrite /I.T.toR /=
-             !SFBI2.real_correct !SFBI2.cmp_correct
-             !SFBI2.min_correct !SFBI2.max_correct /=
-             /Rbasic_fun.Rmin /Rbasic_fun.Rmax.
-  do 2 (case : (SFBI2.toX _) => [ |?] //=; try lra).
-  by do 2 ((case: RIneq.Rle_dec => //; try lra) ||
-          (case: Raux.Rcompare_spec; try lra)). 
+  rewrite /toI /FtoI /= aF bF /= aF bF /=.
+  rewrite !SFBI2.cmp_correct [SFBI2.classify a]I.F'.classify_real //.
+  rewrite [SFBI2.classify b]I.F'.classify_real //.  
+  move: (aF) (bF); rewrite 2!SFBI2.real_correct.
+  case axE : SFBI2.toX => [ | ax] // _.
+  case bxE : SFBI2.toX => [ | bx] // _.
+  have aE : SFBI2.toR a = ax.
+    suff : Xreal.Xreal (SFBI2.toR a) = Xreal.Xreal ax by case.
+    by rewrite -I.F'.real_correct.
+  have bE : SFBI2.toR b = bx.
+    suff : Xreal.Xreal (SFBI2.toR b) = Xreal.Xreal bx by case.
+    by rewrite -I.F'.real_correct.
+  rewrite aE bE /=; case: Raux.Rcompare_spec => // axLbx _.
+  have minHab : SFBI2.toX (SFBI2.min a b) = Xreal.Xreal ax.
+    have := SFBI2.min_correct a b.
+    rewrite !I.F'.classify_real / Xreal.Xbind2  //=.
+    rewrite [SFBI2.toX a]I.F'.real_correct // bxE aE.
+    rewrite /Rbasic_fun.Rmin; case: RIneq.Rle_dec => //; lra.
+  have maxHab : SFBI2.toX (SFBI2.max a b) = Xreal.Xreal bx.
+    have := SFBI2.max_correct a b.
+    rewrite !I.F'.classify_real / Xreal.Xbind2  //=.
+    rewrite [SFBI2.toX a]I.F'.real_correct // bxE aE.
+    rewrite /Rbasic_fun.Rmax; case: RIneq.Rle_dec => //; lra.
+  rewrite I.F'.classify_real; last by rewrite SFBI2.real_correct minHab.
+  rewrite I.F'.classify_real; last by rewrite SFBI2.real_correct maxHab.
+  rewrite minHab maxHab /=; case: Raux.Rcompare_spec => //; try lra.
+  have -> : SFBI2.toR (SFBI2.min a b) = ax.
+    suff : Xreal.Xreal (SFBI2.toR (SFBI2.min a b)) = Xreal.Xreal ax by case.
+    by rewrite -I.F'.real_correct // SFBI2.real_correct minHab.
+  suff -> : SFBI2.toR (SFBI2.max a b) = bx by [].
+  suff : Xreal.Xreal (SFBI2.toR (SFBI2.max a b)) = Xreal.Xreal bx by case.
+  by rewrite -I.F'.real_correct // SFBI2.real_correct maxHab.
 suff iH : forall c d,
-   SFBI2.cmp c d = Interval_xreal.Xlt ->
+   SFBI2.cmp c d = Xreal.Xlt -> SFBI2.real c -> SFBI2.real d ->
    I.subset (I.bnd c d) (I.bnd a b) ->
    iexpr_eval (split_r k c d f) =
-   iexpr_eval (iint (fun=> FtoI_correct c) (fun=> FtoI_correct d) f).
+   iexpr_eval (iint (fun=> toI_correct c) (fun=> toI_correct d) f).
   by apply: iH (isubset_refl _).
-elim: k => // k IH c d cdH iH.
+elim: k => // k IH c d cdH cF dF iH.
 rewrite split_rS.
 case Ecp : SFBI2.cmp => //.
 case Epd : SFBI2.cmp => //.
+rewrite cF dF andbT andTb.
+have [mF|//] := boolP (SFBI2.real (I.midpoint (I.bnd c d))).
+rewrite /= cF dF in mF.
 apply: etrans (_ : (iexpr_eval _ + iexpr_eval _)%R = _); first by [].
-rewrite !IH //; last 2 first.
-- by move: cdH aLb iH Ecp Epd;
-     move: (I.midpoint _) => u;
-     rewrite /= /I.T.toR !SFBI2.real_correct !SFBI2.cmp_correct;
-     repeat ((case: Raux.Rcompare_spec => //; try lra) ||
-             (case : (SFBI2.toX _) => [ |?] //=)).
-- by move: cdH aLb iH Ecp Epd;
-     move: (I.midpoint _) => u;
-     rewrite /= /I.T.toR !SFBI2.real_correct !SFBI2.cmp_correct;
-     repeat ((case: Raux.Rcompare_spec => //; try lra) ||
-             (case : (SFBI2.toX _) => [ |?] //=)).
+rewrite !IH //; last 4 first.
+- by rewrite /= cF dF.
+- move: Ecp Epd cdH aLb iH.
+  rewrite /= cF dF /= !I.F'.classify_real // !SFBI2.cmp_correct //=.
+  rewrite !I.F'.classify_real //.
+  rewrite !I.F'.real_correct //=.
+  (repeat case: Raux.Rcompare_spec => //=) => //=; try lra.
+- by rewrite /= cF dF.
+- move: Ecp Epd cdH aLb iH.
+  rewrite /= cF dF /= !I.F'.classify_real // !SFBI2.cmp_correct //=.
+  rewrite !I.F'.classify_real //.
+  rewrite !I.F'.real_correct //=.
+  (repeat case: Raux.Rcompare_spec => //=) => //=; try lra.
 apply: RInt_Chasles.
   apply: ex_RInt_Chasles_1; last first.
     apply: ex_RInt_Chasles_2; last by exact: abE.
     move: aLb cdH iH.
-    rewrite /= /I.T.toR !SFBI2.real_correct !SFBI2.cmp_correct.
-    do 4 (case : (SFBI2.toX _) => [ |?] //=).
+    rewrite !SFBI2.cmp_correct /= !I.F'.classify_real //= !SFBI2.cmp_correct.
+    rewrite !I.F'.classify_real //=  !I.F'.real_correct //=.
     by repeat (case: Raux.Rcompare_spec=> //=; try lra).
-  move: (I.midpoint _) aLb cdH iH Ecp Epd => u.
-  rewrite /= /I.T.toR !SFBI2.real_correct !SFBI2.cmp_correct.
-  do 5 (case : (SFBI2.toX _) => [ |?] //=).
+  move: aLb cdH iH Ecp Epd => /=.
+  rewrite cF dF !I.F'.classify_real //=.
+  rewrite !SFBI2.cmp_correct /= !I.F'.classify_real //= .
+  rewrite  !I.F'.real_correct //=.
   by repeat (case: Raux.Rcompare_spec=> //=; try lra).
 apply: ex_RInt_Chasles_1; last first.
   apply: ex_RInt_Chasles_2; last by exact: abE.
-  move: (I.midpoint _) aLb cdH iH Ecp Epd => u.
-  rewrite /= /I.T.toR !SFBI2.real_correct !SFBI2.cmp_correct.
-  do 5 (case : (SFBI2.toX _) => [ |?] //=).
+  move: aLb cdH iH Ecp Epd => /=.
+  rewrite cF dF !I.F'.classify_real //=.
+  rewrite !SFBI2.cmp_correct /= !I.F'.classify_real //= .
+  rewrite  !I.F'.real_correct //=.
   by repeat (case: Raux.Rcompare_spec=> //=; try lra).
-move: (I.midpoint _) aLb cdH iH Ecp Epd => u.
-rewrite /= /I.T.toR !SFBI2.real_correct !SFBI2.cmp_correct.
-do 5 (case : (SFBI2.toX _) => [ |?] //=).
+move: aLb cdH iH Ecp Epd => /=.
+rewrite cF dF !I.F'.classify_real //=.
+rewrite !SFBI2.cmp_correct /= !I.F'.classify_real //= .
+rewrite  !I.F'.real_correct //=.
 by repeat (case: Raux.Rcompare_spec=> //=; try lra).
 Qed.
 
 Lemma fI_iexpr_wf_iint a b : 
-  (iexpr_wf prec (iint (fun=> FtoI_correct a)
-             (fun=> FtoI_correct b) fI)).
+  (iexpr_wf prec (iint (fun=> toI_correct a) (fun=> toI_correct b) fI)).
 Proof.
 rewrite /iexpr_wf.
 case: (_ && _) => //.
@@ -347,8 +496,7 @@ by apply: ex_RInt_ex.
 Qed.
 
 Lemma fI_iexpr_eval_RInt a b : 
-  (iexpr_eval (iint (fun=> FtoI_correct a)
-             (fun=> FtoI_correct b) fI)) =
+  (iexpr_eval (iint (fun=> toI_correct a) (fun=> toI_correct b) fI)) =
   (RInt fR (I.T.toR a) (I.T.toR b)).
 Proof.
 by rewrite /iexpr_eval.
@@ -385,11 +533,14 @@ have := (@mk_iexpr_ieval_correct_r prec degree _ _ ex).
 set u := (mk_iexpr_ieval prec degree ex).
 have -> : u = eval_expr by vm_cast_no_check (refl_equal u).
 apply; rewrite {u}/ex.
-by exact: RInt_split_r depth  (SFBI2.fromZ 0) (SFBI2.fromZ 1) fI
-         (refl_equal _) (fI_iexpr_wf_iint (SFBI2.fromZ 0) (SFBI2.fromZ 1)).
+- by exact: RInt_split_r depth  (SFBI2.fromZ 0) (SFBI2.fromZ 1) fI
+         (refl_equal _)  (refl_equal _)  (refl_equal _)
+         (fI_iexpr_wf_iint (SFBI2.fromZ 0) (SFBI2.fromZ 1)).
 - by [].
 - by l_tac.
-by r_tac.
-Qed.
+- by r_tac.
+- by [].
+by [].
+Time Qed.
 
 End Examples.

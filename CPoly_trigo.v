@@ -1,6 +1,6 @@
 From mathcomp Require Import all_ssreflect all_algebra.
-Require Import Reals Coquelicot.Coquelicot Interval.Interval_tactic Psatz CPoly Rstruct.
-Require Import filter_Rlt generalities atan_asin_acos.
+Require Import Reals Coquelicot.Coquelicot Interval.Tactic Psatz CPoly.
+Require Import Rstruct filter_Rlt generalities atan_asin_acos.
 
 Import GRing.Theory.
 

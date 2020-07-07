@@ -4609,7 +4609,7 @@ Definition iconstq (v1 : Z) (v2 : Z) :=
 Definition iintz (v1 v2 : Z) := 
    iint (fun prec => I.fromZ_correct prec v1) 
         (fun prec => I.fromZ_correct prec v2).
-        
+
 Definition iintq (v1 v2 v3 v4 : Z) :=
   iint (fun prec => 
      div_correct_prec prec (I.fromZ_correct prec v1) (I.fromZ_correct prec v2))

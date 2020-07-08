@@ -1,5 +1,5 @@
 From mathcomp Require Import all_ssreflect all_algebra.
-Require Import Psatz under CPoly Poly_exec Poly_complements seq_base.
+Require Import Psatz CPoly Poly_exec Poly_complements seq_base.
 
 Set Implicit Arguments.
 Unset Strict Implicit.
@@ -90,7 +90,7 @@ Lemma Cshaw_spec (k : seq R) r :
    Cshaw k r = (CPoly k).[r].
 Proof.
 rewrite /Cshaw /CPoly.
-rewrite horner_sum; under eq_bigr ? rewrite hornerZ.
+rewrite horner_sum; under eq_bigr do rewrite hornerZ.
 have [n sLn] := ubnP (size k).
 elim: n k sLn => // n IH [|a [|b k]] H.
 - by rewrite big_ord0 /= !rm0.
@@ -128,13 +128,9 @@ Proof. by elim: l => //= a l ->. Qed.
 
 Lemma opp_Cpoly_spec (l : seq R): CPoly (opp_Cpoly l) = -(CPoly l). 
 Proof.
-rewrite -sumrN.
-under eq_bigr ? rewrite -coef_Poly.
-rewrite polybase_widen; last exact: size_Poly.
-rewrite lopp_poly_spec.
-rewrite -(@polybase_widen _ _ _ (size l)).
-  by apply: eq_bigr => i _; rewrite coefN coef_Poly scaleNr.
-by rewrite size_opp size_Poly.
+rewrite -sumrN /CPoly size_opp_Cpoly /=.
+apply: eq_bigr => i _.
+by rewrite -scaleNr -coef_Poly lopp_poly_spec coefN coef_Poly.
 Qed.
 
 Definition scal_Cpoly := lscal_poly.
@@ -145,7 +141,7 @@ Proof. by elim: l => //=  _ l ->. Qed.
 Lemma scal_Cpoly_spec k (l : seq R): CPoly (scal_Cpoly k l) = k *: (CPoly l).
 Proof.
 rewrite /scal_Cpoly /CPoly.
-under eq_bigr ? rewrite -coef_Poly.
+under eq_bigr do rewrite -coef_Poly.
 rewrite lscal_poly_spec //=.
 rewrite size_scal_Cpoly scaler_sumr //.
 apply: eq_bigr => i _ //=.
@@ -166,15 +162,15 @@ Lemma add_Cpoly_spec (l k: seq R):
 	CPoly (add_Cpoly l k) = (CPoly l) + (CPoly k).
 Proof.
 rewrite /add_Cpoly /CPoly.
-under eq_bigr ? rewrite -coef_Poly.
+under eq_bigr do rewrite -coef_Poly.
 rewrite polybase_widen; last exact: size_Poly.
 rewrite ladd_poly_spec.
 rewrite sumrA.
 congr (_ + _).
 	rewrite -(@polybase_widen _ _ _ (size l)); last exact: size_Poly.
-	by under eq_bigr ? rewrite !coef_Poly.
+	by under eq_bigr do rewrite !coef_Poly.
 rewrite -(@polybase_widen _ _ _ (size k)); last exact: size_Poly.
-by under eq_bigr ? rewrite !coef_Poly.
+by under eq_bigr do rewrite !coef_Poly.
 Qed.
 
 Definition sub_Cpoly := lsub_poly.
@@ -191,12 +187,12 @@ Lemma sub_Cpoly_spec (l k: seq R):
 	CPoly (sub_Cpoly l k) = (CPoly l) - (CPoly k).
 Proof.
 rewrite /sub_Cpoly /CPoly.
-under eq_bigr ? rewrite -coef_Poly.
+under eq_bigr do rewrite -coef_Poly.
 rewrite polybase_widen; last exact: size_Poly.
 rewrite lsub_poly_spec sumrA.
 congr (_ + _).
 	rewrite -(@polybase_widen _ _ _ (size l)); last exact: size_Poly.
-  by under eq_bigr ? rewrite !coef_Poly.
+  by under eq_bigr do rewrite !coef_Poly.
 rewrite -sumrN.
 rewrite -(@polybase_widen _ _ _ (size k)).
    by apply: eq_bigr => i _; rewrite coefN coef_Poly scaleNr.
@@ -212,12 +208,9 @@ Lemma scl2_Cpoly_spec (l : seq R):
   CPoly (scl2_Cpoly l) = CPoly l *+ 2.
 Proof.
 rewrite -sumrMnl.
-under eq_bigr ? rewrite -coef_Poly.
-rewrite polybase_widen; last exact: size_Poly.
-rewrite -(@polybase_widen _ _ _ (size l)).
-  apply: eq_bigr => i _.
-  by rewrite coef_Poly (nth_map 0) // scalerMnl.
-by rewrite -[size l]size_scl2_Cpoly size_Poly.
+rewrite /CPoly size_scl2_Cpoly.
+apply: eq_bigr => i _.
+by rewrite -coef_Poly coef_Poly (nth_map 0) // scalerMnl.
 Qed.
 
 Fixpoint CP2P_rec l (p1 p2 : seq R) :=

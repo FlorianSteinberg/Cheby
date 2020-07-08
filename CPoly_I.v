@@ -1,5 +1,5 @@
 From mathcomp Require Import all_ssreflect all_algebra.
-Require Import String Rstruct Reals Psatz under.
+Require Import String Rstruct Reals Psatz.
 Require Import Poly_complements CPoly CPoly_exec CPoly_interpolation.
 Require Import Coquelicot.Coquelicot.
 Require Import CFun_interpolation.
@@ -800,10 +800,9 @@ move => ineq.
 rewrite P2CP_spec; last first.
   by rewrite unitfE; apply /eqP; rewrite natr_INR; toR; lra.
 rewrite /CPoly size_map size_iota.
-under eq_bigr ? rewrite (nth_map 0%nat); last by rewrite size_iota.
-under eq_bigr ? rewrite nth_iota.
-rewrite -dsprod_cheby_eq //.
-by apply /leq_trans; first exact/ size_Poly.
+rewrite [RHS](@dsprod_cheby_eq n); last by apply: leq_trans (size_Poly _ ) _.
+apply: eq_bigr => i _.
+by rewrite (nth_map 0%nat) ?nth_iota // size_iota.
 Qed.
 
 Definition cheby_coefs n j :=
@@ -817,12 +816,12 @@ intros.
 rewrite dsprod_coef_interpolation //.
 rewrite /cheby_coefs /value_list /Tvalue_list.
 congr (_ * _) => //.
-under [LHS] eq_bigr ? rewrite (nth_map 0%nat); last by rewrite size_iota.
-under [LHS] eq_bigr ? rewrite Tvalues_correct nth_iota.
 rewrite [RHS](big_nth 0%RR) big_mkord size_cheby_nodes.
 apply eq_bigr => i _.
+rewrite (nth_map 0%nat); last by rewrite size_iota.
+rewrite Tvalues_correct nth_iota //.
 rewrite (nth_map 0%RR); last by rewrite size_cheby_nodes.
-by congr (_ * _); last by rewrite mu_cheby_nodes // add0n.
+by rewrite mu_cheby_nodes // add0n.
 Qed.
 
 Definition cheby_coef_list n :=
@@ -1218,9 +1217,9 @@ intros.
 rewrite sdsprod_coef_interpolation_pT //.
 rewrite /scheby_coefs /svalue_list /Tvalue_list.
 congr (_ * _) => //.
-under [LHS] eq_bigr ? rewrite (nth_map 0%nat); last by rewrite size_iota.
-under [LHS] eq_bigr ? rewrite Tvalues_correct nth_iota.
 apply eq_bigr => i _.
+rewrite (nth_map 0%nat); last by rewrite size_iota.
+rewrite Tvalues_correct nth_iota //.
 rewrite (nth_map 0%RR); last by rewrite size_scheby_nodes.
 congr (_ * _); last by rewrite mu_cheby_nodes // add0n.
 by rewrite /scheby_nodes (nth_map 0%RR) // size_cheby_nodes.
@@ -1244,7 +1243,7 @@ rewrite /CPolyab size_map size_iota.
 suff eq: forall i, (i < n.+1)%nat -> 
       (scheby_coef_list n.+1)`_i = 
        sdsprod_coef a b (interpolation f (scheby_nodes a b n.+1)) n i.
-	by under eq_bigr ? rewrite eq.
+  by apply: eq_bigr => i _; rewrite eq.
 move => i ineq.
 rewrite (nth_map 0%nat); last by rewrite size_iota.
 rewrite nth_iota //.

@@ -1,5 +1,5 @@
 From mathcomp Require Import all_ssreflect all_algebra.
-Require Import under Psatz Poly_complements seq_base.
+Require Import Psatz Poly_complements seq_base.
 
 Set Implicit Arguments.
 Unset Strict Implicit.
@@ -350,7 +350,7 @@ elim/induc2: n => [ | | n ih1 ih2]; first by rewrite pT0 size_poly1.
 suff/leP leq: (n.+3 <= size ('T_n.+2: {poly R}))%nat by have/leP leq':= size_pT_leq R (n.+2); lia.
 apply: gtn_size.
 rewrite pTSS coefD coef_opp_poly -scaler_nat -scalerAl coefZ coef_mul_poly.
-under eq_bigr ? rewrite coefX.
+under eq_bigr do rewrite coefX.
 rewrite big_ord_recl big_ord_recl big1; last by move => i _ /=; rewrite !rm0.
 rewrite !lift0 -{2 }[ord0.+1]add1n !rm0 !rm1 coef_pTn (coef_pT R n) /=.
 have ->: (n < n.+2)%N || odd (n + n.+2) by apply /orP; left.
@@ -379,7 +379,7 @@ split=> [->//|/eqP].
 rewrite -(@polybase_widen _ (fun i => 'T_i) _ _ (leq_maxl (size p) (size q))).
 rewrite -(@polybase_widen _ (fun i => 'T_i) _ _ (leq_maxr (size p) (size q))).
 rewrite -subr_eq0 -sumrB.
-under eq_bigr ? rewrite -scalerBl -coefB; move => /eqP eq.
+under eq_bigr do rewrite -scalerBl -coefB; move => /eqP eq.
 apply: subr0_eq; rewrite -polyP => i; rewrite coef0.
 have [ineq|ineq]:= (ltnP i (maxn (size p) (size q))).
 	apply: seqbase_coef_eq0; [exact: size_pT | | exact: eq | exact ineq].
@@ -726,7 +726,7 @@ Lemma deriv_sum_pT : (0 < k)%N -> [char R]%RR =i pred0 ->
 Proof.
 move=> k_gt0 Hc.
 have /GRing.charf0P Hf := Hc.
-under eq_bigr ? rewrite mulrBl scalerBl.
+under eq_bigr do rewrite mulrBl scalerBl.
 rewrite sumrB.
 rewrite big_add1.
 have <-/= := @big_add1 _ _ _ 1 k.+4.-1 xpredT (fun i => (f i / i.-1.*2%:R) *: 'T_i.-1).
@@ -734,7 +734,7 @@ rewrite big_ltn // big_ltn //.
 rewrite [\sum_(_ <= _ < _.+3) _]big_nat_recr //= fk2 mul0r scale0r addr0.
 rewrite [\sum_(_ <= _ < _.+2) _]big_nat_recr //= fk1 mul0r scale0r addr0.
 rewrite -!addrA -sumrB.
-under eq_bigr ? rewrite -!scalerA -scalerBr.
+under eq_bigr do rewrite -!scalerA -scalerBr.
 rewrite !derivE !deriv_pT0 -[_ *: _^`()]scalerA -derivE deriv_pT1 //.
 rewrite addrA -scalerDl -mulrDr -mulr2n -mulr_natl mulfV ?Hf // mulr1.
 rewrite (big_morph _ (@derivD R) (@deriv0 R)).
@@ -753,7 +753,7 @@ Lemma deriv_sum_pTab : (0 < k)%N -> a != b -> [char R]%RR =i pred0 ->
 Proof.
 move => k_gt0 aDb Hc.
 have /GRing.charf0P Hf := Hc.
-under eq_bigr ? rewrite mulrBr mulrBl scalerBl.
+under eq_bigr do rewrite mulrBr mulrBl scalerBl.
 rewrite sumrB.
 rewrite big_add1.
 have <-/= := @big_add1 _ _ _ 1 k.+4.-1 xpredT 
@@ -762,7 +762,7 @@ rewrite big_ltn // big_ltn //.
 rewrite [\sum_(_ <= _ < _.+3) _]big_nat_recr //= fk2 mulr0 mul0r scale0r addr0.
 rewrite [\sum_(_ <= _ < _.+2) _]big_nat_recr //= fk1 mulr0 mul0r scale0r addr0.
 rewrite -!addrA -sumrB.
-under eq_bigr ? rewrite -!scalerA -scalerBr.
+under eq_bigr do rewrite -!scalerA -scalerBr.
 rewrite !derivE.
 rewrite addrA -scalerDl mulrA -mulrDr -mulrA mulrC.
 rewrite -[_ *:  'T^(a,b)_1^`()]scalerA.

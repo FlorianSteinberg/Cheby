@@ -1,5 +1,5 @@
 From mathcomp Require Import all_ssreflect all_algebra.
-Require Import under Poly_complements.
+Require Import Poly_complements.
 
 Set Implicit Arguments.
 Unset Strict Implicit.

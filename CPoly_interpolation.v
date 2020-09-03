@@ -58,7 +58,8 @@ move=> Hu; rewrite /prodl undup_id //.
 elim: l Hu => //= a l IH /andP[aNIl /IH IH1].
 rewrite inE; case: eqP => /= [Ha _| /eqP aDi /IH1 IH2].
   rewrite Ha !big_cons eqxx /=.
-  congr (_ * _); rewrite [RHS]big_seq_cond [RHS](eq_bigl (fun i => (i \in l) && true)).
+  congr (_ * _); rewrite [RHS]big_seq_cond 
+                         [RHS](eq_bigl (fun i => (i \in l) && true)).
     by rewrite -big_seq_cond.
   by move=> j; case: eqP => // ->; rewrite (negPf aNIl).
 by rewrite !big_cons eq_sym (negPf aDi) /= IH2 mulrCA.
@@ -467,10 +468,10 @@ Hypothesis cont_f :
 Definition ierror x := f x - (interpolation f l).[x].
 
 Lemma ierror_val x :
-  a <= x <= b ->
-  ierror x != 0 -> exists z, 
-                      a <= z <= b /\
-                      ierror x = (1 / (n `! %:R)) * (Derive_n f n z) * (prodl l).[x].
+  a <= x <= b -> ierror x != 0 -> 
+  exists z, 
+    a <= z <= b /\
+    ierror x = (1 / (n `! %:R)) * (Derive_n f n z) * (prodl l).[x].
 Proof.
 move=> Hl Hi.
 have NZWx : (prodl l).[x] != 0.
@@ -656,7 +657,7 @@ have F : ((1 + 2 * INR x)%R * PI /
        (2 * INR n)%R) =
       ((1 + 2 * INR y)%R * PI /
        (2 * INR n)%R).
-  apply: cos_is_inj => //.
+  apply: cos_inj => //.
     split.
       by apply: Rdiv_le_0_compat; nra.
     by apply: Float.Generic_proof.Rdiv_ge_mult_pos; nra.
@@ -747,7 +748,8 @@ apply: Rmult_le_compat; last by apply: Hy; lra.
 - by apply: Rabs_pos.
 - apply: Rmult_le_compat_r; try lra.
 rewrite Rmult_1_r Rmult_1_l.
-have -> : (prodl (cheby_nodes n)).[x] = / (expn 2 n.-1)%:R * ((pT _ n).[x]).  rewrite cheby_prodl /prodl undup_id ?uniq_cheby_nodes //.
+have -> : (prodl (cheby_nodes n)).[x] = / (expn 2 n.-1)%:R * ((pT _ n).[x]).
+  rewrite cheby_prodl /prodl undup_id ?uniq_cheby_nodes //.
   rewrite hornerE.
   set xx : R := _.[x]; set yy : R :=  _%:R.
   by toR; field; rewrite /yy; lra.
@@ -766,7 +768,8 @@ Section ScaleBound.
 Variable a b : R.
 Hypothesis aLb : a < b.
 
-Definition scheby_nodes (n : nat) := [seq ((b - a) * i + a + b) / 2 | i <- cheby_nodes n].
+Definition scheby_nodes (n : nat) :=
+  [seq ((b - a) * i + a + b) / 2 | i <- cheby_nodes n].
 
 Lemma size_scheby_nodes n : size (scheby_nodes n) = n.
 Proof. by rewrite size_map size_cheby_nodes. Qed.
@@ -799,7 +802,8 @@ move=> i j; nra.
 Qed.
 
 Lemma scheby_prodl n : 
-   'T^(a,b)_n = ((expn 2 (n.*2.-1))%:R / (b - a)^+n) *:  \prod_(z <- scheby_nodes n) ('X - z%:P).
+   'T^(a,b)_n = ((expn 2 (n.*2.-1))%:R / (b - a)^+n) *:  
+                \prod_(z <- scheby_nodes n) ('X - z%:P).
 Proof.
 set p := 'T^(a,b)_n.
 have D :  b + - a != 0 by apply/eqP; lra.
@@ -859,7 +863,8 @@ Qed.
 Lemma ierror_scheby x z :
   a <= x <= b ->
   (forall y,   a <= y <= b -> Rabs (Derive_n f n y) <= z) ->
-  Rabs (ierror f (scheby_nodes a b n) x) <= ((b - a)^+n / ((expn 2 n.*2.-1 * n `!) %:R)) * z.
+  Rabs (ierror f (scheby_nodes a b n) x) <= 
+  ((b - a)^+n / ((expn 2 n.*2.-1 * n `!) %:R)) * z.
 Proof.
 move=> Hx Hy.
 have Hz : 0 <= z.
@@ -888,8 +893,8 @@ have [/eqP-> | Hc] := boolP (ierror f (scheby_nodes a b n) x == 0).
   apply/lt_0_INR/leP/neq0_lt0n/eqP/eqP.
   by rewrite muln_eq0 negb_or -!lt0n expn_gt0 fact_gt0.
 have [z1 [H1z1 ->]] := ierror_val (sym_equal (size_scheby_nodes a b n))
-         (@uniq_scheby_nodes a b aLb n) c1La bLc2 (@scheby_nodes_boundW a b aLb n)
-         deriv_f cont_f Hx Hc.
+    (@uniq_scheby_nodes a b aLb n) c1La bLc2 (@scheby_nodes_boundW a b aLb n)
+    deriv_f cont_f Hx Hc.
 rewrite !Rabs_mult Rabs_R1 Rabs_Rinv; try lra.
 rewrite Rabs_pos_eq; try lra.
 rewrite natrM.
@@ -1087,7 +1092,7 @@ rewrite -val_enum_ord big_map [LHS]/=.
 rewrite (eq_bigr (fun k : 'I_n.+1 => cos (INR i * g k) * cos (INR j * g k)))
     => [|k _]; last first.
   rewrite -!pT_Cheby; try by apply: COS_bound.
-  rewrite /Cheby acos_left_inv //.
+  rewrite /Cheby acos_cos //.
   have F2 : 0 < n.+1.*2%:R.
    rewrite natr_INR; apply/(lt_INR 0)/leP.
    apply: leq_ltn_trans (_ : i.*2 < _)%nat => //.
@@ -1996,7 +2001,8 @@ Lemma ddiff_ge b1 b2 c1 c2 f x y l :
   (x <= y) ->
   uniq (x :: y :: l) ->
   (forall i, i \in x :: y :: l -> b1 <= i <= b2) ->
-  (forall m x, (m <= (size l).+1)%nat -> b1 <= x <= b2 -> continuous (Derive_n f m) x) ->
+  (forall m x, (m <= (size l).+1)%nat -> b1 <= x <= b2 -> 
+    continuous (Derive_n f m) x) ->
   (forall x,  b1 <= x <= b2 ->  Derive_n f (size l).+1 x <= 0) ->
   (forall m x, (m <= (size l).+1)%nat -> c1 < x < c2 -> ex_derive_n f m x) ->
   ddiff f (rcons l y) <= ddiff f (rcons l x).
@@ -2020,7 +2026,8 @@ Qed.
 
 Lemma ierror_cheby_diff n f x :
  x \notin (cheby_nodes n) ->
- ierror f (cheby_nodes n) x = /INR (2 ^ n.-1) * ddiff f (rcons (cheby_nodes n) x) * ('T_n).[x].
+ ierror f (cheby_nodes n) x = /INR (2 ^ n.-1) * 
+ ddiff f (rcons (cheby_nodes n) x) * ('T_n).[x].
 Proof.
 pose RC := [comRingType of R].
 move=> xNIc.
@@ -2100,7 +2107,8 @@ Qed.
 
 Lemma ierror_scheby_diff n a b f x :
   a < b -> x \notin (scheby_nodes a b n) ->
- ierror f (scheby_nodes a b n) x = (b - a) ^+ n/INR (2 ^ n.*2.-1) * ddiff f (rcons (scheby_nodes a b n) x) * ('T^(a,b)_n).[x].
+ ierror f (scheby_nodes a b n) x = (b - a) ^+ n/INR (2 ^ n.*2.-1) * 
+ ddiff f (rcons (scheby_nodes a b n) x) * ('T^(a,b)_n).[x].
 Proof.
 pose RC := [comRingType of R].
 move=> aLb xNIc.

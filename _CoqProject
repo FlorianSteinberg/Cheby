@@ -1,6 +1,7 @@
 -R . cheby
 -arg -w -arg -notation-overridden
 -arg -w -arg -ambiguous-paths
+-arg -w -arg -notation-incompatible-format
 
 Rstruct.v
 Poly_complements.v

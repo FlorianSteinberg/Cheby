@@ -2454,7 +2454,7 @@ Variable (a b : D).
 Lemma sin_env a1 b1 : I.sin prec \is_envelope_of[a1, b1] sin.
 Proof.  by move=> *; exact: sin_correct. Qed.
 
-Fixpoint bsin b x := if b then cos x else sin x.
+Definition bsin b x := if b then cos x else sin x.
 
 Definition Ibsin b J := if b then I.cos prec J else I.sin prec J.
 
@@ -3030,7 +3030,7 @@ Notation "f ^( n )" := (Derive_n f n) (at level 2, format "f ^( n )").
 Lemma cos_env a1 b1 : I.cos prec \is_envelope_of[a1, b1] cos.
 Proof. by move=> *; exact: cos_correct. Qed.
 
-Fixpoint bcos b x := if b then sin x else cos x.
+Definition bcos b x := if b then sin x else cos x.
 
 Definition Ibcos b J := if b then I.sin prec J else I.cos prec J.
 

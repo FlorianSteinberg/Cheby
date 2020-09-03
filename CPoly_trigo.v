@@ -12,7 +12,7 @@ Lemma Cheby_0 x : -1 <= x <= 1 -> Cheby 0 x = 1.
 Proof. by rewrite /Cheby Rmult_0_l cos_0. Qed.
 
 Lemma Cheby_1 x : -1 <= x <= 1 -> Cheby 1 x = x.
-Proof. by rewrite /Cheby Rmult_1_l; exact: acos_right_inv. Qed.
+Proof. by rewrite /Cheby Rmult_1_l; exact: cos_acos. Qed.
 
 Lemma Cheby_rec x n : 
   -1 <= x <= 1 ->  Cheby n.+2 x = 2 * x * Cheby n.+1 x - Cheby n x.
@@ -25,7 +25,7 @@ have-> : (INR n.+2 * acos x - INR n * acos x) / 2 = acos x.
   rewrite !S_INR; field.
 have-> : (INR n.+2 * acos x + INR n * acos x) / 2 = INR n.+1 * acos x.
   rewrite !S_INR; field.
-by rewrite acos_right_inv.
+by rewrite cos_acos.
 Qed.
 
 Local Open Scope ring_scope.
@@ -44,9 +44,10 @@ Qed.
 End Cheby_rec.
 
 Lemma Cheby_cos n a : 0 <= a <= PI -> Cheby n (cos a) = cos ((INR n) * a).
-Proof. move=> *; rewrite /Cheby acos_left_inv //. Qed.
+Proof. move=> *; rewrite /Cheby acos_cos //. Qed.
 
-Lemma cos_add_INR a n : cos (a + INR n * PI) = if Nat.even n then cos a else -cos a.
+Lemma cos_add_INR a n :
+  cos (a + INR n * PI) = if Nat.even n then cos a else -cos a.
 Proof.
 elim: n => [|n IH]; first by rewrite /= Rmult_0_l Rplus_0_r.
 rewrite S_INR Rmult_plus_distr_r Rmult_1_l -Rplus_assoc.
@@ -57,7 +58,7 @@ Qed.
 Lemma Cheby_compi m n a : -1 <= a <= 1 -> Cheby n (Cheby m a) = Cheby (n * m) a.
 Proof.
 move=> Ha.
-have U := acos_bound _ Ha.
+have U := acos_bound a.
 rewrite /Cheby mult_INR Rmult_assoc.
 set v := _ * acos a.
 have HP := PI2_1;
@@ -79,8 +80,8 @@ rewrite Rmult_plus_distr_l -Rmult_assoc -mult_INR [RHS]cos_add_INR.
 rewrite Nat.even_mul orbC.
 rewrite cos_add_INR.
 have [kE|kO] := boolP (Nat.even k).
-  by rewrite acos_left_inv.
-rewrite /= acos_opp acos_left_inv //.
+  by rewrite acos_cos.
+rewrite /= acos_opp acos_cos //.
 rewrite (_ : INR n * (PI - r) = - (INR n * r) + INR n * PI); try ring.
 by rewrite cos_add_INR cos_neg.
 Qed.

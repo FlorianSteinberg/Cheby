@@ -58,7 +58,7 @@ suffices: size (cons_poly (a - b) (p - q)) = 0%nat.
 	case: nilP => //.
 	rewrite -polyseq0 => /poly_inj /subr0_eq ->.
 	by case: eqP => // /subr0_eq -> //.
-rewrite cons_poly_def mulrBl polyC_sub.
+rewrite cons_poly_def mulrBl polyCB.
 rewrite addrAC addrA -cons_poly_def eq.
 by rewrite cons_poly_def addrK subrr polyseq0.
 Qed.

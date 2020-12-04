@@ -77,7 +77,7 @@ Proof.
 elim: q1 q2 => [/= q2 H|a q1 IH [/Cb_eq0->//|b q2]]; first by rewrite Cb_eq0.
 rewrite /= !cons_poly_def => H.
 have H1 : (Poly q1 - Poly q2) * 'X + (a - b)%:P = 0.
-  by rewrite polyC_sub mulrBl addrAC addrA H addrK subrr.
+  by rewrite polyCB mulrBl addrAC addrA H addrK subrr.
 have := size_MXaddC (Poly q1 - Poly q2) (a - b).
 rewrite {}H1 size_poly0; case: eqP => // /subr0_eq/IH<-.
 by case: eqP => // /subr0_eq <-.

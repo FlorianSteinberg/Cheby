@@ -562,7 +562,7 @@ have F : (n < size ('T_n : {poly R}))%nat by rewrite size_pT //; apply/lregP.
 rewrite (bigD1 (Ordinal F)) //= big1 => [|i /eqP/val_eqP /= H1]; last first.
   rewrite coefZ exprDn coef_sum big1 => [|j _]; first by rewrite rm0.
   rewrite -mulr_natl -polyC_exp mulrCA mulrC.
-  rewrite rTA alg_polyC -polyC_mul coefCM exprZn coefZ.
+  rewrite rTA alg_polyC -polyCM coefCM exprZn coefZ.
   rewrite coefXn.
   have : (i < n.+1)%nat.
     by rewrite -[n.+1](@size_pT R) //; apply/lregP.
@@ -579,7 +579,7 @@ rewrite big_ord_recl /= big1 => [|i _].
   by congr ((_ ^ _)%:R / _); rewrite -addnn; case: (n).
 rewrite [bump _ _]add1n.
 rewrite -mulr_natl -polyC_exp mulrCA mulrC.
-rewrite rTA alg_polyC -polyC_mul coefCM exprZn coefZ coefXn.
+rewrite rTA alg_polyC -polyCM coefCM exprZn coefZ coefXn.
 case: i => ii /= _; case: (n) => [|nn].
   by rewrite bin0n !rm0.
 have : (nn.+1 - ii.+1 < nn.+1)%nat.

@@ -3,7 +3,9 @@ Require Import Coquelicot.Coquelicot.
 From mathcomp Require Import all_ssreflect.
 Require Import CPoly_I.
 From Bignums Require Import BigZ.
-Import Rtrigo_def Rdefinitions Rpower R_sqrt Ratan.
+Import Rtrigo_def Rdefinitions Rpower Rpow_def R_sqrt Ratan.
+
+Notation "x ^ y" := (pow x y) : R_scope.
 
 Coercion fromZ := SFBI2.fromZ.
 
@@ -78,10 +80,8 @@ r_tac.
 Qed.
 
 Definition fI := 
-  ('x * 'x * 'x * 'x * 'x * (1 - 'x) * (1 - 'x) * (1 - 'x) *
-                            (1 - 'x) * (1 - 'x) * (1 - 'x) *
-      (c(197) + c(462) * 'x * 'x))
-     / (c(530) * (1 + 'x * 'x))%fexpr.
+  ('x ^ 5  * (1 - 'x) ^6 * (c(197) + c(462) * 'x ^ 2))
+     / (c(530) * (1 + 'x ^ 2))%fexpr.
 
 Definition ex2 := (RInt[0,1](fI) + c(333,106))%iexpr.
 
@@ -97,8 +97,7 @@ Eval lazy iota delta
    iconstz iconstq] beta in iexpr_eval ex2.
 
 Definition fR := (fun x : R =>
-   (x * x * x * x * x * (1 - x) * (1 - x) * (1 - x) * (1 - x) * (1 - x) *
-    (1 - x) * (197 + 462 * x * x) / (530 * (1 + x * x))))%R.
+   (x ^ 5 * (1 - x) ^ 6 * (197 + 462 * x ^ 2) / (530 * (1 + x ^ 2))))%R.
 
 Lemma ex_RInt_ex a b : ex_RInt fR a b.
 Proof.
@@ -512,8 +511,6 @@ Definition eval_expr :=
    mk_iexpr_ieval prec degree
      (split_r depth (SFBI2.fromZ 0) (SFBI2.fromZ 1) fI).
 
-Print eval_expr.
-
 Lemma minus_R a b c d : a - d <= c <= b - d ->  a <= c + d <= b.
 Proof. by lra. Qed.
 
@@ -528,17 +525,151 @@ rewrite -fI_iexpr_eval_RInt.
 rewrite -(@eval_split_r depth); last 2 first.
 - by [].
 - by apply: fI_iexpr_wf_iint.
-set ex := split_r _ _ _ _.
-have := (@mk_iexpr_ieval_correct_r prec degree _ _ ex).
-set u := (mk_iexpr_ieval prec degree ex).
-have -> : u = eval_expr by vm_cast_no_check (refl_equal u).
-apply; rewrite {u}/ex.
-- by exact: RInt_split_r depth  (SFBI2.fromZ 0) (SFBI2.fromZ 1) fI
-         (refl_equal _)  (refl_equal _)  (refl_equal _)
-         (fI_iexpr_wf_iint (SFBI2.fromZ 0) (SFBI2.fromZ 1)).
+- set ex := split_r _ _ _ _.
+  have := (@mk_iexpr_ieval_correct_r prec degree _ _ ex).
+  set u := (mk_iexpr_ieval prec degree ex).
+  have -> : u = eval_expr by vm_cast_no_check (refl_equal u).
+  apply; rewrite {u}/ex.
+  - by exact: RInt_split_r depth  (SFBI2.fromZ 0) (SFBI2.fromZ 1) fI
+           (refl_equal _)  (refl_equal _)  (refl_equal _)
+           (fI_iexpr_wf_iint (SFBI2.fromZ 0) (SFBI2.fromZ 1)).
+  - by [].
+  - by l_tac.
+  by r_tac.
 - by [].
-- by l_tac.
-- by r_tac.
+by [].
+Time Qed.
+
+Definition gI := (c(4) / (1 + 'x ^ 2))%fexpr.
+
+Definition gR x := (4 / (1 + x ^ 2))%R.
+
+Lemma gI_iexpr_eval_RInt a b : 
+  (iexpr_eval (iint (fun=> toI_correct a) (fun=> toI_correct b) gI)) =
+  (RInt gR (I.T.toR a) (I.T.toR b)).
+Proof.
+by rewrite /iexpr_eval.
+Qed.
+
+Lemma ex_RInt_gex a b : ex_RInt gR a b.
+Proof.
+apply: ex_RInt_continuous => z _.
+repeat (apply: continuous_mult || apply: continuous_plus ||
+          apply: continuous_id || apply: continuous_minus ||
+          apply: continuous_const || apply: continuous_opp
+          || apply: Coquelicot.continuous_Rinv_comp).
+by nra.
+Qed.
+
+Lemma gI_iexpr_wf a b c d : 
+   iexpr_wf prec (RInt[a,b,c,d](gI))%iexpr. 
+Proof.
+rewrite /iintq /iexpr_wf.
+case: (_ && _) => //; case: (SFBI2.cmp _ _) => //.
+set u := fexpr_eval _; vm_compute in u; rewrite {}/u.
+by apply: ex_RInt_gex.
+Qed.
+
+
+Definition degree1 := 10%nat.
+Definition depth1 := 4%nat.
+
+Lemma gI_iexpr_wf_iint a b : 
+  (iexpr_wf prec (iint (fun=> toI_correct a) (fun=> toI_correct b) gI)).
+Proof.
+rewrite /iexpr_wf.
+case: (_ && _) => //.
+case: (SFBI2.cmp _ _) => //.
+by apply: ex_RInt_gex.
+Qed.
+
+Definition eval_gexpr :=
+  Eval vm_compute in 
+   mk_iexpr_ieval prec degree1
+     (split_r depth1 (SFBI2.fromZ 0) (SFBI2.fromZ 1) gI).
+
+Print eval_gexpr.
+
+Lemma exgr_correct : 
+  3.141592653589793238459 <= (RInt gR 0 1)%R <= 
+  3.141592653589793238466.
+Proof.
+have <- : I.T.toR (SFBI2.fromZ 0) = 0 by [].
+have <- : I.T.toR (SFBI2.fromZ 1) = 1%R by [].
+rewrite -gI_iexpr_eval_RInt.
+rewrite -(@eval_split_r depth1); last 2 first.
+- by [].
+- by apply: gI_iexpr_wf_iint.
+- set ex := split_r _ _ _ _.
+  have := (@mk_iexpr_ieval_correct_r prec degree1 _ _ ex).
+  set u := (mk_iexpr_ieval prec degree1 ex).
+  have -> : u = eval_gexpr by vm_cast_no_check (refl_equal u).
+  apply; rewrite {u}/ex.
+  - by exact: RInt_split_r depth1  (SFBI2.fromZ 0) (SFBI2.fromZ 1) gI
+           (refl_equal _)  (refl_equal _)  (refl_equal _)
+           (gI_iexpr_wf_iint (SFBI2.fromZ 0) (SFBI2.fromZ 1)).
+  - by [].
+  - by l_tac.
+  by r_tac.
+- by [].
+by [].
+Time Qed.
+
+Definition hI := (sin(sin(x)))%fexpr.
+
+Definition hR x := (sin (sin x))%R.
+
+Lemma hI_iexpr_eval_RInt a b : 
+  (iexpr_eval (iint (fun=> toI_correct a) (fun=> toI_correct b) hI)) =
+  (RInt hR (I.T.toR a) (I.T.toR b)).
+Proof.
+by rewrite /iexpr_eval.
+Qed.
+
+
+Lemma ex_RInt_hex a b : ex_RInt hR a b.
+Proof.
+apply: ex_RInt_continuous => z _.
+apply: continuous_comp.
+apply: continuous_sin.
+apply: continuous_sin.
+Qed.
+
+Lemma hI_iexpr_wf_iint a b : 
+  (iexpr_wf prec (iint (fun=> toI_correct a) (fun=> toI_correct b) hI)).
+Proof.
+rewrite /iexpr_wf.
+case: (_ && _) => //.
+case: (SFBI2.cmp _ _) => //.
+by apply: ex_RInt_hex.
+Qed.
+
+Definition eval_hexpr :=
+  Eval vm_compute in 
+   mk_iexpr_ieval prec degree1
+     (split_r depth1 (SFBI2.fromZ 0) (SFBI2.fromZ 1) hI).
+
+Lemma exhr_correct : 
+  0.430606103120690604912376 <= (RInt hR 0 1)%R <= 
+  0.430606103120690604912378.
+Proof.
+have <- : I.T.toR (SFBI2.fromZ 0) = 0 by [].
+have <- : I.T.toR (SFBI2.fromZ 1) = 1%R by [].
+rewrite -hI_iexpr_eval_RInt.
+rewrite -(@eval_split_r depth1); last 2 first.
+- by [].
+- by apply: hI_iexpr_wf_iint.
+- set ex := split_r _ _ _ _.
+  have := (@mk_iexpr_ieval_correct_r prec degree1 _ _ ex).
+  set u := (mk_iexpr_ieval prec degree1 ex).
+  have -> : u = eval_hexpr by vm_cast_no_check (refl_equal u).
+  apply; rewrite {u}/ex.
+  - by exact: RInt_split_r depth1  (SFBI2.fromZ 0) (SFBI2.fromZ 1) hI
+           (refl_equal _)  (refl_equal _)  (refl_equal _)
+           (hI_iexpr_wf_iint (SFBI2.fromZ 0) (SFBI2.fromZ 1)).
+  - by [].
+  - by l_tac.
+  by r_tac.
 - by [].
 by [].
 Time Qed.

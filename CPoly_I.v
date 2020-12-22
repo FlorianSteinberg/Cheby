@@ -2178,6 +2178,43 @@ by apply/eqP; toR; lra.
 Qed.
 
 (*****************************************************************************)
+(* power    Chebyshev model                                                  *)
+(*****************************************************************************)
+
+Fixpoint pow_cms n a b (p : positive) (c : cms) :=
+  match p with 
+  | xH => c
+  | xI p1 => let c1 := pow_cms n a b p1 c in
+              mul_cms n a b c 
+                (pow_cms n a b p1 (mul_cms n a b c c))
+  | xO p1 => pow_cms n a b p1 (mul_cms n a b c c)
+  end.
+
+Lemma pow_cms_correct n a b p c f :
+   F.cmp a b = Xlt -> F.real a -> F.real b ->
+   cms_correct n a b f c ->
+   cms_correct n a b (fun x => (f x) ^ (Pos.to_nat p))%R (pow_cms n a b p c).
+Proof.
+move=> aLb aF bF.
+have a_in_Ia : D2R a \contained_in I.bnd a a by apply: FtoI_correct.
+have b_in_Ib : D2R b \contained_in I.bnd b b by apply: FtoI_correct.
+elim: p f c => [p IH f c|p IH f c|f c H]; last first.
+- by apply: cms_correct_ext H => /= x _; lra.
+- rewrite Pos2Nat.inj_xO => H.
+  apply: cms_correct_ext; last first.
+    by apply/IH/mul_cms_correct => //; exact: H.
+  move=> x _.
+  by rewrite pow_mult //= Rmult_1_r.
+rewrite Pos2Nat.inj_xI => H.
+apply: cms_correct_ext; last first.
+  rewrite /=; apply: mul_cms_correct => //.
+    exact: H.
+  apply: IH => //.
+  apply: mul_cms_correct => //; exact: H.
+by move=> x _; rewrite /= !pow_add /= Rmult_1_r Rpow_mult_distr.
+Qed.
+
+(*****************************************************************************)
 (* Scale 2  Chebyshev model                                                  *)
 (*****************************************************************************)
 
@@ -4366,6 +4403,7 @@ Notation D := F.type.
 
 Inductive fexpr :=
   fmul  (_ _ : fexpr) |
+  fpow  (_ : fexpr) (p : positive) |
   fdiv  (_ _ : fexpr) |
   fadd  (_ _ : fexpr) |
   fsub  (_ _ : fexpr) |
@@ -4387,6 +4425,7 @@ Delimit Scope fexpr_scope with fexpr.
 Fixpoint fexpr_eval e :=
 (match e with
 | fmul  e1 e2 => (fun u => (fexpr_eval e1 u) *  (fexpr_eval e2 u))
+| fpow  e1 p => (fun u => (fexpr_eval e1 u) ^ Pos.to_nat p)%R
 | fdiv  e1 e2 => (fun x => (fexpr_eval e1 x) /  (fexpr_eval e2 x))%R
 | fadd  e1 e2 => (fun x => (fexpr_eval e1 x) +  (fexpr_eval e2 x))
 | fsub  e1 e2 => (fun x => (fexpr_eval e1 x) -  (fexpr_eval e2 x))
@@ -4405,6 +4444,7 @@ end)%R.
 Fixpoint fexpr_ieval e :=
 match e with
 | fmul  e1 e2 => (fun i => mul (fexpr_ieval e1 i) (fexpr_ieval e2 i))
+| fpow   e  p => (fun i => I.power_pos prec (fexpr_ieval e i) p)
 | fdiv  e1 e2 => (fun i => div (fexpr_ieval e1 i) (fexpr_ieval e2 i))
 | fadd  e1 e2 => (fun i => add (fexpr_ieval e1 i) (fexpr_ieval e2 i))
 | fsub  e1 e2 => (fun i => sub (fexpr_ieval e1 i) (fexpr_ieval e2 i))
@@ -4426,6 +4466,11 @@ Proof.
 elim: e i x.
 - move=> e1 IH1 e2 IH2 i x Hx.
   by apply: mul_correct (IH1 _ _ _) (IH2 _ _ _).
+- move=> e IH p i x Hx /=.
+  rewrite -{1}(Pos2Nat.id p).
+  apply: power_pos_correct => //.
+    by apply/ltP/Pos2Nat.is_pos.
+  by apply: IH.
 - move=> e1 IH1 e2 IH2 i x Hx.
   by apply: div_correct (IH1 _ _ _) (IH2 _ _ _).
 - move=> e1 IH1 e2 IH2 i x Hx.
@@ -4450,6 +4495,8 @@ match e with
 | fmul  e1 e2 =>
     mul_cms n a b (fexpr_cms n b1 vn zn z2n a b vl1 vl2 vl3 e1)
                   (fexpr_cms n b1 vn zn z2n a b vl1 vl2 vl3 e2)
+| fpow  e p  =>
+    pow_cms n a b p (fexpr_cms n b1 vn zn z2n a b vl1 vl2 vl3 e)
 | fdiv  e1 e2 =>
     div_cms a b n vn vl2 vl1
         (fexpr_cms n b1 vn zn z2n a b vl1 vl2 vl3 e1)
@@ -4508,6 +4555,9 @@ elim: e a b aF bF vl3 aLb vl3E.
 - move=> e1 IH1 e2 IH2 a b vl3 aLb aF bF vl3E.
   apply: mul_cms_correct => //; first by apply: IH1.
   by apply: IH2.
+- move=> e IH p a b vl3 aLb aF bF vl3E /=.
+  apply: pow_cms_correct => //.
+  by apply: IH.
 - move=> e1 IH1 e2 IH2 a b vl3 aLb aF bF vl3E.
   apply: div_cms_correct v2nE vl2E _ _ _ => //; first by apply: IH1.
   by apply: IH2.
@@ -4584,6 +4634,7 @@ Notation D := F.type.
 
 Inductive iexpr :=
   imul  (_ _ : iexpr) |
+  ipow  (_ : iexpr) (_ : positive) |
   idiv  (_ _ : iexpr) |
   iadd  (_ _ : iexpr) |
   isub  (_ _ : iexpr) |
@@ -4621,6 +4672,7 @@ Delimit Scope iexpr_scope with iexpr.
 Fixpoint iexpr_eval e :=
 (match e with
 | imul e1 e2 => (iexpr_eval e1) *  (iexpr_eval e2)
+| ipow e  p => (iexpr_eval e) ^  (Pos.to_nat p)
 | idiv e1 e2 => (iexpr_eval e1) /  (iexpr_eval e2)
 | iadd e1 e2 => (iexpr_eval e1) +  (iexpr_eval e2)
 | isub e1 e2 => (iexpr_eval e1) -  (iexpr_eval e2)
@@ -4638,6 +4690,7 @@ end)%R.
 Fixpoint iexpr_icheck e :=
 (match e with
 | imul e1 e2 => (iexpr_icheck e1) || (iexpr_icheck e2)
+| ipow e p => (iexpr_icheck e)
 | idiv e1 e2 => (iexpr_icheck e1) || (iexpr_icheck e2)
 | iadd e1 e2 => (iexpr_icheck e1) || (iexpr_icheck e2)
 | isub e1 e2 => (iexpr_icheck e1) || (iexpr_icheck e2)
@@ -4658,6 +4711,7 @@ Definition mk_wf e1 e2 f1 f2 :=
 Fixpoint iexpr_wf e :=
 (match e with
 | imul e1 e2 => mk_wf e1 e2 (iexpr_wf e1) (iexpr_wf e2)
+| ipow e p => (iexpr_wf e)
 | idiv e1 e2 => mk_wf e1 e2 (iexpr_wf e1) (iexpr_wf e2)
 | iadd e1 e2 => mk_wf e1 e2 (iexpr_wf e1) (iexpr_wf e2)
 | isub e1 e2 => mk_wf e1 e2 (iexpr_wf e1) (iexpr_wf e2)
@@ -4698,6 +4752,8 @@ match e with
 | imul e1 e2 => mul 
          (iexpr_ieval n b1 vn v2n zn z2n (vl1 : seq ID) e1) 
          (iexpr_ieval n b1 vn v2n zn z2n (vl1 : seq ID) e2)
+| ipow e p => I.power_pos prec 
+         (iexpr_ieval n b1 vn v2n zn z2n (vl1 : seq ID) e) p
 | idiv e1 e2 => div
          (iexpr_ieval n b1 vn v2n zn z2n (vl1 : seq ID) e1) 
          (iexpr_ieval n b1 vn v2n zn z2n (vl1 : seq ID) e2)
@@ -4746,6 +4802,11 @@ move=> b1E n2H n22H zn2 z2nE vl1E.
 elim: e => //.
 - move=> e1 IH1 e2 IH2 /mk_wf_correct[e1W e2W].
   by apply: mul_correct (IH1 _) (IH2 _).
+- move=> e IH p eW /=.
+  rewrite -{1}(Pos2Nat.id p).
+  apply: power_pos_correct => //=.
+    by apply/ltP/Pos2Nat.is_pos.
+  by apply: IH.
 - move=> e1 IH1 e2 IH2 /mk_wf_correct[e1W e2W].
   by apply: div_correct (IH1 _) (IH2 _).
 - move=> e1 IH1 e2 IH2 /mk_wf_correct[e1W e2W].
@@ -4886,6 +4947,7 @@ End CPoly_interval.
 
 Declare Scope fexpr_scope.
 Notation "a * b" := (fmul a b) : fexpr_scope.
+Notation "a ^ b" := (fpow a b) : fexpr_scope.
 Notation "a / b" := (fdiv a b) : fexpr_scope.
 Notation "a + b" := (fadd a b) : fexpr_scope.
 Notation "a - b" := (fsub a b) : fexpr_scope.
@@ -4922,6 +4984,7 @@ Delimit Scope fexpr_scope with fexpr.
 
 Declare Scope iexpr_scope.
 Notation "a * b" := (imul a b) : iexpr_scope.
+Notation "a ^ b" := (ipow a b) : iexpr_scope.
 Notation "a / b" := (idiv a b) : iexpr_scope.
 Notation "a + b" := (iadd a b) : iexpr_scope.
 Notation "a - b" := (isub a b) : iexpr_scope.
@@ -5240,14 +5303,8 @@ End Solver.
        a1/b1 <= x <= a2/b2 -> a3/b3 <= f x <= a4/b4
 *)
 
-Lemma Rpower_IZR a b :
-   Rpower (IZR (Zpos a)) (IZR (Zpos b)) = IZR (Zpos a ^ Zpos b).
-Proof.
-by rewrite -powerRZ_Rpower ?Raux.IZR_Zpower_pos //; apply: RIneq.IZR_lt.
-Qed.
-
 Ltac cheby_solve_tac prec depth degr tang H :=
-  rewrite ?Rpower_IZR -?RIneq.mult_IZR;
+  rewrite ?RIneq.pow_IZR -?RIneq.mult_IZR;
   match type of H with
   | (_ <= ?x <= _)%R =>
     match goal with

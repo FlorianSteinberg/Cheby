@@ -2,7 +2,9 @@ Require Import Psatz.
 From mathcomp Require Import all_ssreflect.
 Require Import CPoly_I.
 From Bignums Require Import BigZ.
-Import Rtrigo_def Rdefinitions Rpower R_sqrt Ratan.
+Import Rtrigo_def Rdefinitions Rpower Rpow_def R_sqrt Ratan.
+
+Notation "x ^ y" := (pow x y) : R_scope.
 
 Coercion fromZ := SFBI2.fromZ.
 
@@ -16,7 +18,7 @@ Declare Scope sollya.
 
 Notation " x * 2^ y " := 
   (Specific_ops.Float x%bigZ y%bigZ) (at level 0) : sollya.
-Notation " [ x ; y ] " :=  (Interval.Ibnd x y) : sollya.
+Notation " [ x ; y ] " :=  (Float.Ibnd x y) : sollya.
 Notation "[| x1 , x2 , .. , xn |]" := (x1 :: x2 :: .. [:: xn] ..) : sollya.
 
 Open Scope sollya.
@@ -292,7 +294,7 @@ Section Example10.
 (* The precision *)
 Let prec := 165%bigZ.
 
-Definition ex10 := (/(1 + c(4%Z) * 'x * 'x))%fexpr.
+Definition ex10 := (/(1 + c(4%Z) * 'x ^ 2))%fexpr.
 
 Print ex10.
 
@@ -304,9 +306,9 @@ Time Definition ex10_cms :=
   Eval vm_compute in mk_cms prec 10 (-1)%Z 1%Z ex10.
 
 Lemma ex10_correct :
-       cms_correct 10 (-1)%Z 1%Z (fun x => / (1 + 4 * x * x))%R ex10_cms.
+       cms_correct 10 (-1)%Z 1%Z (fun x => / (1 + 4 * x ^ 2))%R ex10_cms.
 Proof.
-have-> : (fun x => / (1 + 4 * x * x))%R = (fexpr_eval ex10).
+have-> : (fun x => / (1 + 4 * (x ^ 2)))%R = (fexpr_eval ex10).
   apply: refl_equal.
 have-> : ex10_cms = mk_cms prec 10 (-1)%Z 1%Z ex10.
   by vm_cast_no_check (refl_equal ex10_cms).
@@ -327,7 +329,7 @@ Section Example11.
 (* The precision *)
 Let prec := 165%bigZ.
 
-Definition ex11 := (sin(x) * sin(x) + cos(x) * cos(x))%fexpr.
+Definition ex11 := (sin(x) ^ 2 + cos(x) ^ 2)%fexpr.
 
 Print ex11.
 
@@ -338,10 +340,10 @@ Time Definition ex11_cms :=
   Eval vm_compute in mk_cms prec 10 (-1)%Z 1%Z ex11.
 
 Lemma ex11_correct :
-       cms_correct 10 (-1)%Z 1%Z (fun x => sin x * sin x + cos x * cos x)%R 
+       cms_correct 10 (-1)%Z 1%Z (fun x => sin x ^ 2 + cos x ^ 2)%R 
                   ex11_cms.
 Proof.
-have-> : (fun x => sin x * sin x + cos x * cos x)%R = (fexpr_eval ex11).
+have-> : (fun x => sin x ^ 2 + cos x ^ 2)%R = (fexpr_eval ex11).
   by apply: refl_equal.
 have-> : ex11_cms = mk_cms prec 10 (-1)%Z 1%Z ex11.
   by vm_cast_no_check (refl_equal ex11_cms).
@@ -355,7 +357,6 @@ Compute P (norm_cms prec ex11_cms).
 Compute eval_range_cms prec ex11_cms.
 
 End Example11.
-
 
 Section Tang.
 
@@ -371,17 +372,17 @@ Let If :=
    (I.fromZ prec (27 * 2^33)) in I.bnd (SFBI2.neg (I.lower z)) (I.lower z).
 Compute If.
  
-Definition tang := exp('x) - 1 - ('x + c(8388676, 2^24) * 'x * 'x
-                                 + c(11184876, 2^26) * 'x * 'x * 'x).
+Definition tang := exp('x) - 1 - ('x + c(8388676, 2^24) * 'x ^ 2
+                                 + c(11184876, 2^26) * 'x ^ 3).
 
 Compute solve prec 3 Iab tang If 8.
 
 Lemma tang_correct x :
  ((-10831 / 1000000) <= x <= (10831 / 1000000) ->
-  (-23 / (27 * Rpower 2 33%R)) <= (exp x - 1 -
-                                      (x + 8388676/ Rpower 2 24 * x * x +
-                                           11184876 / Rpower 2 26 * x * x * x))
-                      <= (23 / (27 * Rpower 2 33)))%R.
+  (-23 / (27 * 2 ^ 33)) <= (exp x - 1 -
+                                      (x + 8388676/ 2 ^ 24 * x ^ 2 +
+                                           11184876 / 2 ^ 26 * x ^ 3))
+                      <= (23 / (27 * 2 ^ 33)))%R.
 Proof.
 move=> H.
 cheby_solve_tac prec 7 3 tang H.
@@ -389,17 +390,18 @@ Time Qed.
 
 End Tang.
 
+
 Section CosSin.
 
 (* The precision *)
 Let prec := 52%bigZ.
 
-Definition sin_cos := cos(x) * cos(x) + sin(x) * sin(x).
+Definition sin_cos := cos(x) ^ 2 + sin(x) ^ 2.
 
 Let k := 40%Z.
 Lemma sin_correct x :
  (3 / 1  <= x <= (4 / 1) ->
-  (IZR (2^k -  1) / IZR (2 ^ k)) <= (cos x * cos x + sin x * sin x)
+  (IZR (2^k -  1) / IZR (2 ^ k)) <= (cos x ^ 2 + sin x ^ 2)
                       <= (IZR (2^k + 1) / IZR (2 ^ k)))%R.
 Proof.
 move=> H.
@@ -416,16 +418,16 @@ Let prec := 52%bigZ.
 
 Definition daumas := 
   atan(x) - 
-    ('x - c(11184811,33554432) * 'x * 'x * 'x -
-          c(13421773,67108864) * 'x * 'x * 'x * 'x * 'x).
+    ('x - c(11184811,33554432) * 'x ^ 3 -
+          c(13421773,67108864) * 'x ^ 5).
 
 Let k := 25%Z.
 
 Lemma daumas_correct x :
  (((- 1) / 30)  <= x <= (1 / 30) ->
   (IZR (-1) / IZR (2 ^ k)) <= 
-     (atan x - (x - 11184811/33554432 * x * x * x 
-                                    - 13421773/67108864 * x * x * x * x * x))
+     (atan x - (x - 11184811/33554432 * x ^ 3 
+                                    - 13421773/67108864 * x ^ 5))
    <= (IZR (1) / IZR (2 ^ k)))%R.
 Proof.
 move=> H.

@@ -2,7 +2,7 @@ Require Import Reals Coquelicot.Coquelicot Psatz.
 Require Import arcsinh.
 Import mathcomp.ssreflect.ssreflect.
 
-Hint Mode ProperFilter' - + : typeclass_instances.
+Global Hint Mode ProperFilter' - + : typeclass_instances.
 
 Ltac lt0 :=
   match goal with

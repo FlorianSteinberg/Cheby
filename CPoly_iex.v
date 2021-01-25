@@ -32,10 +32,8 @@ Ltac l_tac :=
   (set u := I.lower _; vm_compute in u; rewrite {}/u;
    rewrite /I.T.toR /SFBI2.toX;
    set u := SFBI2.toF _; vm_compute in u; rewrite {}/u;
-  rewrite /Basic.FtoX;
-  rewrite /Basic.FtoR;
-  set u := Z.pow_pos _; vm_compute in u; rewrite {}/u;
-  set u := Z.pow_pos _; vm_compute in u; rewrite {}/u;
+  rewrite /Basic.FtoX /Basic.FtoR;
+  repeat (set u := Z.pow_pos _; vm_compute in u; rewrite {}/u);
   rewrite /Xreal.proj_val;
   lra).
 
@@ -44,10 +42,8 @@ Ltac r_tac :=
   (set u := I.upper _; vm_compute in u; rewrite {}/u;
    rewrite /I.T.toR /SFBI2.toX;
    set u := SFBI2.toF _; vm_compute in u; rewrite {}/u;
-   rewrite /Basic.FtoX;
-   rewrite /Basic.FtoR;
-   set u := Z.pow_pos _; vm_compute in u; rewrite {}/u;
-   set u := Z.pow_pos _; vm_compute in u; rewrite {}/u;
+   rewrite /Basic.FtoX /Basic.FtoR;
+   repeat (set u := Z.pow_pos _; vm_compute in u; rewrite {}/u);
    rewrite /Xreal.proj_val;
    lra).
 

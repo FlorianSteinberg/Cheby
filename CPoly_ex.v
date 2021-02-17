@@ -2,7 +2,8 @@ Require Import Psatz.
 From mathcomp Require Import all_ssreflect.
 Require Import CPoly_I.
 From Bignums Require Import BigZ.
-Import Rtrigo_def Rdefinitions Rpower Rpow_def R_sqrt Ratan.
+Require Import Lra SplitAbsolu.
+Import Rtrigo_def Rdefinitions Rpower Rpow_def R_sqrt Ratan Rbasic_fun.
 
 Notation "x ^ y" := (pow x y) : R_scope.
 
@@ -22,6 +23,7 @@ Notation " [ x ; y ] " :=  (Float.Ibnd x y) : sollya.
 Notation "[| x1 , x2 , .. , xn |]" := (x1 :: x2 :: .. [:: xn] ..) : sollya.
 
 Open Scope sollya.
+
 
 Section Example1.
 
@@ -436,5 +438,53 @@ Time Qed.
 
 End Daumas.
 
+Section Florent. (* ITP 2019 *)
 
+Let prec := 52%bigZ.
+
+Definition florent :=  sqrt(2 + 'x ^2).
+Time Definition florent_cms :=
+  Eval native_compute in mk_cms prec 200 (-1)%Z 1%Z florent.
+
+Compute P florent_cms.
+Compute Delta florent_cms.
+(* Not so good *)
+Compute Delta (norm_cms prec florent_cms).
+Compute P (norm_cms prec florent_cms).
+
+Lemma florent_correct : cms_correct 200 (-1)%Z 1%Z 
+           (fun x => sqrt (2 + x ^ 2))%R florent_cms.
+Proof.
+rewrite (_ : florent_cms = mk_cms prec 200 (-1)%Z 1%Z florent); last first.
+  by vm_cast_no_check (refl_equal florent_cms).
+have-> : (fun x => sqrt (2 + x ^ 2))%R = (fexpr_eval florent).
+  by apply: refl_equal.
+by apply mk_cms_correct.
+Time Qed.
+
+Definition f1 eps x := sqrt (eps^2 + x^2).
+
+(* Proved by bisection *)
+Lemma florent_test0 x :
+  let eps := (1/1000)%R in
+  (-1 <= x <= 1)%R ->
+  (Rabs (f1 eps x - Rabs x) <= eps + 1 / 10000)%R.
+Proof.
+intros eps H; subst eps; unfold f1.
+suff : ((0/1 <= x <= 1/1)%R ->
+              ((-11 / 10000) <=  (sqrt ((1 / 1000) ^ 2 + x ^ 2) - x) <=
+               (11 / 10000))%R) 
+          /\
+          (((-1)/1 <= x <= 0/1)%R ->
+             ((- 11) / 10000 <=  (sqrt ((1 / 1000) ^ 2 + x ^ 2) + x) <=
+             (11 / 10000))%R).
+    by split_Rabs; lra.
+split => H1.
+  set florent := sqrt(c(1,1000) ^ 2 + 'x ^ 2) - 'x.
+  cheby_solve_tac prec 10%nat 5%nat florent H1.
+set florent := sqrt(c(1,1000) ^ 2 + 'x ^ 2) + 'x.
+cheby_solve_tac prec 10%nat 5%nat florent H1.
+Time Qed.
+
+End Florent.
 

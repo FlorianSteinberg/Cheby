@@ -371,11 +371,11 @@ Let If :=
   let z := 
   I.div prec
    (I.bnd (23)%Z (23)%Z)
-   (I.fromZ prec (27 * 2^33)) in I.bnd (SFBI2.neg (I.lower z)) (I.lower z).
+   (I.fromZ prec (27 * 2 ^ 33)%Z) in I.bnd (SFBI2.neg (I.lower z)) (I.lower z).
 Compute If.
  
-Definition tang := exp('x) - 1 - ('x + c(8388676, 2^24) * 'x ^ 2
-                                 + c(11184876, 2^26) * 'x ^ 3).
+Definition tang := exp('x) - 1 - ('x + c(8388676, 2 ^ 24) * 'x ^ 2
+                                 + c(11184876, 2 ^ 26) * 'x ^ 3).
 
 Compute solve prec 3 Iab tang If 8.
 
@@ -403,8 +403,8 @@ Definition sin_cos := cos(x) ^ 2 + sin(x) ^ 2.
 Let k := 40%Z.
 Lemma sin_correct x :
  (3 / 1  <= x <= (4 / 1) ->
-  (IZR (2^k -  1) / IZR (2 ^ k)) <= (cos x ^ 2 + sin x ^ 2)
-                      <= (IZR (2^k + 1) / IZR (2 ^ k)))%R.
+  (IZR (2 ^ k -  1) / IZR (2 ^ k)) <= (cos x ^ 2 + sin x ^ 2)
+                      <= (IZR (2 ^ k + 1) / IZR (2 ^ k)))%R.
 Proof.
 move=> H.
 cheby_solve_tac prec 10%nat 3%nat sin_cos H.

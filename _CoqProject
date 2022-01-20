@@ -1,4 +1,5 @@
--R . cheby
+-R . cheby 
+-native-compiler yes
 -arg -w -arg -notation-overridden
 -arg -w -arg -ambiguous-paths
 -arg -w -arg -notation-incompatible-format

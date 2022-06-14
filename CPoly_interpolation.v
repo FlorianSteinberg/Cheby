@@ -14,8 +14,8 @@ Open Scope ring_scope.
 
 (******************************************************************************)
 (* The interpotation with the Chebyshev flavor                                *)
-(*                      prod l == compute the polynomial of lowest degree     *)
-(*                                whose roots are exactly those of l          *)
+(*                     prodl l == compute the polynomial of lowest degree     *)
+(*                                whose roots are exactly those in l          *)
 (*           interpolation f l == compute the polynomial of lowest degree     *)
 (*                                that evaluates in (f i) for all i in l      *)
 (*           has_zeros f n a b == f has n zeros between a and b included      *)

@@ -35,9 +35,9 @@ Open Scope ring_scope.
 
 Definition rm0 :=
  (mulr0, mul0r, subr0, sub0r, add0r, addr0, mul0rn, mulr0n, oppr0,
-  scale0r, scaler0).
+  scale0r, scaler0, expr0).
 
-Definition rm1 := (mulr1, mul1r, mulr1n).
+Definition rm1 := (mulr1, mul1r, mulr1n, expr1).
 
 Section Interpolation.
 

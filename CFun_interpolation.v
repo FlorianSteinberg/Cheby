@@ -702,7 +702,7 @@ Import GRing.Theory.
 
 Lemma poly_atan_deriv m : 
  ((m.+1)%:R%:P * poly_atan m.+1 =
-   (2 * m.+1%:R)%:P * 'X * (poly_atan m)-
+   (2%:R * m.+1%:R)%:P * 'X * (poly_atan m)-
         ('X^2 + 1%:P) * (poly_atan m)^`())%RR.
 Proof.
 apply/polyP => i.
@@ -711,11 +711,10 @@ rewrite -mulrA coefCM coefXnM coefXM.
 rewrite coef_deriv /coef_poly_atan !coef_poly.
 rewrite /coef_poly_atan size_poly_atan !ltnS.
 case: m => [|[|m]]; rewrite /= ?rm0.
-- by case: i => [|[|i]]; rewrite /= ?rm0; toR; lra.
+- by case: i => [|[|i]]; rewrite /= ?rm0 //; toR; lra.
 - case: i => [|[|[|i]]]; rewrite //= ?rm0; try (toR; lra).
     by rewrite binn binSn !exprS !expr0 ?rm1; toR; lra.
-  rewrite -['C(3, _)]/3%nat binSn.
-  rewrite !expr0 ?rm1.
+  rewrite -['C(3, _)]/3%nat binS ?rm1.
   by toR; lra.
 case: i => [|[|i]]; rewrite ?rm0 !subSS !subn0 /=.
 - rewrite negbK binn binSn.
@@ -737,7 +736,7 @@ case: (leqP i m.+1) => [|H]; last first.
   by rewrite ifN ?rm0 // ltnNge (leq_trans _ H) // ltnW.
 rewrite leq_eqVlt => /orP[/eqP->|].
   rewrite subnn /= ifN ?ltnNge 1?ltnW //.
-  rewrite !rm0 !bin1 expr0 /=.
+  rewrite !rm0 !bin1 /=.
   rewrite -[_ *+ m.+2]mulr_natl !natrS.
   by toR; lra.
 rewrite ltnS leq_eqVlt => /orP[/eqP<-|H1].
@@ -749,7 +748,7 @@ rewrite -(subnKC (ltnW H1)) {}/u.
 move: H1; rewrite -subn_gt0; case: subn => [|k]; rewrite //= ?negbK !addnS => Hk.
 have [H2|H2] := boolP (odd _).
   by rewrite !rm0.
-rewrite [LHS]mulrCA -natrM.
+rewrite [LHS]mulrCA -2!natrM.
 have->: ((i + k).+4 * 'C((i + k).+1.+4, k.+3) =
   'C((i + k).+4, k.+1) *i.+3 +
   (i.+1 + k.+1.*2).+4 * 'C((i + k).+4, k.+3))%nat.

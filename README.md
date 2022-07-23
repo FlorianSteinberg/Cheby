@@ -3,11 +3,11 @@
 This repository contains Coq-proofs about some basic facts about Chebyshev polynomials. It started as a branch of the coqrep library and the early version history can still be found in the corresponding repository.
 
 The dependencies are as follows:
-All files are only tested on Coq 8.15 and additionally need mathcomp 1.14.
+All files are only tested on Coq 8.15 and additionally need mathcomp 1.15.
 Depending on what part you want to use, you will need additional libraries:
 For the orthogonality of Chebychev polynomials that is proven in the file 
 "Cheby_trigo.v" you need Coquelicot 3.2.0, and for running the Interval
-algorithms from "CPoly_I.v" you will need Coq-Interval 4.4.0.
+algorithms from "CPoly_I.v" you will need Coq-Interval 4.5.2.
 
 An opam file gives the explicit dependency and let you compile the library
 

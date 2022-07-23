@@ -86,6 +86,10 @@ Lemma sub_correct x y I J:
 	x \contained_in I -> y \contained_in J -> (x - y) \contained_in (sub I J).
 Proof. by apply I.sub_correct. Qed.
 
+Lemma opp_correct x I :
+	x \contained_in I ->  (- x) \contained_in (I.neg I).
+Proof. by apply I.neg_correct. Qed.
+
 Lemma add_correct x y I J:
 	x \contained_in I -> y \contained_in J -> (x + y) \contained_in (add I J).
 Proof. by apply I.add_correct. Qed.
@@ -435,27 +439,13 @@ Lemma csign_correct I :
   csign I ->    (forall x, x \contained_in I -> (x >= 0)%R)
              \/ (forall x, x \contained_in I -> (x <= 0)%R) .
 Proof.
-rewrite /csign.
-have := I.subset_correct I s0P.
-case: I.subset => [/(_ isT) H _|_].
-  rewrite /= valid_lb_fromZ //= I.valid_ub_nan F.fromZ_correct //= in H.
-  left => x; case: I H => //= l u.
-  case: F.valid_lb => //=; last by lra.
-  case: F.valid_ub => //=; last by lra.
-  case: F.toX => //= [|r1]; case: F.toX => //= [|r2].
-  - by case => // [] [] [].
-  - by case => // [] [] [].
-  - case => // [] [] []; lra.
-  case => //; try lra.
-  by case => [] [H1 | H1]; lra.
-right => x; case: I H => // l u /andP[_ H1] H2.
-have /containedE[V1 V2 V3 V4 _] := H2.
-move: H1 H2 => /=.
-rewrite V1 V2 /= classify_fromZ //.
-rewrite F.cmp_correct classify_fromZ //= F.fromZ_correct //.
-case E : F.classify V4 => // _.
-case E1 : F.toX => [|r] //=.
-by case: Raux.Rcompare_spec => //; lra.
+rewrite /csign => /orP[HI|HI].
+  left => x Hx.
+  have /= := I.subset_correct I s0P (Xreal x) Hx HI.
+  by rewrite /= valid_lb_fromZ //= I.valid_ub_nan F.fromZ_correct //=; lra.
+right => x Hx.
+have /= := I.subset_correct I sN0 (Xreal x) Hx HI.
+by rewrite I.valid_lb_nan valid_ub_fromZ //= F.fromZ_correct => //; lra.
 Qed.
 
 (*****************************************************************************)
@@ -1430,10 +1420,7 @@ have F1 : (D2R a < D2R b)%R.
   by case: Raux.Rcompare_spec.
 have F2 : D2R a != D2R b by apply/eqP; lra.
 have F3 : D2R b != D2R a by rewrite eq_sym.
-have [] := fE x.
-  have := subset_contains _ _ (I.subset_correct _ _ XS).
-  by apply.
-move=> y [Hy ->].
+have [|y [Hy ->]] := fE x; first by apply: I.subset_correct XS.
 apply: add_correct => //.
 apply: IsCshaw_correct => //.
 - by rewrite SP.
@@ -1578,7 +1565,6 @@ move=> x /H3p [d [H1d H2d]]; exists (- d); split => //.
 rewrite horner_CPolyab opp_Cpoly_spec hornerE -horner_CPolyab.
 rewrite H2d; toR; lra.
 Qed.
-
 
 (*****************************************************************************)
 (* Addition Chebyshev model                                                  *)
@@ -1823,23 +1809,7 @@ Qed.
 Lemma subset_contained a b i x :
   F.real a -> F.real b -> I.subset i (I.bnd a b) ->
   x \contained_in i -> x \contained_in I.bnd a b.
-Proof.
-move=> aF bF iH.
-case: i iH; rewrite //= => l u H1 H2.
-have /containedE[V1 V2 V3 V4 V5] := H2.
-move: H1 H2.
-rewrite !I.F'.classify_real //.
-rewrite !F.cmp_correct /=.
-rewrite ![F.classify a]I.F'.classify_real //=.
-rewrite ![F.classify b]I.F'.classify_real //=.
-case : F.classify V3 => // _.
-case : F.classify V4 => // _; rewrite ?andbF //=.
-rewrite V1 V2 /= !I.F'.valid_lb_real //= !I.F'.valid_ub_real //=.
-by (do 4! case: F.toX => //=);
-    try (by move=> r1 r2; case: Raux.Rcompare_spec => //; lra);
-    try (by move=> r1 r2 r3; case: Raux.Rcompare_spec => //; lra);
-    try (by move=> r1 r2 r3 r4; do! case: Raux.Rcompare_spec => //; lra).
-Qed.
+Proof.  by move=> aF bF iH xIi; apply: I.subset_correct xIi _. Qed.
 
 Lemma eval_range_cms_correct n a b f c i x :
    F.cmp a b = Xlt -> F.real a -> F.real b ->
@@ -1866,6 +1836,8 @@ Qed.
 
 Lemma isubset_refl i : I.subset i i.
 Proof.
+rewrite /I.subset.
+case: I.is_empty => //.
 case: i => //= l u; apply/andP; split.
   rewrite F.cmp_correct.
   case E : F.classify => //.
@@ -3736,12 +3708,12 @@ apply: comp_cms_correct => //.
 - by rewrite F.real_correct lH1.
 - by rewrite F.real_correct uH1.
 - case: eval_range_cms E lH1 uH1 => //= l u /andP[lF uF] lH1 uH1.
-  rewrite F.cmp_correct I.F'.classify_real; last first.
-    by rewrite F.real_correct lH1.
-  rewrite F.cmp_correct I.F'.classify_real; last first.
-    by rewrite F.real_correct uH1.
-  rewrite lH1 uH1 /=.
-  by do 2 (case: Raux.Rcompare_spec=> /=; try lra).
+  rewrite /I.subset /=.
+  rewrite !F.cmp_correct !I.F'.classify_real; last first.
+  - by rewrite F.real_correct lH1.
+  - by rewrite F.real_correct uH1.
+  rewrite /= lH1 uH1 /=.
+  by do 3 case: Raux.Rcompare_spec => //; lra.
 apply: invx_cms_correct => //.
 - by rewrite F.real_correct lH1.
 - by rewrite F.real_correct uH1.
@@ -4130,13 +4102,8 @@ Lemma subset_contains d i1 i2 :
    I.subset i1 i2 -> d \contained_in i1 -> d \contained_in i2.
 Proof.
 move/I.subset_correct; case: i1; case: i2 => //= l2 u2.
-  case: F.valid_lb => //=; case: F.valid_ub => //.
-move=> l1 u1.
-case: F.valid_lb => //=; case: F.valid_ub => //=; try lra.
-by case: F.valid_lb => //=; case: F.valid_ub => //=; try lra;
-   rewrite /le_lower /=;
-   case El1 : (F.toX l1) => [|l1E]; case El2 : (F.toX l2) => [|l2E];
-  case Eu1 : (F.toX u1) => [|u1E]; case Eu2 : (F.toX u2) => [|u2E] //=; lra.
+  by move=> /(_ (Xreal d) I).
+by move=> l1 u1 /(_ (Xreal d)).
 Qed.
 
 Lemma interval_r_connect x y z i :
@@ -4407,6 +4374,7 @@ Inductive fexpr :=
   fdiv  (_ _ : fexpr) |
   fadd  (_ _ : fexpr) |
   fsub  (_ _ : fexpr) |
+  fopp (_ : fexpr)    |
   fcomp (_ _ : fexpr) |
   fvar | fconst (_ _ : Z) | fpi |
   fln | fsqrt | fexp | finv |
@@ -4422,6 +4390,7 @@ Fixpoint fexpr_eval e :=
 | fdiv  e1 e2 => (fun x => (fexpr_eval e1 x) /  (fexpr_eval e2 x))%R
 | fadd  e1 e2 => (fun x => (fexpr_eval e1 x) +  (fexpr_eval e2 x))
 | fsub  e1 e2 => (fun x => (fexpr_eval e1 x) -  (fexpr_eval e2 x))
+| fopp e => (fun x =>  - (fexpr_eval e x))
 | fcomp e1 e2 => (fexpr_eval e1) \o (fexpr_eval e2)
 | fvar => (fun x => x)
 | fconst v1 1 => (fun => IZR v1)
@@ -4443,6 +4412,7 @@ match e with
 | fdiv  e1 e2 => (fun i => div (fexpr_ieval e1 i) (fexpr_ieval e2 i))
 | fadd  e1 e2 => (fun i => add (fexpr_ieval e1 i) (fexpr_ieval e2 i))
 | fsub  e1 e2 => (fun i => sub (fexpr_ieval e1 i) (fexpr_ieval e2 i))
+| fopp  e => (fun i => I.neg (fexpr_ieval e i))
 | fcomp e1 e2 => (fexpr_ieval e1) \o (fexpr_ieval e2)
 | fvar => (fun x => x)
 | fconst v1 1 => (fun =>  I.fromZ prec v1) 
@@ -4475,6 +4445,8 @@ elim: e i x.
   by apply: add_correct (IH1 _ _ _) (IH2 _ _ _).
 - move=> e1 IH1 e2 IH2 i x Hx.
   by apply: sub_correct (IH1 _ _ _) (IH2 _ _ _).
+- move=> e IH1 i x Hx.
+  by apply: opp_correct (IH1 _ _ _).
 - move=> e1 IH1 e2 IH2 i x Hx.
   by apply/IH1/IH2.
 - by [].
@@ -4508,6 +4480,8 @@ match e with
 | fsub  e1 e2 =>
     sub_cms (fexpr_cms n b1 vn zn z2n a b vl1 vl2 vl3 e1)
             (fexpr_cms n b1 vn zn z2n a b vl1 vl2 vl3 e2)
+| fopp e =>
+    opp_cms (fexpr_cms n b1 vn zn z2n a b vl1 vl2 vl3 e)
 | fcomp e1 e2 =>
     let c2 := fexpr_cms n b1 vn zn z2n a b vl1 vl2 vl3 e2 in
     let v := eval_range_cms c2 in
@@ -4570,6 +4544,9 @@ elim: e a b aF bF vl3 aLb vl3E.
 - move=> e1 IH1 e2 IH2 a b vl3 aLb aF bF vl3E.
   apply: sub_cms_correct => //; first by apply: IH1.
   by apply: IH2.
+- move=> e IH a b vl3 aLb aF bF vl3E.
+  apply: opp_cms_correct => //.
+  by apply: IH.
 - move=> e1 IH1 e2 IH2 a b aF bF vl3 aLb vl3E /=.
   case E: I.bounded; last by apply: error_cms_correct.
   have [/I.lower_bounded_correct [lH1 lH2]
@@ -4603,13 +4580,14 @@ elim: e a b aF bF vl3 aLb vl3E.
   - by rewrite F.real_correct lH1.
   - by rewrite F.real_correct uH1.
   - case: eval_range_cms {E1}E lH1 lH2 uH1 uH2 => //= l u /andP[lF uF] lX _ uX _.
+    rewrite /I.subset /=.
     rewrite !I.F'.classify_real; last 2 first.
     - by rewrite F.real_correct uX.
     - by rewrite F.real_correct lX.
     rewrite !F.cmp_correct // !I.F'.classify_real; last 2 first.
     - by rewrite F.real_correct uX.
     - by rewrite F.real_correct lX.
-    by rewrite lX uX /=; do 2 case: Raux.Rcompare_spec => //; lra.
+    by rewrite lX uX /=; do 3 case: Raux.Rcompare_spec => //; lra.
   - by apply: IH2.
   apply: IH1 => //.
   - by rewrite F.real_correct lH1.
@@ -4645,6 +4623,7 @@ Inductive iexpr :=
   idiv  (_ _ : iexpr) |
   iadd  (_ _ : iexpr) |
   isub  (_ _ : iexpr) |
+  iopp  (_ : iexpr)   |
   iconst (_ : Z)      |
   ipi                 |
   iint (_ _ : iexpr) (_ : fexpr)   |
@@ -4662,6 +4641,7 @@ Fixpoint iexpr_eval e :=
 | idiv e1 e2 => (iexpr_eval e1) /  (iexpr_eval e2)
 | iadd e1 e2 => (iexpr_eval e1) +  (iexpr_eval e2)
 | isub e1 e2 => (iexpr_eval e1) -  (iexpr_eval e2)
+| iopp e => -  (iexpr_eval e)
 | iconst v1 => IZR v1
 | ipi => PI
 | iint v1 v2 f => RInt (fun x => fexpr_eval f x) (iexpr_eval v1) (iexpr_eval v2)
@@ -4681,6 +4661,7 @@ Fixpoint iexpr_icheck e :=
 | idiv e1 e2 => (iexpr_icheck e1) || (iexpr_icheck e2)
 | iadd e1 e2 => (iexpr_icheck e1) || (iexpr_icheck e2)
 | isub e1 e2 => (iexpr_icheck e1) || (iexpr_icheck e2)
+| iopp e    => iexpr_icheck e
 | iconst v1 => false
 | ipi => false
 | iint v1 v2 f => true
@@ -4741,6 +4722,8 @@ match e with
 | isub  e1 e2 => sub 
          (iexpr_ieval n k b1 vn v2n zn z2n vl1 e1) 
          (iexpr_ieval n k b1 vn v2n zn z2n vl1 e2)
+| iopp  e => I.neg
+         (iexpr_ieval n k b1 vn v2n zn z2n vl1 e) 
 | iconst v => I.fromZ prec v
 | ipi => I.pi prec
 | iint x y e =>
@@ -4777,6 +4760,7 @@ Fixpoint iexpr_wf n k b1 vn v2n zn z2n vl1 e :=
                             (iexpr_wf n k b1 vn v2n zn z2n vl1 e2)
 | isub e1 e2 => mk_wf e1 e2 (iexpr_wf n k b1 vn v2n zn z2n vl1 e1)
                             (iexpr_wf n k b1 vn v2n zn z2n vl1 e2)
+| iopp e => iexpr_wf n k b1 vn v2n zn z2n vl1 e
 | iconst _ => True
 | ipi => True
 | iint x y f => 
@@ -4855,7 +4839,7 @@ Lemma subsetMinMaxl x y z : F.real y -> F.real z ->  I.bounded x ->
 Proof.
 move=> yR zR.
 case: x => //= l u /andP[lR uR].
-rewrite  !F.cmp_correct.
+rewrite /I.subset /= !F.cmp_correct.
 repeat rewrite [F.classify _]I.F'.classify_real //; last 2 first.
 - by apply: real_max.
 - by apply: real_min.
@@ -4865,7 +4849,7 @@ repeat rewrite [F.classify _]I.F'.classify_real //.
 move => H1 H2; rewrite H1 H2.
 move: lR uR yR zR; rewrite !F.real_correct.
 (do 4 case: F.toX) => //= xr1 xr2 xr3 xr4.
-by do 2 case: Raux.Rcompare_spec => //;
+by do 3 case: Raux.Rcompare_spec => //;
    rewrite /Rmax /Rmin; repeat case: Rle_dec; lra.
 Qed.
 
@@ -4874,7 +4858,7 @@ Lemma subsetMinMaxr x y z : F.real y -> F.real z ->  I.bounded x ->
 Proof.
 move=> yR zR.
 case: x => //= l u /andP[lR uR].
-rewrite  !F.cmp_correct.
+rewrite /I.subset /= !F.cmp_correct.
 repeat rewrite [F.classify _]I.F'.classify_real //; last 2 first.
 - by apply: real_max.
 - by apply: real_min.
@@ -4884,7 +4868,7 @@ repeat rewrite [F.classify _]I.F'.classify_real //.
 move => H1 H2; rewrite H1 H2.
 move: lR uR yR zR; rewrite !F.real_correct.
 (do 4 case: F.toX) => //= xr1 xr2 xr3 xr4.
-by do 2 case: Raux.Rcompare_spec => //;
+by do 3 case: Raux.Rcompare_spec => //;
    rewrite /Rmax /Rmin; repeat case: Rle_dec; lra.
 Qed.
 
@@ -4944,26 +4928,30 @@ have -> : RInt [eta fexpr_eval f] e1 e2 =
   apply/sym_equal/RInt_Chasles.
     apply: ex_RInt_Chasles_2; last by exact: H1.
     case: (v1) Iv1 e1H c1H => //= l u /andP[lR uR].
+    rewrite /I.subset /=.
     rewrite I.F'.valid_lb_real //= I.F'.valid_ub_real //=.
     rewrite !F.cmp_correct !I.F'.classify_real // !I.F'.real_correct //= -/c.
-    by do 2 case: Raux.Rcompare_spec => //; lra.
+    by do 3 (case: Raux.Rcompare_spec => //; try lra).
   apply: ex_RInt_Chasles_1; last by exact: H2.
   case: (v2) Iv2 e2H c2H => //= l u /andP[lR uR].
+  rewrite /I.subset /=.
   rewrite I.F'.valid_lb_real //= I.F'.valid_ub_real //=.
   rewrite !F.cmp_correct !I.F'.classify_real // !I.F'.real_correct //= -/c.
-  by do 2 case: Raux.Rcompare_spec => //; lra.
+  by do 3 (case: Raux.Rcompare_spec => //; try lra).
 apply: add_correct; apply: IH  => //.
 - by rewrite /= cR.
-- move: aLc. 
+- move: aLc.
+  rewrite /I.subset /=. 
   rewrite /= !F.cmp_correct !I.F'.classify_real // ?cR //=; last first.
   rewrite !I.F'.real_correct //=.
-  by do 3 case: Raux.Rcompare_spec => //; lra.
+  by do 3 (case: Raux.Rcompare_spec => //; try lra).
 - by apply: FtoI_correct.
 - by rewrite /= cR.
 - move: cLb. 
+  rewrite /I.subset /=. 
   rewrite /= !F.cmp_correct !I.F'.classify_real // ?cR //=; last first.
   rewrite !I.F'.real_correct //=.
-  by do 2 case: Raux.Rcompare_spec => //; try lra.
+  by do 3 (case: Raux.Rcompare_spec => //; try lra).
 by apply: FtoI_correct.
 Qed.
 
@@ -4993,6 +4981,8 @@ elim: e => //.
   by apply: add_correct (IH1 _) (IH2 _).
 - move=> e1 IH1 e2 IH2 /mk_wf_correct[e1W e2W].
   by apply: sub_correct (IH1 _) (IH2 _).
+- move=> e IH eW.
+  by apply: opp_correct (IH _).
 - by move=> z _; apply: I.fromZ_correct.
 - by move=> _; apply: I.pi_correct.
 - move=> e1 IH1 e2 IH2 f /=.
@@ -5090,6 +5080,7 @@ Notation "a ^ b" := (fpow a b) : fexpr_scope.
 Notation "a / b" := (fdiv a b) : fexpr_scope.
 Notation "a + b" := (fadd a b) : fexpr_scope.
 Notation "a - b" := (fsub a b) : fexpr_scope.
+Notation "- b" := (fopp b) : fexpr_scope.
 Notation " 'x " := (fvar) : fexpr_scope.
 Notation " 'ln(x)' " := (fln) : fexpr_scope.
 Notation " 'ln(' e ')' " := (fcomp fln e)
@@ -5128,6 +5119,8 @@ Notation "a ^ b" := (ipow a b) : iexpr_scope.
 Notation "a / b" := (idiv a b) : iexpr_scope.
 Notation "a + b" := (iadd a b) : iexpr_scope.
 Notation "a - b" := (isub a b) : iexpr_scope.
+Notation "- b" := (iopp b) : iexpr_scope.
+
 Notation " 'RInt[' a , b '](' e ')' " :=
     (iint a%iexpr b%iexpr e%fexpr)
   : iexpr_scope.
@@ -5249,16 +5242,8 @@ Let D2R := I.T.toR.
 
 Lemma contains_subset a b c:
    contains (I.convert a) (Xreal c) ->
-   I.subset a b->
-   contains (I.convert b) (Xreal c).
-Proof.
-move=> H /I.subset_correct; move: H.
-case: I.convert => //= [|l1 u1]; first by case: I.convert.
-case: I.convert => //= l2 u2.
-rewrite /le_lower /le_upper.
-by (case : l1 => [|r1]); (case : l2 => [|r2]);
-   (case : u1 => [|r3]); (case : u2 => [|r4]) => //=; lra.
-Qed.
+   I.subset a b-> contains (I.convert b) (Xreal c).
+Proof. by move=> H /I.subset_correct; apply. Qed.
 
 Definition is_interval a :=
   if a is Float.Ibnd u l then
@@ -5478,14 +5463,17 @@ Lemma contains_bounded_subset a b c :
   contains (I.convert b) (Xreal c) -> I.bounded a -> I.subset b a -> I.bounded b.
 Proof.
 case: a; case: b => // l1 u1 u2 l2 H /andP[u2R l2R].
-rewrite [I.bounded _]/= => /andP[].
-move: H; rewrite /= F.valid_lb_correct F.valid_ub_correct.
+rewrite /=  F.valid_lb_correct F.valid_ub_correct in H.
+move: H.
+rewrite [I.bounded _]/=.
+rewrite /I.subset /I.is_empty.
 rewrite !F.cmp_correct.
 rewrite (I.F'.classify_real _ u2R) (I.F'.classify_real _ l2R).
 rewrite !F.classify_correct. 
-by do 2 case: F.classify => //=; lra.
+do 2 (case: F.classify => //=; try lra).
+  by rewrite andbF.
+by rewrite andbF.
 Qed.
-
 
 Lemma  subset_toI a b c: 
   F.real a -> F.real b -> F.real c ->  
@@ -5493,12 +5481,13 @@ Lemma  subset_toI a b c:
   I.subset (toI c) (I.bnd a b).
 Proof.
 move=> aR bR cR.
+rewrite /I.subset.
 rewrite /toI cR /FtoI /= F.valid_lb_correct F.valid_ub_correct.
 rewrite !F.cmp_correct.
 repeat rewrite [F.classify _]I.F'.classify_real //=.
 rewrite (I.F'.real_correct _ aR) 
         (I.F'.real_correct _ bR) (I.F'.real_correct _ cR) /=.
-do 2 case: Raux.Rcompare_spec => //; lra.
+by do 3 (case: Raux.Rcompare_spec => //; try lra).
 Qed.
 
 Lemma subset_lower_upper xi x a b : 
@@ -5510,30 +5499,30 @@ Lemma subset_lower_upper xi x a b :
 Proof.
 case: xi => // l u aR bR Hc Hs; rewrite [I.upper _]/=.
 have lR : F.real l.
-  move: Hc Hs; rewrite /= F.valid_lb_correct F.valid_ub_correct.
+  move: Hc Hs; rewrite /= /I.subset /= F.valid_lb_correct F.valid_ub_correct.
   rewrite !F.cmp_correct.
   rewrite [F.classify a]I.F'.classify_real //=.
   rewrite [F.classify b]I.F'.classify_real //=.
   rewrite !F.classify_correct.
   by do 2 case : F.classify => //=; lra.
 have uR : F.real u.
-  move: Hc Hs; rewrite /= F.valid_lb_correct F.valid_ub_correct.
+  move: Hc Hs; rewrite /= /I.subset /= F.valid_lb_correct F.valid_ub_correct.
   rewrite !F.cmp_correct.
   rewrite [F.classify a]I.F'.classify_real //=.
   rewrite [F.classify b]I.F'.classify_real //=.
   rewrite [F.classify l]I.F'.classify_real //=.
-  rewrite !F.classify_correct.
-  by case : F.classify => //= H1 /andP[] => //=; lra.
+  rewrite !F.classify_correct /=.
+  by case: F.classify => //=; try lra; move=> _ /andP[].
 have lLu : (F.toR l <= F.toR u)%R.
-  move: Hc; rewrite /= F.valid_lb_correct F.valid_ub_correct.
+  move: Hc; rewrite /= /I.subset /= F.valid_lb_correct F.valid_ub_correct.
   rewrite !I.F'.classify_real //=.
   rewrite (I.F'.real_correct _ lR) (I.F'.real_correct _ uR) /=.
   by lra.
-move: Hs; rewrite /= !F.cmp_correct.
+move: Hs; rewrite /= /I.subset /= !F.cmp_correct.
 repeat rewrite [F.classify _]I.F'.classify_real //.
 rewrite (I.F'.real_correct _ aR) (I.F'.real_correct _ bR) /=.
 rewrite (I.F'.real_correct _ lR) (I.F'.real_correct _ uR) /=.
-do 2 case: Raux.Rcompare_spec => //; lra.
+do 3 (case: Raux.Rcompare_spec => //; try lra).
 Qed.
 
 (*

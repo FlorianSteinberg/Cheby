@@ -573,7 +573,7 @@ rewrite (bigD1 (Ordinal F)) //= big1 => [|i /eqP/val_eqP /= H1]; last first.
   by rewrite !rm0.
 rewrite coefZ addr0 exprDn coef_sum.
 rewrite big_ord_recl /= big1 => [|i _].
-  rewrite !rm0 expr0 bin0 !rm1 subn0 exprZn coef_pTn.
+  rewrite !rm0 bin0 !rm1 subn0 exprZn coef_pTn.
   rewrite coefZ coefXn eqxx rm1 -[1 + 1]/(2%:R).
   rewrite expr_div_n mulrA -natrX -natrM -expnD.
   by congr ((_ ^ _)%:R / _); rewrite -addnn; case: (n).

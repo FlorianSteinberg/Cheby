@@ -1,0 +1,48 @@
+# This file was generated from `meta.yml`, please do not edit manually.
+# Follow the instructions on https://github.com/coq-community/templates to regenerate.
+
+opam-version: "2.0"
+maintainer: "thery@sophia.inria.fr"
+version: "dev"
+
+homepage: "https://github.com/thery/Cheby"
+dev-repo: "git+https://github.com/thery/Cheby.git"
+bug-reports: "https://github.com/thery/Cheby/issues"
+license: "MIT"
+
+synopsis: "Chebyshev polynomials in Coq"
+description: """
+This repository contains Coq-proofs about some basic facts about Chebyshev
+polynomials. It started as a branch of the coqrep library and the early 
+version history can still be found in the corresponding repository.
+
+An opam file gives the explicit dependency and let you compile the library
+
+```
+opam pin add -y -n cheby .
+opam install cheby
+```
+
+The file CPoly_ex.v contains some examples of what we can do with this library."""
+
+build: [make "-j%{jobs}%"]
+install: [make "install"]
+depends: [
+  "coq" {(>= "8.16")}
+  "coq-bignums" 
+  "coq-mathcomp-ssreflect" {(>= "1.16.0")}
+  "coq-mathcomp-algebra" {(>= "1.16.0")}
+  "coq-flocq" {(>= "4.1.0")}
+  "coq-interval" {(>= "4.6.1")}
+  "coq-coquelicot" {(>= "3.3.0")}
+]
+
+tags: [
+  "keyword:Cheby"
+  "keyword:Chebyshev polynomials Coq"
+  "logpath:cheby"
+]
+authors: [
+  "Florian Steinberg"
+  "Laurent Théry"
+]

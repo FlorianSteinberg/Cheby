@@ -735,10 +735,10 @@ have [/eqP-> | Hc] := boolP (ierror f (cheby_nodes n) x == 0).
 have [z1 [H1z1 ->]] := ierror_val (sym_equal (size_cheby_nodes n))
          (uniq_cheby_nodes n) c1LN1 c2G1 (@cheby_nodes_boundW n)
          deriv_f cont_f Hx Hc.
-rewrite !Rabs_mult Rabs_R1 Rabs_Rinv; try lra.
+rewrite !Rabs_mult Rabs_R1 Rabs_inv; try lra.
 rewrite Rabs_pos_eq; try lra.
 rewrite natrM.
-rewrite Rmult_comm/Rdiv Rinv_mult_distr; try lra.
+rewrite Rmult_comm/Rdiv Rinv_mult; try lra.
 rewrite -!Rmult_assoc.
 apply: Rmult_le_compat; last by apply: Hy; lra.
 - apply: Stdlib.Rmult_le_pos_pos => //.
@@ -895,10 +895,10 @@ have [/eqP-> | Hc] := boolP (ierror f (scheby_nodes a b n) x == 0).
 have [z1 [H1z1 ->]] := ierror_val (sym_equal (size_scheby_nodes a b n))
     (@uniq_scheby_nodes a b aLb n) c1La bLc2 (@scheby_nodes_boundW a b aLb n)
     deriv_f cont_f Hx Hc.
-rewrite !Rabs_mult Rabs_R1 Rabs_Rinv; try lra.
+rewrite !Rabs_mult Rabs_R1 Rabs_inv; try lra.
 rewrite Rabs_pos_eq; try lra.
 rewrite natrM.
-rewrite Rmult_comm/Rdiv Rinv_mult_distr; try lra.
+rewrite Rmult_comm/Rdiv Rinv_mult; try lra.
 rewrite -!Rmult_assoc.
 apply: Rmult_le_compat; last by apply: Hy; lra.
 - apply: Stdlib.Rmult_le_pos_pos => //.
@@ -996,8 +996,7 @@ move=> /andP[rP rL].
 have F : INR (n.+1) * 2 = INR (n.+1.*2) :> R.
   by rewrite -addnn plus_INR; lra.
 have F1 (k : R) : k / INR (n.+1) / 2 = k / INR (n.+1.*2).
-  rewrite /Rdiv Rmult_assoc -Rinv_mult_distr ?F //.
-  by apply/(not_INR _ 0)/eqP.
+  by rewrite /Rdiv Rmult_assoc -Rinv_mult ?F.
 have F2 : 0 < INR (n.+1).*2 by apply: (lt_INR 0) => //; apply/leP.
 have F3 : 0 < PI by have := PI2_3_2; lra.
 have F4 : sin (INR r * PI / INR (n.+1) / 2) != 0.
@@ -1083,8 +1082,7 @@ move=> /andP[jLi iLn].
 have F : INR (n.+1) * 2 = INR (n.+1.*2) :> R.
   by rewrite -addnn plus_INR; lra.
 have F1 (k : R) : k / INR (n.+1) / 2 = k / INR (n.+1.*2).
-  rewrite /Rdiv Rmult_assoc -Rinv_mult_distr ?F //.
-  by apply/(not_INR _ 0)/eqP.
+  by rewrite /Rdiv Rmult_assoc -Rinv_mult ?F.
 have PIpos : 0 < PI by have := PI2_3_2; lra.
 rewrite /dsprod_cheby big_map.
 pose g i1 := (i1.*2.+1%:R * PI / n.+1.*2%:R).

@@ -1,0 +1,87 @@
+---
+fullname: Cheby
+shortname: Cheby
+organization: thery
+community: false
+dune: false
+action: true
+
+synopsis: Chebyshev polynomials in Coq
+
+description: |-
+  This repository contains Coq-proofs about some basic facts about Chebyshev
+  polynomials. It started as a branch of the coqrep library and the early 
+  version history can still be found in the corresponding repository.
+
+  An opam file gives the explicit dependency and let you compile the library
+
+  ```
+  opam pin add -y -n cheby .
+  opam install cheby
+  ```
+
+  The file CPoly_ex.v contains some examples of what we can do with this library.
+
+
+authors:
+- name: Florian Steinberg
+- name: Laurent Théry
+
+maintainers:
+- name: Laurent Théry
+  nickname: thery
+
+opam-file-maintainer: thery@sophia.inria.fr
+
+license:
+  fullname: MIT License
+  identifier: MIT
+
+supported_coq_versions:
+  text: '8.16 or later'
+  opam: '{(>= "8.16")}'
+
+dependencies:
+- opam:
+    name: coq-bignums
+  description: |-
+    [Bignums](https://github.com/coq/bignums) same version as Coq
+- opam:
+    name: coq-mathcomp-ssreflect
+    version: '{(>= "1.16.0")}'
+  description: |-
+    [MathComp ssreflect 1.16 or later](https://math-comp.github.io)
+- opam:
+    name: coq-mathcomp-algebra
+    version: '{(>= "1.16.0")}'
+  description: |-
+    [MathComp algebra 1.16 or later](https://math-comp.github.io)
+- opam:
+    name: coq-flocq
+    version: '{(>= "4.1.0")}'
+  description: |-
+    [Flocq 4.1 or later](https://gitlab.inria.fr/flocq/flocq.git)
+- opam:
+    name: coq-interval
+    version: '{(>= "4.6.1")}'
+  description: |-
+    [Interval 4.6.1 or later](https://gitlab.inria.fr/coqinterval/interval)
+- opam:
+    name: coq-coquelicot
+    version: '{(>= "3.3.0")}'
+  description: |-
+    [Coquelico 3.3.0 or later](https://gitlab.inria.fr/coquelicot/coquelicot)
+
+
+tested_coq_opam_versions:
+- version: '1.16.0-coq-8.16'
+  repo: 'mathcomp/mathcomp'
+
+namespace: cheby
+
+keywords:
+- name: Cheby
+- name: Chebyshev polynomials Coq
+
+
+---

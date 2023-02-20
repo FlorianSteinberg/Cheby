@@ -2712,7 +2712,7 @@ have F :
      (j * m.+2 %/ i.+2 * m.+1 %/ i.+3) =
     ((jZ * mZ / (iZ + 2) * (mZ - 1) /
      (iZ + 2 + 1)))%Z.
-  rewrite !(natDivP, Nat2Z.inj_mul, div_Zdiv)  //.
+  rewrite !(natDivP, Nat2Z.inj_mul, Nat2Z.inj_div)  //.
   congr  (_ * _ / _ * _ / _)%Z => //=.
   + by rewrite Pos2Z.inj_succ Zpos_P_of_succ_nat; lia.
   + by rewrite mZE Pos2Z.inj_succ Zpos_P_of_succ_nat; lia.
@@ -5191,7 +5191,7 @@ have z2nE : z2n = Pos.of_nat (n.+1).*2.+1.
 apply: fexpr_cms_correct => //.
   rewrite /vn /zn INR_IZR_INZ /Z.of_nat Pos.of_nat_succ.
   by apply: I.fromZ_correct.
-rewrite /v2n z2nE INR_IZR_INZ /Z.of_nat Pos.of_nat_succ.
+rewrite {vl1 vl2}// /v2n z2nE INR_IZR_INZ /Z.of_nat Pos.of_nat_succ.
 rewrite Nat2Pos.inj_succ // Pplus_one_succ_r.
 rewrite -muln2 Nat2Pos.inj_mul // [Pos.of_nat 2]/=.
 rewrite [Pos.of_nat n.+2]Nat2Pos.inj_succ // Pplus_one_succ_r.
@@ -5370,7 +5370,8 @@ have [HI aLxLb _|] := boolP (I.subset _ _).
     - apply: fexpr_cms_correct => //.
         rewrite /vn /zn INR_IZR_INZ /Z.of_nat Pos.of_nat_succ.
         by apply: I.fromZ_correct.
-      rewrite /v2n z2nE INR_IZR_INZ /Z.of_nat Pos.of_nat_succ.
+      rewrite {vl1 vl2 IH}//.
+      rewrite  /v2n z2nE INR_IZR_INZ /Z.of_nat Pos.of_nat_succ.
       rewrite Nat2Pos.inj_succ // Pplus_one_succ_r.
       rewrite -muln2 Nat2Pos.inj_mul // [Pos.of_nat 2]/=.
       rewrite [Pos.of_nat n.+2]Nat2Pos.inj_succ // Pplus_one_succ_r.

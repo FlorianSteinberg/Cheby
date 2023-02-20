@@ -5,9 +5,9 @@ opam-version: "2.0"
 maintainer: "thery@sophia.inria.fr"
 version: "dev"
 
-homepage: "https://github.com/thery/Cheby"
-dev-repo: "git+https://github.com/thery/Cheby.git"
-bug-reports: "https://github.com/thery/Cheby/issues"
+homepage: "https://github.com/FlorianSteinberg/Cheby"
+dev-repo: "git+https://github.com/FlorianSteinberg/Cheby.git"
+bug-reports: "https://github.com/FlorianSteinberg/Cheby/issues"
 license: "MIT"
 
 synopsis: "Chebyshev polynomials in Coq"

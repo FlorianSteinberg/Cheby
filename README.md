@@ -6,8 +6,8 @@ Follow the instructions on https://github.com/coq-community/templates to regener
 
 [![Docker CI][docker-action-shield]][docker-action-link]
 
-[docker-action-shield]: https://github.com/thery/Cheby/workflows/Docker%20CI/badge.svg?branch=master
-[docker-action-link]: https://github.com/thery/Cheby/actions?query=workflow:"Docker%20CI"
+[docker-action-shield]: https://github.com/FlorianSteinberg/Cheby/workflows/Docker%20CI/badge.svg?branch=master
+[docker-action-link]: https://github.com/FlorianSteinberg/Cheby/actions?query=workflow:"Docker%20CI"
 
 
 
@@ -44,10 +44,10 @@ The file CPoly_ex.v contains some examples of what we can do with this library.
 
 ## Building and installation instructions
 
-To instead build and install manually, do:
+To build and install manually, do:
 
 ``` shell
-git clone https://github.com/thery/Cheby.git
+git clone https://github.com/FlorianSteinberg/Cheby.git
 cd Cheby
 make   # or make -j <number-of-cores-on-your-machine> 
 make install

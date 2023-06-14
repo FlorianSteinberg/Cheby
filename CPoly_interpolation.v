@@ -308,8 +308,7 @@ Lemma has_zerosEs f n a b :
 Proof.
 split=> [] [l [H1 H2 H3]].
   exists (path.sort Rleb l); split => [|x|].
-  - rewrite Rltb_sorted_uniq_leb sort_uniq H1 sort_sorted //.
-    exact: Rleb_total.
+  - by rewrite Rltb_sorted_uniq_leb sort_uniq H1 sort_sorted.
   - by rewrite mem_sort; exact: H2.
   apply/eqP; rewrite -H3 -uniq_size_uniq ?sort_uniq //.
   by move=> a1; rewrite mem_sort.

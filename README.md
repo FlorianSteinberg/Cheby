@@ -31,14 +31,14 @@ The file CPoly_ex.v contains some examples of what we can do with this library.
   - Florian Steinberg
   - Laurent Théry
 - License: [MIT License](LICENSE)
-- Compatible Coq versions: 8.16 or later
+- Compatible Coq versions: 8.17 or later
 - Additional dependencies:
   - [Bignums](https://github.com/coq/bignums) same version as Coq
-  - [MathComp ssreflect 1.16 or later](https://math-comp.github.io)
-  - [MathComp algebra 1.16 or later](https://math-comp.github.io)
-  - [Flocq 4.1 or later](https://gitlab.inria.fr/flocq/flocq.git)
-  - [Interval 4.6.1 or later](https://gitlab.inria.fr/coqinterval/interval)
-  - [Coquelico 3.3.0 or later](https://gitlab.inria.fr/coquelicot/coquelicot)
+  - [MathComp ssreflect 1.17 or later](https://math-comp.github.io)
+  - [MathComp algebra 1.17 or later](https://math-comp.github.io)
+  - [Flocq 4.1.1 or later](https://gitlab.inria.fr/flocq/flocq.git)
+  - [Interval 4.7.0 or later](https://gitlab.inria.fr/coqinterval/interval)
+  - [Coquelico 3.3.1 or later](https://gitlab.inria.fr/coquelicot/coquelicot)
 - Coq namespace: `cheby`
 - Related publication(s): none
 

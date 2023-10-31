@@ -347,7 +347,8 @@ Lemma size_pT n : size ('T_ n : {poly R}) = n.+1.
 Proof.
 elim/induc2: n => [ | | n ih1 ih2]; first by rewrite pT0 size_poly1.
 	by rewrite pT1 size_polyX.
-suff/leP leq: (n.+3 <= size ('T_n.+2: {poly R}))%nat by have/leP leq':= size_pT_leq R (n.+2); lia.
+suff/leP leq: (n.+3 <= size ('T_n.+2: {poly R}))%nat.
+  by have/leP leq':= size_pT_leq R (n.+2); set ss := size _ in leq leq' *; lia.
 apply: gtn_size.
 rewrite pTSS coefD coef_opp_poly -scaler_nat -scalerAl coefZ coef_mul_poly.
 under eq_bigr do rewrite coefX.
@@ -718,7 +719,6 @@ Variable k : nat.
 Hypothesis fk1 : f (k.+1) = 0.
 Hypothesis fk2 : f (k.+2) = 0.
 
-
 Lemma deriv_sum_pT : (0 < k)%N -> [char R]%RR =i pred0 -> 
   ((f 0 / 2%:R) *: 'T_1 + 
     \sum_(1 <= i < k.+2) ((f i.-1 - f i.+1) / (i.*2%:R)) *: 'T_i)^`() = 
@@ -736,7 +736,8 @@ rewrite [\sum_(_ <= _ < _.+2) _]big_nat_recr //= fk1 mul0r scale0r addr0.
 rewrite -!addrA -sumrB.
 under eq_bigr do rewrite -!scalerA -scalerBr.
 rewrite !derivE !deriv_pT0 -[_ *: _^`()]scalerA -derivE deriv_pT1 //.
-rewrite addrA -scalerDl -mulrDr -mulr2n -mulr_natl mulfV ?Hf // mulr1.
+have -> : 1.*2%:R = 2 :> R by [].
+rewrite addrA -scalerDl -mulrDr -mulr2n -[_ *+ 2]mulr_natl mulfV ?Hf // mulr1.
 rewrite (big_morph _ (@derivD R) (@deriv0 R)).
 rewrite [RHS]big_ltn //; congr (_ + _).
 rewrite [RHS]big_ltn //; congr (_ + _).
@@ -764,10 +765,11 @@ rewrite [\sum_(_ <= _ < _.+2) _]big_nat_recr //= fk1 mulr0 mul0r scale0r addr0.
 rewrite -!addrA -sumrB.
 under eq_bigr do rewrite -!scalerA -scalerBr.
 rewrite !derivE.
-rewrite addrA -scalerDl mulrA -mulrDr -mulrA mulrC.
+rewrite addrA -scalerDl mulrA -[1.*2%:R]/2 -mulrDr -mulrA mulrC.
 rewrite -[_ *:  'T^(a,b)_1^`()]scalerA.
-rewrite -[_ *: 'T^(a,b)_1^`()]derivE deriv_pTab0 ?Hf //.
-rewrite -mulr2n -mulr_natl mulfV ?Hf // mulr1.
+rewrite -mulr2n -[_ *+ 2]mulr_natl mulfV ?Hf // scale1r.
+rewrite mulrA mulrC -[_ *: 'T^(a,b)_1^`()]scalerA /=.
+rewrite -[_ *: 'T^(a,b)_1^`()]derivE  deriv_pTab0 ?Hf //.
 rewrite [RHS]big_ltn //; congr (_ _ _).
 rewrite [_ * f 1]mulrC -2!mulrA -invfM ?Hf // -natrM -scalerA.
 rewrite -derivE deriv_pTab1 //.
@@ -777,7 +779,5 @@ rewrite [RHS]big_nat_cond [LHS]big_nat_cond.
 apply: eq_bigr => i /andP[/andP[i_gt1 iLk _]].
 by rewrite -!scalerBr !scalerA mulrC -scalerA derivE deriv_pTabSS.
 Qed.
-
-
 
 End Int.

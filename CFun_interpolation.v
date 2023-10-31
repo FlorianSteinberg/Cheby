@@ -706,7 +706,7 @@ Lemma poly_atan_deriv m :
         ('X^2 + 1%:P) * (poly_atan m)^`())%RR.
 Proof.
 apply/polyP => i.
-rewrite mulrDl mul1r coefCM coefB coefD.
+rewrite [(('X^2 + _) * _)%RR]mulrDl mul1r coefCM coefB coefD.
 rewrite -mulrA coefCM coefXnM coefXM.
 rewrite coef_deriv /coef_poly_atan !coef_poly.
 rewrite /coef_poly_atan size_poly_atan !ltnS.
@@ -775,10 +775,10 @@ Lemma Derive_n_atan k x :
   Derive_n atan k.+1 x = (-1)^+ k * k`!%:R * (poly_atan k).[x] / (1 + x ^ 2)^k.+1.
 Proof.
 elim: k x => [x|k IH x].
-  rewrite /= poly_atan_0 hornerE.
+  rewrite /= poly_atan_0 !hornerE /=.
   apply: is_derive_unique.
   rewrite !Rmult_1_r /Rdiv Rmult_1_l.
-  by exact: Coquelicot.is_derive_atan.
+  by exact: is_derive_atan.
 apply: etrans.
   apply: Derive_ext => y.
   by exact: IH.
@@ -794,7 +794,7 @@ rewrite Derive_div; last 3 first.
  - by apply: pow_nonzero; nra.
 rewrite factS mulnC natrM ![in RHS]Rmult_assoc.
 rewrite (_ : k.+1%:R = k.+1%:R%:P.[x]); last by rewrite hornerE.
-rewrite -[_.[x] * _.[x]](@hornerM [comRingType of R]).
+rewrite -[_.[x] * _.[x]](@hornerM (GRing.ComRing.clone _ R)).
 rewrite poly_atan_deriv.
 rewrite ![in RHS]hornerE !Derive_scal !Derive_horner .
 rewrite Derive_pow; last first.

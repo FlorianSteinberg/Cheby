@@ -18,6 +18,7 @@ the economic rights, and the successive licensors have only limited
 liability. See the COPYING file for more details.
 *)
 
+From HB Require Import structures.
 Require Import Rdefinitions Raxioms RIneq Rbasic_fun Zwf.
 Require Import Epsilon FunctionalExtensionality Ranalysis1 Rsqrt_def.
 From mathcomp Require Import ssreflect ssrfun ssrbool.
@@ -54,8 +55,7 @@ Proof.
 by move=> r1 r2; rewrite /eqr; case: Req_EM_T=> H; apply: (iffP idP).
 Qed.
 
-Canonical Structure R_eqMixin := EqMixin eqrP.
-Canonical Structure R_eqType := Eval hnf in EqType R R_eqMixin.
+HB.instance Definition _ := hasDecEq.Build R eqrP.
 
 Fact inhR : inhabited R.
 Proof. exact: (inhabits 0). Qed.
@@ -77,17 +77,21 @@ suff->: u = v by rewrite PEQ.
 by congr epsilon; apply: functional_extensionality=> x; rewrite PEQ.
 Qed.
 
-Definition R_choiceMixin : choiceMixin R :=
-  Choice.Mixin pickR_some pickR_ex pickR_ext.
+Fact R_hasChoice : hasChoice R.
+Proof.
+exists pickR.
+- by apply: pickR_some.
+- by apply: pickR_ex.
+by apply: pickR_ext.
+Qed.
 
-Canonical R_choiceType := Eval hnf in ChoiceType R R_choiceMixin.
+HB.instance Definition _ := R_hasChoice.
 
 Fact RplusA : associative (Rplus).
 Proof. by move=> *; rewrite Rplus_assoc. Qed.
 
-Definition R_zmodMixin := ZmodMixin RplusA Rplus_comm Rplus_0_l Rplus_opp_l.
-
-Canonical Structure R_zmodType := Eval hnf in ZmodType R R_zmodMixin.
+HB.instance Definition _ := 
+  GRing.isZmodule.Build R RplusA Rplus_comm Rplus_0_l Rplus_opp_l.
 
 Fact RmultA : associative (Rmult).
 Proof. by move=> *; rewrite Rmult_assoc. Qed.
@@ -95,22 +99,23 @@ Proof. by move=> *; rewrite Rmult_assoc. Qed.
 Fact R1_neq_0 : R1 != R0.
 Proof. by apply/eqP/R1_neq_R0. Qed.
 
-Definition R_ringMixin := RingMixin RmultA Rmult_1_l Rmult_1_r
+HB.instance Definition _ := 
+  GRing.Zmodule_isRing.Build R RmultA Rmult_1_l Rmult_1_r
   Rmult_plus_distr_r Rmult_plus_distr_l R1_neq_0.
 
-Canonical Structure R_ringType := Eval hnf in RingType R R_ringMixin.
-Canonical Structure R_comRingType := Eval hnf in ComRingType R Rmult_comm.
+HB.instance Definition _ := GRing.Ring_hasCommutativeMul.Build R Rmult_comm.
 
 Import Monoid.
 
-Canonical Radd_monoid := Law RplusA Rplus_0_l Rplus_0_r.
-Canonical Radd_comoid := ComLaw Rplus_comm.
+HB.instance Definition _ := 
+  isComLaw.Build R 0 Rplus RplusA  Rplus_comm Rplus_0_l.
 
-Canonical Rmul_monoid := Law RmultA Rmult_1_l Rmult_1_r.
-Canonical Rmul_comoid := ComLaw Rmult_comm.
+HB.instance Definition _ := 
+  isComLaw.Build R 1 Rmult RmultA  Rmult_comm Rmult_1_l.
 
-Canonical Rmul_mul_law := MulLaw Rmult_0_l Rmult_0_r.
-Canonical Radd_add_law := AddLaw Rmult_plus_distr_r Rmult_plus_distr_l.
+HB.instance Definition _ := isMulLaw.Build R 0 Rmult Rmult_0_l Rmult_0_r.
+HB.instance Definition _ := 
+  isAddLaw.Build R Rmult Rplus Rmult_plus_distr_r Rmult_plus_distr_l.
 
 Definition Rinvx r := if (r != 0) then / r else r.
 
@@ -122,45 +127,32 @@ move=> r; rewrite -topredE /unit_R /Rinvx => /= rNZ /=.
 by rewrite rNZ Rinv_l //; apply/eqP.
 Qed.
 
-Lemma RinvxRmult : {in unit_R, right_inverse 1 Rinvx Rmult}.
+Lemma intro_unit_R x y : y * x = R1 -> unit_R x.
 Proof.
-move=> r; rewrite -topredE /unit_R /Rinvx => /= rNZ /=.
-by rewrite rNZ Rinv_r //; apply/eqP.
-Qed.
-
-Lemma intro_unit_R x y : y * x = R1 /\ x * y = R1 -> unit_R x.
-Proof.
-move=> [yxE1 xyE1]; apply/eqP=> xZ.
+move=> yxE1; apply/eqP=> xZ.
 by case/eqP: R1_neq_0; rewrite -yxE1 xZ Rmult_0_r.
 Qed.
 
 Lemma Rinvx_out : {in predC unit_R, Rinvx =1 id}.
 Proof. by move=> x; rewrite inE /= /Rinvx -if_neg => ->. Qed.
 
-Definition R_unitRingMixin :=
-  UnitRingMixin RmultRinvx RinvxRmult intro_unit_R Rinvx_out.
+HB.instance Definition _ := 
+  GRing.ComRing_hasMulInverse.Build R RmultRinvx intro_unit_R Rinvx_out.
 
-Canonical Structure R_unitRing :=
-  Eval hnf in UnitRingType R R_unitRingMixin.
-
-Canonical Structure R_comUnitRingType :=
-  Eval hnf in [comUnitRingType of R].
-
-Lemma R_idomainMixin x y : x * y = 0 -> (x == 0) || (y == 0).
+Lemma R_idomain_axiom x y : x * y = 0 -> (x == 0) || (y == 0).
 Proof.
 (do 2 case: (boolP (_ == _))=> // /eqP)=> yNZ xNZ xyZ.
 by case: (Rmult_integral_contrapositive_currified _ _ xNZ yNZ).
 Qed.
 
-Canonical Structure R_idomainType :=
-   Eval hnf in IdomainType R R_idomainMixin.
+HB.instance Definition _ := 
+  GRing.ComUnitRing_isIntegral.Build R R_idomain_axiom.
 
-Lemma R_fieldMixin : GRing.Field.mixin_of [unitRingType of R].
+Lemma R_field_axiom : GRing.field_axiom R.
 Proof. by done. Qed.
 
-Definition R_fieldIdomainMixin := FieldIdomainMixin R_fieldMixin.
-
-Canonical Structure R_fieldType := FieldType R R_fieldMixin.
+HB.instance Definition _ := 
+  GRing.UnitRing_isField.Build R R_field_axiom.
 
 (** Reflect the order on the reals to bool *)
 
@@ -209,6 +201,13 @@ Local Open Scope R_scope.
 Lemma Rleb_norm_add x y : Rleb (Rabs (x + y)) (Rabs x + Rabs y).
 Proof. by apply/RlebP/Rabs_triang. Qed.
  
+Lemma norm_natr (x : R) n : (Rabs (x *+ n) = Rabs x *+ n)%RR.
+Proof.
+rewrite -mulr_natl -[in RHS]mulr_natl Rabs_mult Rabs_pos_eq //.
+elim: n => [|n IH] /=.
+  by rewrite /GRing.natmul /= /GRing.zero /=; lra.
+by rewrite -natr1 /GRing.add /= {2}/GRing.one /=; lra.
+Qed.
 Lemma addr_Rgtb0 x y : Rltb 0 x -> Rltb 0 y -> Rltb 0 (x + y).
 Proof. by move/RltbP=> Hx /RltbP Hy; apply/RltbP/Rplus_lt_0_compat. Qed.
  
@@ -243,8 +242,10 @@ move=> H; apply/andP; split; [apply/eqP|apply/RlebP].
   exact: Rgt_not_eq.
 exact: Rlt_le.
 Qed.
- 
-Definition R_numMixin := NumMixin Rleb_norm_add addr_Rgtb0 Rnorm0_eq0.
+
+HB.instance Definition _ :=  
+  Num.IntegralDomain_isNumRing.Build R Rleb_norm_add
+     addr_Rgtb0 Rnorm0_eq0 Rleb_leVge RnormM Rleb_def Rltb_def.
 
 Fact Rle_0D x y : Rleb 0 x -> Rleb 0 y -> Rleb 0 (x + y).
 Proof. by move=> /RlebP Hx /RlebP Hy; apply/RlebP; lra. Qed.
@@ -274,26 +275,32 @@ apply/RltbP/andP => [xLy|[/eqP yDx /RlebP xLy]]; last by lra.
 by apply/RlebP; lra.
 Qed.
 
-Definition RLeMixin : realLeMixin R_idomainType := 
-  RealLeMixin Rle_0D Rle_0M Rle_0A Rle_0B Rle_0X
-              Rabs_Ropp Rle0_Rabs Rlt_def.
+Lemma Rleb_refl : reflexive Rleb.
+Proof. by move=> a;apply/RlebP; lra. Qed.
+
+Lemma Rleb_anti : antisymmetric Rleb.
+Proof. move=> a b /andP[/RlebP H /RlebP H1]; lra. Qed.
+
+Lemma Rleb_trans : transitive Rleb.
+Proof. by move=> a b c /RlebP H /RlebP H1;apply/RlebP; lra. Qed.
+
+HB.instance Definition _ :=
+  Order.isPOrder.Build ring_display R Rlt_def Rleb_refl Rleb_anti Rleb_trans.
+
 Lemma Rleb_total : total Rleb.
 Proof.
 move=> a b; have [/RlebP->//|/RlebP->//] : a <= b \/ b <= a by lra.
 by rewrite orbT.
 Qed.
 
-Canonical RporderType := POrderType ring_display R RLeMixin.
-Canonical RlatticeType := LatticeType R RLeMixin.
-Canonical RdistrLatticeType := DistrLatticeType R RLeMixin.
-Canonical RorderType := OrderType R Rleb_total.
-Canonical RnumDomainType := NumDomainType R RLeMixin.
-Canonical RnormedZmodType := NormedZmodType R R RLeMixin.
-Canonical RnumFieldType := [numFieldType of R].
-Canonical RrealDomainType := [realDomainType of R].
-Canonical RrealFieldType := [realFieldType of R].
+HB.instance Definition _ :=
+  Order.POrder_isTotal.Build ring_display R Rleb_total.
 
-Lemma Rarchimedean_axiom : Num.archimedean_axiom RrealFieldType.
+HB.instance Definition _ :=
+   Num.IntegralDomain_isLeReal.Build R Rle_0D Rle_0M Rle_0A Rle_0B Rle_0X
+              Rabs_Ropp Rle0_Rabs Rlt_def.
+
+Lemma Rarchimedean_axiom : Num.archimedean_axiom R.
 Proof.
 move=> x; exists (Z.abs_nat (up x) + 2)%nat.
 have [Hx1 Hx2]:= (archimed x).
@@ -311,7 +318,7 @@ apply/RltbP/Rabs_def1.
     apply/Rplus_le_compat_r/IHz; split; first exact: Zlt_le_weak.
     exact: Zlt_pred.
   apply: (Rle_trans _ (IZR 0)); first exact: IZR_le.
-  by apply/RlebP/(ler0n RnumDomainType (Z.abs_nat z)).
+  by apply/RlebP/(ler0n (Num.NumDomain.clone _ R) (Z.abs_nat z)).
 apply: (Rlt_le_trans _ (IZR (up x) - 1)).
   apply: Ropp_lt_cancel; rewrite Ropp_involutive.
   rewrite Ropp_minus_distr /Rminus -opp_IZR -{2}(Z.opp_involutive (up x)).
@@ -329,14 +336,16 @@ apply: (Rlt_le_trans _ (IZR (up x) - 1)).
   rewrite mulrnDr; apply: (Rlt_le_trans _ 2).
     by rewrite -{1}[1]Rplus_0_r; apply/Rplus_lt_compat_l/Rlt_0_1.
   rewrite -[2]Rplus_0_l; apply: Rplus_le_compat_r.
-  by apply/RlebP/(ler0n RnumDomainType (Z.abs_nat _)).
+  by apply/RlebP/(ler0n (Num.NumDomain.clone _ R) (Z.abs_nat _)).
 apply: Rminus_le.
 rewrite /Rminus Rplus_assoc [- _ + _]Rplus_comm -Rplus_assoc -!/(Rminus _ _).
 exact: Rle_minus.
 Qed.
- 
-Canonical Structure R_archiFieldType := ArchiFieldType R Rarchimedean_axiom.
- 
+
+HB.instance Definition _ := 
+  Num.NumDomain_bounded_isArchimedean.Build R Rarchimedean_axiom.
+
+
 (** Here are the lemmas that we will use to prove that R has
 the rcfType structure. *)
  
@@ -375,7 +384,7 @@ have Hg: (fun x=> f x * f x ^+ n)%RR =1 g.
 by apply: (continuity_eq Hg); exact: continuity_mult.
 Qed.
  
-Lemma Rreal_closed_axiom : Num.real_closed_axiom R_archiFieldType.
+Lemma Rreal_closed_axiom : Num.real_closed_axiom R.
 Proof.
 move=> p a b; rewrite !le_eqVlt.
 case Hpa: (p.[a] == 0)%RR.
@@ -383,7 +392,8 @@ case Hpa: (p.[a] == 0)%RR.
 case Hpb: (p.[b] == 0)%RR.
   by move=> ? _; exists b=> //; rewrite lexx le_eqVlt andbT.
 case Hab: (a == b).
-  by move=> _; rewrite (eqP Hab) eq_sym Hpb (ltNge 0) /=; case/andP=> /ltW ->.
+  by move=> _; 
+     rewrite (eqP Hab) eq_sym Hpb /= (ltNge 0%R) /=; case/andP=> /ltW ->.
 rewrite eq_sym Hpb /=; clear=> /RltbP Hab /andP [] /RltbP Hpa /RltbP Hpb.
 suff Hcp: continuity (fun x => (p.[x])%RR).
   have [z [[Hza Hzb] /eqP Hz2]]:= IVT _ a b Hcp Hab Hpa Hpb.
@@ -397,62 +407,48 @@ apply: (continuity_eq Hf); apply: continuity_sum=> i _.
 apply:continuity_scal; apply: continuity_exp=> x esp Hesp.
 by exists esp; split=> // y [].
 Qed.
- 
-Canonical Structure R_rcfType := RcfType R Rreal_closed_axiom.
+
+HB.instance Definition _ := 
+  Num.RealField_isClosed.Build R Rreal_closed_axiom.
 
 (* proprietes utiles de l'exp *)
 
 Open Scope ring_scope.
 
-Lemma expR0 :
-    exp(GRing.zero R_zmodType) = 1.
+Lemma expR0 : exp 0%RR = 1.
 Proof. by rewrite exp_0. Qed.
 
-Lemma expRD x y :
-    exp(x) * exp(y) = exp(GRing.add x y).
+Lemma expRD x y : exp(x) * exp(y) = exp (x + y)%RR.
 Proof. by rewrite exp_plus. Qed.
 
-Lemma expRX x :
-  forall n : nat,
-    exp(x) ^+ n = exp(x *+ n).
+Lemma expRX x n :exp(x) ^+ n = exp(x *+ n).
 Proof.
-elim => [|n Ihn].
-  by rewrite expr0 mulr0n exp_0.
+elim: n => [|n Ihn]; first by rewrite expr0 mulr0n exp_0.
 by rewrite exprS Ihn mulrS expRD.
 Qed.
 
- Lemma Rplus_add x y :
-  Rplus x y = GRing.add x y.
+Lemma Rplus_add x y : Rplus x y = GRing.add x y.
 Proof. by done. Qed.
 
-Lemma Rmult_mul x y :
-  Rmult x y = GRing.mul x y.
+Lemma Rmult_mul x y : Rmult x y = GRing.mul x y.
 Proof. by done. Qed.
 
-Lemma Ropp_opp x :
-  Ropp x = GRing.opp x.
+Lemma Ropp_opp x : Ropp x = GRing.opp x.
 Proof. by done. Qed.
 
-Lemma Rdiv_div x y :
-  y != 0 -> Rdiv x y = x / y.
+Lemma Rdiv_div x y : y != 0 -> Rdiv x y = x / y.
 Proof.
 move=> Hneq0.
-apply: (@mulIr _ y).
-  by rewrite unitfE.
-rewrite -!mulrA.
-rewrite mulVr;
-  last by rewrite unitfE.
-rewrite -[X in _*X]Rmult_mul.
-rewrite Rinv_l //.
+apply: (@mulIr _ y); first by rewrite unitfE.
+rewrite -!mulrA mulVr; last by rewrite unitfE.
+rewrite -[X in _*X]Rmult_mul Rinv_l //.
 by apply: (elimN eqP Hneq0).
 Qed.
 
-Lemma sin_add x y : 
-   sin (GRing.add x y) = sin x * cos y + cos x * sin y.
+Lemma sin_add x y :  sin (x + y)%RR = sin x * cos y + cos x * sin y.
 Proof. by rewrite sin_plus. Qed. 
 
-Lemma cos_add x y : 
-   cos (GRing.add x y) = (cos x * cos y - sin x * sin y).
+Lemma cos_add x y : cos (x + y)%RR = (cos x * cos y - sin x * sin y).
 Proof. by rewrite cos_plus. Qed. 
 
 Lemma natr_INR n : n%:R = INR n.
@@ -511,9 +507,6 @@ Proof.
 apply/eqP/andP=> [->|[/RlebP H /RlebP]]; try lra.
 by split; apply/RlebP; lra.
 Qed.
-
-Lemma Rleb_trans : transitive Rleb.
-Proof. by move=> a b c /RlebP H /RlebP H1;apply/RlebP; lra. Qed.
 
 Lemma Rltb_trans : transitive Rltb.
 Proof. by move=> a b c /RltbP H /RltbP H1;apply/RltbP; lra. Qed.
@@ -681,7 +674,7 @@ elim: l => /= [HR|c l IH HR].
   apply: etrans.
     apply: RInt_ext => i Hi.
     by rewrite big_nil.
-  by rewrite RInt_const [LHS](@mulr0 [ringType of R]) big_nil.
+  by rewrite RInt_const [LHS](@mulr0 (GRing.Ring.clone _ R)) big_nil.
 rewrite big_cons.
 apply: etrans.
   apply: RInt_ext => x Hx.
@@ -705,8 +698,8 @@ Proof.
 move=> H.
 case: (Req_dec u 0) => [->|/eqP uNz].
   apply: ex_RInt_ext => [x Hx|].
-    rewrite [_ * _](@mul0r [ringType of R]) 
-            [_ + _](@add0r [ringType of R]).
+    rewrite [_ * _](@mul0r (GRing.Ring.clone _ R)) 
+            [_ + _](@add0r (GRing.Ring.clone _ R)).
      by [].
   by apply: ex_RInt_const.
 apply: ex_RInt_ext => [x Hx|].
@@ -747,5 +740,36 @@ Qed.
 Lemma Rchar : [char R]%RR =i pred0.
 Proof.
 case => //= i; rewrite !inE.
-by rewrite (@eqr_nat [numDomainType of R] i.+1 0%nat) andbF.
+by rewrite (@eqr_nat (Num.NumDomain.clone  _ R) i.+1 0%nat) andbF.
 Qed.
+
+(* Big op and R *)
+Lemma leR_sum (A : eqType) (f g : A -> R) (P : A -> bool) (l : seq A) :
+  (forall i, i \in l -> P i -> f i <= g i) ->
+   (\sum_(i <- l | P i) f i)%RR <= (\sum_(i <- l | P i) g i)%RR.
+Proof.
+elim: l => [_|a l IH H] /=; first by rewrite !big_nil; lra.
+have F :  (\sum_(i <- l | P i) f i)%RR <= (\sum_(i <- l | P i) g i)%RR.
+  by apply: IH => i iIl ?; apply: H => //; rewrite in_cons iIl orbT.
+rewrite !big_cons; case: (boolP (P a)) => Hp //.
+rewrite /GRing.add /= in F *.
+suff:  f a <= g a by lra.
+by apply: H => //; rewrite in_cons eqxx.
+Qed.
+
+Lemma sumR_ge0 (A : eqType) (l : seq A) (P : A -> bool) (f : A -> R) : 
+ (forall i, i \in l -> P i -> 0 <= f i) -> 0 <= (\sum_(i <- l | P i) (f i))%RR.
+Proof.
+elim: l => [_|a l IH H]; first by rewrite big_nil /GRing.zero /=; lra.
+have HP :  0 <= (\sum_(i <- l | P i) f i)%RR.
+  by apply: IH => i HA; apply: H; rewrite in_cons HA orbT.
+rewrite big_cons; case E : (P a) => //.
+apply: Rplus_le_le_0_compat => //.
+by apply: H; rewrite ?in_cons ?eqxx.
+Qed.
+
+Lemma mulR_sumr (I : Type) (r : seq I) 
+         (P : I -> bool) (F : I -> R) (x : R) : 
+  (x * (\sum_(i <- r | P i) F i)%RR) = (\sum_(i <- r | P i) (x * F i)%R)%RR.
+Proof. by apply: (@GRing.mulr_sumr (GRing.Ring.clone _ R)). Qed.
+

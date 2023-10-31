@@ -170,7 +170,7 @@ apply Rle_lt_trans with (1 := Rabs_triang _ _).
 replace (pos eps) with (pos_div_2 eps + pos_div_2 eps) by (simpl; field).
 apply Rplus_lt_compat.
   exact H3.
-rewrite <- Rabs_Ropp, !Ropp_plus_distr, Ropp_involutive, <- Ropp_div.
+rewrite <- Rabs_Ropp, !Ropp_plus_distr, Ropp_involutive, <- Rdiv_opp_l.
 exact H.
 Qed.
 
@@ -275,7 +275,7 @@ apply: filterlim_ext.
   move=> x.
   by rewrite -{2}[x](Ropp_involutive) asin_opp.
 apply: filterlim_comp; last first.
-  by rewrite RIneq.Ropp_div; apply: filterlim_Ropp_left.
+  by rewrite Rdiv_opp_l; apply: filterlim_Ropp_left.
 apply: filterlim_comp; last by exact: lim_asin_1.
 rewrite -[1](Ropp_involutive).
 exact: filterlim_Ropp_right.

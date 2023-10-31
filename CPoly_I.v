@@ -2776,7 +2776,7 @@ case: {onE}on.
   apply: add_correct; first by apply: I.fromZ_correct.
   replace (x ^ 2)%R with (x * x)%R by ring.
   by apply: sqr_correct.
-rewrite -Ropp_mult_distr_l Rmult_1_l Ropp_div.
+rewrite -Ropp_mult_distr_l Rmult_1_l Rdiv_opp_l.
 apply: neg_correct.
 apply: div_correct.
   rewrite /poly_atan -eval_atan_cor.
@@ -5069,7 +5069,6 @@ rewrite /D2R !I.F'.valid_lb_real // I.F'.valid_ub_real //=.
 move=> -> -> /=; lra.
 Qed.
 
-
 End CMIexpr.
 
 End CPoly_interval.
@@ -5166,7 +5165,7 @@ Definition mk_cms prec n a b f :=
   let vl3 := Ischeby_nodes prec a b n.+1 v2n in
   let x := fexpr_cms prec n ob vn zn z2n a b vl1 vl2 vl3 f in x.
 
-Let lem1 n : Z.pos (Pos.of_nat n.+2) = Z.of_nat n.+2.
+Lemma lem1 n : Z.pos (Pos.of_nat n.+2) = Z.of_nat n.+2.
 Proof. by rewrite /Z.of_nat Pos.of_nat_succ. Qed.
 
 Lemma mk_cms_correct prec n a b f :

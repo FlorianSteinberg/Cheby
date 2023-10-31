@@ -112,8 +112,8 @@ rewrite pT0 pT1 !hornerE /=.
 (* This should be ring *)
 case: (Cb _ _) => u1 u2 /=.
 rewrite !mulr2n !(mulrDl, mulrDr, opprB, opprD, mulNr ) -!addrA.
-do 40 (congr (_ + _); [idtac] || rewrite [RHS]addrC -![in RHS]addrA).
-by rewrite opprK addrC addrK.
+do 41 (congr (_ + _); [idtac] || rewrite [RHS]addrC -![in RHS]addrA).
+by rewrite addrA subrK.
 Qed.
 
 End CSHAW.

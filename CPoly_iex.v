@@ -96,7 +96,7 @@ apply: ex_RInt_continuous => z _.
 repeat (apply: continuous_mult || apply: continuous_plus ||
           apply: continuous_id || apply: continuous_minus ||
           apply: continuous_const || apply: continuous_opp
-          || apply: Coquelicot.continuous_Rinv_comp).
+          || apply: continuous_Rinv_comp).
 by nra.
 Qed.
 
@@ -206,7 +206,7 @@ apply: ex_RInt_continuous => z _.
 repeat (apply: continuous_mult || apply: continuous_plus ||
           apply: continuous_id || apply: continuous_minus ||
           apply: continuous_const || apply: continuous_opp
-          || apply: Coquelicot.continuous_Rinv_comp).
+          || apply: continuous_Rinv_comp).
 by nra.
 Qed.
 

@@ -1,6 +1,4 @@
-From mathcomp Require Import all_ssreflect.
-From mathcomp Require Import all_algebra.
-
+From mathcomp Require Import all_ssreflect  all_algebra.
 Require Import Rstruct CPoly CPoly_trigo CPoly_interpolation.
 Import Rtrigo_def Rtrigo1.
 Require Import Reals Coquelicot.Coquelicot Interval.Tactic Psatz.
@@ -71,8 +69,8 @@ apply: ierror_scheby => //.
     by exact: Derive_n_cos.
   case: odd; apply: continuous_scal; try apply: continuous_const.
     apply: continuous_opp.
-    by apply: Coquelicot.continuous_sin.
-  by apply: Coquelicot.continuous_cos.
+    by apply: continuous_sin.
+  by apply: continuous_cos.
 move=> y yB.
 rewrite Derive_n_cos /=.
 have := HD _ yB; case: odd => /=.
@@ -101,8 +99,8 @@ apply: interpolation_scheby_ge => //.
     by exact: Derive_n_cos.
   case: odd; apply: continuous_scal; try apply: continuous_const.
     apply: continuous_opp.
-    by apply: Coquelicot.continuous_sin.
-  by apply: Coquelicot.continuous_cos.
+    by apply: continuous_sin.
+  by apply: continuous_cos.
 - move: HD. 
   have [On|En] := boolP (odd n) => [] [HD|HD];
     have [On1|En1] := boolP (odd n./2).
@@ -165,7 +163,7 @@ Qed.
 
 Lemma Derive_n_exp k x : Derive_n exp k x =  exp x. 
 Proof.
-by apply/is_derive_n_unique/Coquelicot.is_derive_n_exp.
+by apply/is_derive_n_unique/is_derive_n_exp.
 Qed.
 
 Lemma exp_scheby_ge x :
@@ -182,13 +180,13 @@ apply: interpolation_scheby_ge => //.
   apply: continuous_ext => [u|].
     apply/sym_equal.
     by exact: Derive_n_exp.
-  by apply: Coquelicot.continuous_exp.
+  by apply: continuous_exp.
 - right => y yD.
   rewrite Derive_n_exp.
   by have := exp_pos y; lra.
 move=> m y mLn yB.
 apply: Coquelicot.ex_derive_n_is_derive_n.
-by apply: Coquelicot.is_derive_n_exp.
+by apply: is_derive_n_exp.
 Qed.
 
 End Exp.
@@ -271,7 +269,7 @@ have [aN|aP] : (a < 0 \/ a > 0) by lra.
       rewrite /abs /minus /plus /opp /z /= Rmult_1_l in Hz1.
       by move: Hz1; rewrite /Rmin; case: Rle_dec; split_Rabs; lra.
     apply: continuous_scal; first apply: continuous_const.
-    apply: Coquelicot.continuous_Rinv_comp.
+    apply: continuous_Rinv_comp.
       by apply: continuous_pow.
     by apply: pow_nonzero; lra.
   - have [On|En] := boolP (odd n).
@@ -312,7 +310,7 @@ apply: interpolation_scheby_ge Ha Hb _ _ _ _ => //.
     rewrite /abs /minus /plus /opp /z /= Rmult_1_l in Hz1.
     by move: Hz1; rewrite /Rmin; case: Rle_dec; split_Rabs; lra.
   apply: continuous_scal; first apply: continuous_const.
-  apply: Coquelicot.continuous_Rinv_comp.
+  apply: continuous_Rinv_comp.
     by apply: continuous_pow.
   by apply: pow_nonzero; lra.
 - have [On|En] := boolP (odd n).
@@ -404,7 +402,7 @@ have Hb : b < b + 1 by lra.
 apply: interpolation_scheby_ge Ha Hb _ _ _ _ => //.
 - move=> m y mLn yB.
   case: m mLn => [_|m mLn].
-    by apply: Coquelicot.continuous_ln; lra.
+    by apply: continuous_ln; lra.
   apply: continuous_ext_loc.
   pose z := Rmin (y - a / 2) (b + 1 - y).
     have Pz : 0 < z by apply: Rmin_pos; lra.
@@ -413,7 +411,7 @@ apply: interpolation_scheby_ge Ha Hb _ _ _ _ => //.
     rewrite /abs /minus /plus /opp /z /= Rmult_1_l in Hz1.
     by move: Hz1; rewrite /Rmin; case: Rle_dec; split_Rabs; lra.
   apply: continuous_scal; first apply: continuous_const.
-  apply: Coquelicot.continuous_Rinv_comp.
+  apply: continuous_Rinv_comp.
     by apply: continuous_pow.
   by apply: pow_nonzero; lra.
 - have [On|En] := boolP (odd n).
@@ -498,8 +496,8 @@ apply: ierror_scheby => //.
     apply/sym_equal.
     by exact: Derive_n_sin.
   case: odd; apply: continuous_scal; try apply: continuous_const.
-    by apply: Coquelicot.continuous_cos.
-  by apply: Coquelicot.continuous_sin.
+    by apply: continuous_cos.
+  by apply: continuous_sin.
 move=> y yB.
 rewrite Derive_n_sin /=.
 have := HD _ yB; case: odd => /=.
@@ -527,8 +525,8 @@ apply: interpolation_scheby_ge => //.
     apply/sym_equal.
     by exact: Derive_n_sin.
   case: odd; apply: continuous_scal; try apply: continuous_const.
-    by apply: Coquelicot.continuous_cos.
-  by apply: Coquelicot.continuous_sin.
+    by apply: continuous_cos.
+  by apply: continuous_sin.
 - move: HD. 
   have [On|En] := boolP (odd n) => [] [HD|HD];
     have [On1|En1] := boolP (odd n./2).
@@ -846,7 +844,7 @@ apply: ierror_scheby => //.
   apply: Coquelicot.ex_derive_n_is_derive_n.
   by apply: Private.IT1.IT.TM.TMI.is_derive_n_atan.
 - move=> y [/=|k] kLn yB.
-    by apply: Coquelicot.continuous_atan.
+    by apply: continuous_atan.
   apply: continuous_ext => [u|].
     apply/sym_equal.
     by exact: Derive_n_atan.
@@ -855,7 +853,7 @@ apply: ierror_scheby => //.
     apply: ex_derive_mult.
       by apply: ex_derive_const.
     by apply: ex_derive_horner.
-  apply: Coquelicot.continuous_Rinv_comp; last first.
+  apply: continuous_Rinv_comp; last first.
     by apply: pow_nonzero; nra.
   apply: ex_derive_continuous.
   apply: ex_derive_pow.
@@ -891,7 +889,7 @@ apply: interpolation_scheby_ge => //.
 - have H : b < b + 1 by lra.
   by exact: H.
 - move=> [|m] y mLn yB.
-    by apply: Coquelicot.continuous_atan.
+    by apply: continuous_atan.
   apply: continuous_ext => [u|].
     apply/sym_equal.
     by exact: Derive_n_atan.
@@ -900,7 +898,7 @@ apply: interpolation_scheby_ge => //.
     apply: ex_derive_mult.
       by apply: ex_derive_const.
     by apply: ex_derive_horner.
-  apply: Coquelicot.continuous_Rinv_comp; last first.
+  apply: continuous_Rinv_comp; last first.
     by apply: pow_nonzero; nra.
   apply: ex_derive_continuous.
   apply: ex_derive_pow.
@@ -966,7 +964,9 @@ Section DoubleFact.
 Fixpoint dfact_rec (n : nat) :=
   if n is n1.+2 then muln n (dfact_rec n1) else 1%nat.
 
-Definition dfact := nosimpl dfact_rec.
+Definition dfact := dfact_rec.
+
+Arguments dfact : simpl never.
 
 Lemma dfact0 : dfact 0 = 1%nat.
 Proof. by []. Qed.
@@ -1056,7 +1056,7 @@ have Hb : b < b + 1 by lra.
 apply: interpolation_scheby_ge Ha Hb _ _ _ _ => //.
 - move=> m y mLn yB.
   case: m mLn => [_|m mLn].
-    by apply: Coquelicot.continuous_sqrt; lra.
+    by apply: continuous_sqrt; lra.
   apply: continuous_ext_loc.
   pose z := Rmin (y - a / 2) (b + 1 - y).
     have Pz : 0 < z by apply: Rmin_pos; lra.
@@ -1065,11 +1065,11 @@ apply: interpolation_scheby_ge Ha Hb _ _ _ _ => //.
     rewrite /abs /minus /plus /opp /z /= Rmult_1_l in Hz1.
     by move: Hz1; rewrite /Rmin; case: Rle_dec; split_Rabs; lra.
   apply: continuous_scal; last first.
-    apply: Coquelicot.continuous_Rinv_comp.
+    apply: continuous_Rinv_comp.
       by apply: continuous_pow.
     by apply: pow_nonzero; lra.
   apply: continuous_scal; last first.
-    by apply: Coquelicot.continuous_sqrt.
+    by apply: continuous_sqrt.
   by apply: continuous_const.
 - have [On|En] := boolP (odd n).
     right => x1 Hx1.

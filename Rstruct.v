@@ -23,9 +23,8 @@ Require Import Rdefinitions Raxioms RIneq Rbasic_fun Zwf.
 Require Import Epsilon FunctionalExtensionality Ranalysis1 Rsqrt_def.
 From mathcomp Require Import ssreflect ssrfun ssrbool.
 From mathcomp Require Import eqtype ssrnat seq choice bigop.
-From mathcomp Require Import ssrnum ssralg fintype poly mxpoly.
+From mathcomp Require Import archimedean ssrnum ssralg fintype poly mxpoly.
 From mathcomp Require Import div order.
-
 Require Import Rtrigo1 Reals Lra.
 Require Import Reals Coquelicot.Coquelicot Psatz.
 
@@ -77,21 +76,13 @@ suff->: u = v by rewrite PEQ.
 by congr epsilon; apply: functional_extensionality=> x; rewrite PEQ.
 Qed.
 
-Fact R_hasChoice : hasChoice R.
-Proof.
-exists pickR.
-- by apply: pickR_some.
-- by apply: pickR_ex.
-by apply: pickR_ext.
-Qed.
-
-HB.instance Definition _ := R_hasChoice.
+HB.instance Definition _ := hasChoice.Build R pickR_some pickR_ex pickR_ext.
 
 Fact RplusA : associative (Rplus).
 Proof. by move=> *; rewrite Rplus_assoc. Qed.
 
-HB.instance Definition _ := 
-  GRing.isZmodule.Build R RplusA Rplus_comm Rplus_0_l Rplus_opp_l.
+HB.instance Definition _ := GRing.isZmodule.Build R
+  RplusA Rplus_comm Rplus_0_l Rplus_opp_l.
 
 Fact RmultA : associative (Rmult).
 Proof. by move=> *; rewrite Rmult_assoc. Qed.
@@ -99,23 +90,23 @@ Proof. by move=> *; rewrite Rmult_assoc. Qed.
 Fact R1_neq_0 : R1 != R0.
 Proof. by apply/eqP/R1_neq_R0. Qed.
 
-HB.instance Definition _ := 
-  GRing.Zmodule_isRing.Build R RmultA Rmult_1_l Rmult_1_r
-  Rmult_plus_distr_r Rmult_plus_distr_l R1_neq_0.
+HB.instance Definition _ := GRing.Nmodule_isSemiRing.Build R
+  RmultA Rmult_1_l Rmult_1_r
+  Rmult_plus_distr_r Rmult_plus_distr_l Rmult_0_l Rmult_0_r R1_neq_0.
 
-HB.instance Definition _ := GRing.Ring_hasCommutativeMul.Build R Rmult_comm.
+HB.instance Definition _ := GRing.Ring_hasCommutativeMul.Build R
+  Rmult_comm.
 
 Import Monoid.
 
-HB.instance Definition _ := 
-  isComLaw.Build R 0 Rplus RplusA  Rplus_comm Rplus_0_l.
+HB.instance Definition _ := isComLaw.Build R 0%R Rplus RplusA Rplus_comm Rplus_0_l.
 
-HB.instance Definition _ := 
-  isComLaw.Build R 1 Rmult RmultA  Rmult_comm Rmult_1_l.
+HB.instance Definition _ := isComLaw.Build R 1%R Rmult RmultA Rmult_comm Rmult_1_l.
 
-HB.instance Definition _ := isMulLaw.Build R 0 Rmult Rmult_0_l Rmult_0_r.
-HB.instance Definition _ := 
-  isAddLaw.Build R Rmult Rplus Rmult_plus_distr_r Rmult_plus_distr_l.
+HB.instance Definition _ := isMulLaw.Build R 0%R Rmult Rmult_0_l Rmult_0_r.
+
+HB.instance Definition _ := isAddLaw.Build R Rmult Rplus
+  Rmult_plus_distr_r Rmult_plus_distr_l.
 
 Definition Rinvx r := if (r != 0) then / r else r.
 
@@ -127,26 +118,31 @@ move=> r; rewrite -topredE /unit_R /Rinvx => /= rNZ /=.
 by rewrite rNZ Rinv_l //; apply/eqP.
 Qed.
 
-Lemma intro_unit_R x y : y * x = R1 -> unit_R x.
+Lemma RinvxRmult : {in unit_R, right_inverse 1 Rinvx Rmult}.
 Proof.
-move=> yxE1; apply/eqP=> xZ.
+move=> r; rewrite -topredE /unit_R /Rinvx => /= rNZ /=.
+by rewrite rNZ Rinv_r //; apply/eqP.
+Qed.
+
+Lemma intro_unit_R x y : y * x = R1 /\ x * y = R1 -> unit_R x.
+Proof.
+move=> [yxE1 xyE1]; apply/eqP=> xZ.
 by case/eqP: R1_neq_0; rewrite -yxE1 xZ Rmult_0_r.
 Qed.
 
 Lemma Rinvx_out : {in predC unit_R, Rinvx =1 id}.
 Proof. by move=> x; rewrite inE /= /Rinvx -if_neg => ->. Qed.
 
-HB.instance Definition _ := 
-  GRing.ComRing_hasMulInverse.Build R RmultRinvx intro_unit_R Rinvx_out.
+HB.instance Definition _ := GRing.Ring_hasMulInverse.Build R
+  RmultRinvx RinvxRmult intro_unit_R Rinvx_out.
 
-Lemma R_idomain_axiom x y : x * y = 0 -> (x == 0) || (y == 0).
+Lemma R_idomainMixin x y : x * y = 0 -> (x == 0) || (y == 0).
 Proof.
 (do 2 case: (boolP (_ == _))=> // /eqP)=> yNZ xNZ xyZ.
 by case: (Rmult_integral_contrapositive_currified _ _ xNZ yNZ).
 Qed.
 
-HB.instance Definition _ := 
-  GRing.ComUnitRing_isIntegral.Build R R_idomain_axiom.
+HB.instance Definition _ := GRing.ComUnitRing_isIntegral.Build R R_idomainMixin.
 
 Lemma R_field_axiom : GRing.field_axiom R.
 Proof. by done. Qed.
@@ -201,13 +197,6 @@ Local Open Scope R_scope.
 Lemma Rleb_norm_add x y : Rleb (Rabs (x + y)) (Rabs x + Rabs y).
 Proof. by apply/RlebP/Rabs_triang. Qed.
  
-Lemma norm_natr (x : R) n : (Rabs (x *+ n) = Rabs x *+ n)%RR.
-Proof.
-rewrite -mulr_natl -[in RHS]mulr_natl Rabs_mult Rabs_pos_eq //.
-elim: n => [|n IH] /=.
-  by rewrite /GRing.natmul /= /GRing.zero /=; lra.
-by rewrite -natr1 /GRing.add /= {2}/GRing.one /=; lra.
-Qed.
 Lemma addr_Rgtb0 x y : Rltb 0 x -> Rltb 0 y -> Rltb 0 (x + y).
 Proof. by move/RltbP=> Hx /RltbP Hy; apply/RltbP/Rplus_lt_0_compat. Qed.
  
@@ -242,8 +231,8 @@ move=> H; apply/andP; split; [apply/eqP|apply/RlebP].
   exact: Rgt_not_eq.
 exact: Rlt_le.
 Qed.
-
-HB.instance Definition _ :=  
+ 
+ HB.instance Definition _ :=  
   Num.IntegralDomain_isNumRing.Build R Rleb_norm_add
      addr_Rgtb0 Rnorm0_eq0 Rleb_leVge RnormM Rleb_def Rltb_def.
 
@@ -342,9 +331,9 @@ rewrite /Rminus Rplus_assoc [- _ + _]Rplus_comm -Rplus_assoc -!/(Rminus _ _).
 exact: Rle_minus.
 Qed.
 
+Locate archimedian_axiom.
 HB.instance Definition _ := 
   Num.NumDomain_bounded_isArchimedean.Build R Rarchimedean_axiom.
-
 
 (** Here are the lemmas that we will use to prove that R has
 the rcfType structure. *)
@@ -383,7 +372,7 @@ have Hg: (fun x=> f x * f x ^+ n)%RR =1 g.
   by move=> x; rewrite /g exprS.
 by apply: (continuity_eq Hg); exact: continuity_mult.
 Qed.
- 
+
 Lemma Rreal_closed_axiom : Num.real_closed_axiom R.
 Proof.
 move=> p a b; rewrite !le_eqVlt.
@@ -407,7 +396,8 @@ apply: (continuity_eq Hf); apply: continuity_sum=> i _.
 apply:continuity_scal; apply: continuity_exp=> x esp Hesp.
 by exists esp; split=> // y [].
 Qed.
-
+ 
+#[verbose]
 HB.instance Definition _ := 
   Num.RealField_isClosed.Build R Rreal_closed_axiom.
 
@@ -421,19 +411,20 @@ Proof. by rewrite exp_0. Qed.
 Lemma expRD x y : exp(x) * exp(y) = exp (x + y)%RR.
 Proof. by rewrite exp_plus. Qed.
 
-Lemma expRX x n :exp(x) ^+ n = exp(x *+ n).
+Lemma expRX x n : exp(x) ^+ n = exp(x *+ n).
 Proof.
-elim: n => [|n Ihn]; first by rewrite expr0 mulr0n exp_0.
+elim: n => [|n Ihn].
+  by rewrite expr0 mulr0n exp_0.
 by rewrite exprS Ihn mulrS expRD.
 Qed.
 
-Lemma Rplus_add x y : Rplus x y = GRing.add x y.
+Lemma Rplus_add x y : (x + y)%R = (x + y)%RR.
 Proof. by done. Qed.
 
-Lemma Rmult_mul x y : Rmult x y = GRing.mul x y.
+Lemma Rmult_mul x y : (x * y)%R = (x * y)%RR.
 Proof. by done. Qed.
 
-Lemma Ropp_opp x : Ropp x = GRing.opp x.
+Lemma Ropp_opp x : (- x)%R = (- x)%RR.
 Proof. by done. Qed.
 
 Lemma Rdiv_div x y : y != 0 -> Rdiv x y = x / y.
@@ -445,7 +436,7 @@ rewrite -[X in _*X]Rmult_mul Rinv_l //.
 by apply: (elimN eqP Hneq0).
 Qed.
 
-Lemma sin_add x y :  sin (x + y)%RR = sin x * cos y + cos x * sin y.
+Lemma sin_add x y : sin (x + y)%RR = sin x * cos y + cos x * sin y.
 Proof. by rewrite sin_plus. Qed. 
 
 Lemma cos_add x y : cos (x + y)%RR = (cos x * cos y - sin x * sin y).
@@ -740,7 +731,7 @@ Qed.
 Lemma Rchar : [char R]%RR =i pred0.
 Proof.
 case => //= i; rewrite !inE.
-by rewrite (@eqr_nat (Num.NumDomain.clone  _ R) i.+1 0%nat) andbF.
+by rewrite (@eqr_nat (Num.NumDomain.clone _ R) i.+1 0%nat) andbF.
 Qed.
 
 (* Big op and R *)
@@ -772,4 +763,7 @@ Lemma mulR_sumr (I : Type) (r : seq I)
          (P : I -> bool) (F : I -> R) (x : R) : 
   (x * (\sum_(i <- r | P i) F i)%RR) = (\sum_(i <- r | P i) (x * F i)%R)%RR.
 Proof. by apply: (@GRing.mulr_sumr (GRing.Ring.clone _ R)). Qed.
+
+Search (Monoid.Law _).
+Locate RbaseSymbolsImpl_Rmult__canonical__Monoid_Law.
 

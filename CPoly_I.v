@@ -14,6 +14,7 @@ From Interval Require Import Specific_ops Missing.Stdlib Xreal.
 From Interval Require Import Basic Float Sig Interval.
 
 Module SFBI2 := SpecificFloat Specific_bigint.BigIntRadix2.
+
 Module I := Float_full.FloatIntervalFull SFBI2.
 
 Module CPoly_interval (F : FloatOps with Definition sensible_format := true).
@@ -325,7 +326,7 @@ case xE : (F.cmp l F.zero).
     rewrite F.fromZ_correct //=; lra. 
   have [|-> /= Hu] := F.mul_UP_correct prec (F.fromZ 1) u.
     left.
-    rewrite /F.is_non_neg /= I.F'.valid_ub_real ?Freal_fromZ //=.
+    rewrite /F.is_non_neg' /= I.F'.valid_ub_real ?Freal_fromZ //=.
     rewrite F.fromZ_correct // E V2.
     repeat split => //; lra.
   split.
@@ -342,14 +343,13 @@ case xE : (F.cmp l F.zero).
   case: Raux.Rcompare_spec => // x2_lt0.
   have [|-> /= Hl] := F.mul_DN_correct prec (F.fromZ 1) l.
     right; right; left.
-    rewrite /F.is_non_pos E1 /= /F.is_non_neg.
-    rewrite I.F'.valid_ub_real ?Freal_fromZ //= F.fromZ_correct // V1.
-    repeat split => //; lra.
+    rewrite /F.is_non_pos' E1 /= /F.is_non_neg' /= F.fromZ_correct //.
+    by repeat split => //; lra.
   have [|-> /= Hu] := F.mul_UP_correct prec (F.fromZ 1) u.
     left.
-    rewrite /F.is_non_neg /= I.F'.valid_ub_real ?Freal_fromZ //=.
+    rewrite /F.is_non_neg' /= I.F'.valid_ub_real ?Freal_fromZ //=.
     rewrite F.fromZ_correct // E V2.
-    repeat split => //; lra.
+    by repeat split => //; lra.
   split.
     move: Hl; case: F.toX => //= r.
     rewrite E1 F.fromZ_correct //= /le_lower /=.
@@ -369,7 +369,7 @@ case xE : (F.cmp l F.zero).
     rewrite F.fromZ_correct //=; lra. 
   have [|-> /= Hu] := F.mul_UP_correct prec (F.fromZ 1) u.
     left.
-    rewrite /F.is_non_neg /= I.F'.valid_ub_real ?Freal_fromZ //=.
+    rewrite /F.is_non_neg' /= I.F'.valid_ub_real ?Freal_fromZ //=.
     rewrite F.fromZ_correct // E V2.
     repeat split => //; lra.
   split.

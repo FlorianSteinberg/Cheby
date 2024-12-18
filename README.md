@@ -6,8 +6,8 @@ Follow the instructions on https://github.com/coq-community/templates to regener
 
 [![Docker CI][docker-action-shield]][docker-action-link]
 
-[docker-action-shield]: https://github.com/FlorianSteinberg/Cheby/workflows/Docker%20CI/badge.svg?branch=master
-[docker-action-link]: https://github.com/FlorianSteinberg/Cheby/actions?query=workflow:"Docker%20CI"
+[docker-action-shield]: https://github.com/FlorianSteinberg/Cheby/actions/workflows/docker-action.yml/badge.svg?branch=master
+[docker-action-link]: https://github.com/FlorianSteinberg/Cheby/actions/workflows/docker-action.yml
 
 
 
@@ -31,14 +31,14 @@ The file CPoly_ex.v contains some examples of what we can do with this library.
   - Florian Steinberg
   - Laurent Théry
 - License: [MIT License](LICENSE)
-- Compatible Coq versions: 8.18 or later
+- Compatible Coq versions: 8.19 or later
 - Additional dependencies:
   - [Bignums](https://github.com/coq/bignums) same version as Coq
   - [MathComp ssreflect 2.1 or later](https://math-comp.github.io)
   - [MathComp algebra 2.1 or later](https://math-comp.github.io)
   - [Flocq 4.1.3 or later](https://gitlab.inria.fr/flocq/flocq.git)
-  - [Interval 4.8.1 or later](https://gitlab.inria.fr/coqinterval/interval)
-  - [Coquelico 3.4.0 or later](https://gitlab.inria.fr/coquelicot/coquelicot)
+  - [Interval 4.11.1 or later](https://gitlab.inria.fr/coqinterval/interval)
+  - [Coquelico 3.4.2 or later](https://gitlab.inria.fr/coquelicot/coquelicot)
 - Coq namespace: `cheby`
 - Related publication(s): none
 

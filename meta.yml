@@ -38,8 +38,8 @@ license:
   identifier: MIT
 
 supported_coq_versions:
-  text: '8.19 or later'
-  opam: '{(>= "8.19")}'
+  text: '8.20 or later'
+  opam: '{(>= "8.20")}'
 
 dependencies:
 - opam:
@@ -50,12 +50,12 @@ dependencies:
     name: coq-mathcomp-ssreflect
     version: '{(>= "2.3.0")}'
   description: |-
-    [MathComp ssreflect 2.1 or later](https://math-comp.github.io)
+    [MathComp ssreflect 2.3 or later](https://math-comp.github.io)
 - opam:
     name: coq-mathcomp-algebra
     version: '{(>= "2.3.0")}'
   description: |-
-    [MathComp algebra 2.1 or later](https://math-comp.github.io)
+    [MathComp algebra 2.3 or later](https://math-comp.github.io)
 - opam:
     name: coq-flocq
     version: '{(>= "4.2.0")}'
@@ -70,11 +70,11 @@ dependencies:
     name: coq-coquelicot
     version: '{(>= "3.4.2")}'
   description: |-
-    [Coquelico 3.4.2 or later](https://gitlab.inria.fr/coquelicot/coquelicot)
+    [Coquelicot 3.4.2 or later](https://gitlab.inria.fr/coquelicot/coquelicot)
 
 
 tested_coq_opam_versions:
-- version: '2.3.0-coq-8.19'
+- version: '2.3.0-coq-8.20'
   repo: 'mathcomp/mathcomp'
 
 namespace: cheby

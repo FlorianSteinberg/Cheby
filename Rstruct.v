@@ -397,7 +397,6 @@ apply:continuity_scal; apply: continuity_exp=> x esp Hesp.
 by exists esp; split=> // y [].
 Qed.
  
-#[verbose]
 HB.instance Definition _ := 
   Num.RealField_isClosed.Build R Rreal_closed_axiom.
 

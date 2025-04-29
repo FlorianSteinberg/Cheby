@@ -9,7 +9,7 @@ Import GRing.Theory.
 Local Open Scope ring_scope.
 
 Section Tcheby.
-Variable R : ringType.
+Variable R : nzRingType.
 Implicit Types (l : seq R) (p: {poly R}) .
 
 (* Chebyshev polynomials introduced via their recursion scheme *)
@@ -158,10 +158,10 @@ rewrite !orbF !subSS; case: leqP=> Hm; last first.
   by rewrite mul0rn  sub0r oppr0.
 rewrite ltnS.
 move: Hm; rewrite leq_eqVlt; case/orP=> [/eqP->|].
-  by rewrite subnn leqnSn !mul1r !bin0 !muln1 subr0 -mulr_natl -natrM.
+  by rewrite subnn leqnSn !mul1r !bin0 !muln1 subr0 -[LHS]mulr_natl -natrM.
 rewrite ltnS leq_eqVlt; case/orP; [move/eqP->|move=>Him].
   by rewrite leqnn subSnn !subn0 expr0 !bin0
-             subr0 !mul1r !muln1 -mulr_natl -natrM expnS.
+             subr0 !mul1r !muln1 -[LHS]mulr_natl -natrM expnS.
 rewrite leqNgt Him /= subSn; last by exact: ltnW.
 have->: ((n - i).+1./2 = (n - i)./2.+1).
  rewrite -{1}[(n - i)%N]odd_double_half.
@@ -387,7 +387,7 @@ have [ineq|ineq]:= (ltnP i (maxn (size p) (size q))).
 	move => n; rewrite lead_coefE size_pT.
 	exact: coef_pTn_reg.
 apply/ leq_sizeP; last apply ineq.
-by rewrite -[size q]size_opp size_add.
+by rewrite -[size q]size_polyN size_polyD.
 Qed.
 
 Lemma pT_eq0 (p: {poly R}):
@@ -546,7 +546,7 @@ have D :  b + - a != 0 by rewrite subr_eq0 eq_sym.
 have E : GRing.lreg ((1 + 1) / (b - a)).
   by apply/GRing.lregM; apply/lregP => //; apply: invr_neq0.
 rewrite size_comp_poly2 ?size_pT //; first by apply/lregP.
-rewrite /Tab size_addl lreg_size ?size_polyX //.
+rewrite /Tab size_polyDl lreg_size ?size_polyX //.
 by rewrite size_polyC; case: (_ == _).
 Qed.
 
@@ -653,19 +653,19 @@ Variable R: fieldType.
 Lemma deriv_pT0 : ('T_1)^`() = 'T_0 :> {poly R}.
 Proof. by rewrite pT1 pT0 derivX. Qed.
 
-Lemma deriv_pT1 : [char R]%RR =i pred0 -> 
+Lemma deriv_pT1 : [pchar R]%RR =i pred0 -> 
   (4%:R^-1 *: 'T_2)^`() = 'T_1 :> {poly R}.
 Proof.
-move=> /GRing.charf0P Hf.
+move=> /pcharf0P Hf.
 rewrite derivZ pTSS pT1 pT0 mulrnAl derivB derivMn -expr2 derivXn derivC.
 by rewrite subr0 -mulrnA -scaler_nat scalerA mulVf ?Hf ?scale1r.
 Qed.
 
-Lemma deriv_pTSS n: (1 < n)%nat -> [char R]%RR =i pred0 -> 
+Lemma deriv_pTSS n: (1 < n)%nat -> [pchar R]%RR =i pred0 -> 
   (n.+1.*2%:R^-1 *: 'T_n.+1 - n.-1.*2%:R^-1 *: 'T_n.-1)^`() = 
     'T_n :> {poly R}.
 Proof.
-case: n => [] // [] // n _ /GRing.charf0P Hf.
+case: n => [] // [] // n _ /pcharf0P Hf.
 rewrite !(derivB, derivZ, deriv_pT) -!scaler_nat !scalerA.
 do 2 rewrite -muln2 natrM invfM mulrC mulrA mulfV ?Hf // mul1r.
 rewrite -scalerBr pT_pU pUSS -addrA -opprD -mulr2n mulrnAl -mulrnBl.
@@ -690,26 +690,26 @@ rewrite !derivE deriv_pTabn deriv_pT0 scalerA.
 by rewrite mulrA divfK // mulfV ?scale1r // subr_eq0 eq_sym.
 Qed.
 
-Lemma deriv_pTab1 : a != b -> [char R]%RR =i pred0 -> 
+Lemma deriv_pTab1 : a != b -> [pchar R]%RR =i pred0 -> 
   (((b - a)/ 8%:R) *: 'T^(a,b)_2)^`() = 'T^(a,b)_1 :> {poly R}.
 Proof.
 rewrite eq_sym -subr_eq0 => bDaNeq0 Hc.
-have /GRing.charf0P Hf := Hc.
+have /pcharf0P Hf := Hc.
 rewrite !derivE deriv_pTabn scalerA mulrAC !mulrA [_ * 2%:R]mulrC mulfK //.
 rewrite -[8%:R]/((2 * 4)%:R) natrM invfM mulrA mulfV ?Hf // mul1r.
 by rewrite -comp_polyZ -derivZ deriv_pT1.
 Qed.
 
-Lemma deriv_pTabSS n: (1 < n)%nat -> a != b -> [char R]%RR =i pred0 -> 
+Lemma deriv_pTabSS n: (1 < n)%nat -> a != b -> [pchar R]%RR =i pred0 -> 
   ((b - a) / 2%:R *: (n.+1.*2%:R^-1 *:
     'T^(a,b)_n.+1 - n.-1.*2%:R^-1 *: 'T^(a,b)_n.-1))^`() = 
     'T^(a,b)_n :> {poly R}.
 Proof.
 rewrite eq_sym -subr_eq0 => n_gt1 bDaNeq0 Hc.
-have /GRing.charf0P Hf := Hc.
+have /pcharf0P Hf := Hc.
 rewrite !derivE !deriv_pTabn.
 rewrite !scalerA ![_ * (_ / _)]mulrC -!scalerA -!scalerBr !scalerA.
-rewrite !divfK ?Hf // mulfV // scale1r.
+rewrite mulrA divfK ?Hf // mulfV // scale1r.
 by rewrite -!comp_polyZ -comp_polyB -!derivE deriv_pTSS.
 Qed.
 
@@ -719,13 +719,13 @@ Variable k : nat.
 Hypothesis fk1 : f (k.+1) = 0.
 Hypothesis fk2 : f (k.+2) = 0.
 
-Lemma deriv_sum_pT : (0 < k)%N -> [char R]%RR =i pred0 -> 
+Lemma deriv_sum_pT : (0 < k)%N -> [pchar R]%RR =i pred0 -> 
   ((f 0 / 2%:R) *: 'T_1 + 
     \sum_(1 <= i < k.+2) ((f i.-1 - f i.+1) / (i.*2%:R)) *: 'T_i)^`() = 
     \sum_(0 <= i < k.+1) f i *: 'T_i.
 Proof.
 move=> k_gt0 Hc.
-have /GRing.charf0P Hf := Hc.
+have /pcharf0P Hf := Hc.
 under eq_bigr do rewrite mulrBl scalerBl.
 rewrite sumrB.
 rewrite big_add1.
@@ -746,14 +746,14 @@ apply: eq_bigr => i /andP[/andP[i_gt1 iLk _]].
 by rewrite derivE deriv_pTSS.
 Qed.
 
-Lemma deriv_sum_pTab : (0 < k)%N -> a != b -> [char R]%RR =i pred0 -> 
+Lemma deriv_sum_pTab : (0 < k)%N -> a != b -> [pchar R]%RR =i pred0 -> 
   (((b - a) / 2%:R * (f 0 / 2%:R)) *: 'T^(a,b)_1 + 
     \sum_(1 <= i < k.+2)
        ((b - a) / 2%:R * (f i.-1 - f i.+1) / (i.*2%:R)) *: 'T^(a,b)_i)^`() = 
     \sum_(0 <= i < k.+1) f i *: 'T^(a,b)_i.
 Proof.
 move => k_gt0 aDb Hc.
-have /GRing.charf0P Hf := Hc.
+have /pcharf0P Hf := Hc.
 under eq_bigr do rewrite mulrBr mulrBl scalerBl.
 rewrite sumrB.
 rewrite big_add1.

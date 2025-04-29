@@ -48,19 +48,19 @@ dependencies:
     [Bignums](https://github.com/coq/bignums) same version as Coq
 - opam:
     name: coq-mathcomp-ssreflect
-    version: '{(>= "2.3.0")}'
+    version: '{(>= "2.4.0")}'
   description: |-
-    [MathComp ssreflect 2.3 or later](https://math-comp.github.io)
+    [MathComp ssreflect 2.4 or later](https://math-comp.github.io)
 - opam:
     name: coq-mathcomp-algebra
-    version: '{(>= "2.3.0")}'
+    version: '{(>= "2.4.0")}'
   description: |-
-    [MathComp algebra 2.3 or later](https://math-comp.github.io)
+    [MathComp algebra 2.4 or later](https://math-comp.github.io)
 - opam:
     name: coq-flocq
-    version: '{(>= "4.2.0")}'
+    version: '{(>= "4.2.1")}'
   description: |-
-    [Flocq 4.1.3 or later](https://gitlab.inria.fr/flocq/flocq.git)
+    [Flocq 4.2.1 or later](https://gitlab.inria.fr/flocq/flocq.git)
 - opam:
     name: coq-interval
     version: '{(>= "4.11.1")}'
@@ -68,13 +68,13 @@ dependencies:
     [Interval 4.11.1 or later](https://gitlab.inria.fr/coqinterval/interval)
 - opam:
     name: coq-coquelicot
-    version: '{(>= "3.4.2")}'
+    version: '{(>= "3.4.3")}'
   description: |-
-    [Coquelicot 3.4.2 or later](https://gitlab.inria.fr/coquelicot/coquelicot)
+    [Coquelicot 3.4.3 or later](https://gitlab.inria.fr/coquelicot/coquelicot)
 
 
 tested_coq_opam_versions:
-- version: '2.3.0-coq-8.20'
+- version: '2.4.0-coq-8.20'
   repo: 'mathcomp/mathcomp'
 
 namespace: cheby

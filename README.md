@@ -34,11 +34,11 @@ The file CPoly_ex.v contains some examples of what we can do with this library.
 - Compatible Coq versions: 8.20 or later
 - Additional dependencies:
   - [Bignums](https://github.com/coq/bignums) same version as Coq
-  - [MathComp ssreflect 2.3 or later](https://math-comp.github.io)
-  - [MathComp algebra 2.3 or later](https://math-comp.github.io)
-  - [Flocq 4.1.3 or later](https://gitlab.inria.fr/flocq/flocq.git)
+  - [MathComp ssreflect 2.4 or later](https://math-comp.github.io)
+  - [MathComp algebra 2.4 or later](https://math-comp.github.io)
+  - [Flocq 4.2.1 or later](https://gitlab.inria.fr/flocq/flocq.git)
   - [Interval 4.11.1 or later](https://gitlab.inria.fr/coqinterval/interval)
-  - [Coquelicot 3.4.2 or later](https://gitlab.inria.fr/coquelicot/coquelicot)
+  - [Coquelicot 3.4.3 or later](https://gitlab.inria.fr/coquelicot/coquelicot)
 - Coq namespace: `cheby`
 - Related publication(s): none
 

@@ -90,11 +90,11 @@ Proof. by move=> *; rewrite Rmult_assoc. Qed.
 Fact R1_neq_0 : R1 != R0.
 Proof. by apply/eqP/R1_neq_R0. Qed.
 
-HB.instance Definition _ := GRing.Nmodule_isSemiRing.Build R
+HB.instance Definition _ := GRing.Nmodule_isNzSemiRing.Build R
   RmultA Rmult_1_l Rmult_1_r
   Rmult_plus_distr_r Rmult_plus_distr_l Rmult_0_l Rmult_0_r R1_neq_0.
 
-HB.instance Definition _ := GRing.Ring_hasCommutativeMul.Build R
+HB.instance Definition _ := GRing.PzRing_hasCommutativeMul.Build R
   Rmult_comm.
 
 Import Monoid.
@@ -133,7 +133,7 @@ Qed.
 Lemma Rinvx_out : {in predC unit_R, Rinvx =1 id}.
 Proof. by move=> x; rewrite inE /= /Rinvx -if_neg => ->. Qed.
 
-HB.instance Definition _ := GRing.Ring_hasMulInverse.Build R
+HB.instance Definition _ := GRing.NzRing_hasMulInverse.Build R
   RmultRinvx RinvxRmult intro_unit_R Rinvx_out.
 
 Lemma R_idomainMixin x y : x * y = 0 -> (x == 0) || (y == 0).
@@ -449,7 +449,7 @@ rewrite  S_INR [_.+1%:R](natrD _ 1) IH -[1%:R]/1.
 by rewrite addrC.
 Qed.
 
-Lemma natrS (R :ringType) n : n.+1%:R = 1 + n%:R :> R.
+Lemma natrS (R : pzRingType) n : n.+1%:R = 1 + n%:R :> R.
 Proof. by rewrite -(natrD _ 1 n). Qed.
 
 Lemma Z_of_nat_gt0 n: (0 < n)%nat -> (0 < Z.of_nat n)%Z.
@@ -465,8 +465,8 @@ End ssreal_struct.
 
 (* More theorems to make Reals and ssreflect work together *)
 
-Ltac toR := rewrite /GRing.add /GRing.opp /GRing.zero /GRing.mul /GRing.inv
-  /GRing.one ?natr_INR //=.
+Ltac toR := rewrite -?natr1 /GRing.add /GRing.opp /GRing.zero /GRing.mul /GRing.inv
+  /GRing.one ?mulr1n ?natr_INR //=.
 
 Lemma pow_expn x n : Nat.pow x n = expn x n.
 Proof. by elim: n => //= n ->; rewrite expnS. Qed.
@@ -665,7 +665,7 @@ elim: l => /= [HR|c l IH HR].
   apply: etrans.
     apply: RInt_ext => i Hi.
     by rewrite big_nil.
-  by rewrite RInt_const [LHS](@mulr0 (GRing.Ring.clone _ R)) big_nil.
+  by rewrite RInt_const [LHS](@mulr0 (GRing.PzRing.clone _ R)) big_nil.
 rewrite big_cons.
 apply: etrans.
   apply: RInt_ext => x Hx.
@@ -689,8 +689,8 @@ Proof.
 move=> H.
 case: (Req_dec u 0) => [->|/eqP uNz].
   apply: ex_RInt_ext => [x Hx|].
-    rewrite [_ * _](@mul0r (GRing.Ring.clone _ R)) 
-            [_ + _](@add0r (GRing.Ring.clone _ R)).
+    rewrite [_ * _](@mul0r (GRing.PzRing.clone _ R)) 
+            [_ + _](@add0r (GRing.PzRing.clone _ R)).
      by [].
   by apply: ex_RInt_const.
 apply: ex_RInt_ext => [x Hx|].
@@ -728,7 +728,7 @@ apply: (Nat.div_unique _ _ _ (x %% y)).
 by rewrite [(_ * _)%coq_nat]mulnC -[RHS]divn_eq.
 Qed.
 
-Lemma Rchar : [char R]%RR =i pred0.
+Lemma Rchar : [pchar R]%RR =i pred0.
 Proof.
 case => //= i; rewrite !inE.
 by rewrite (@eqr_nat (Num.NumDomain.clone _ R) i.+1 0%nat) andbF.
@@ -762,8 +762,5 @@ Qed.
 Lemma mulR_sumr (I : Type) (r : seq I) 
          (P : I -> bool) (F : I -> R) (x : R) : 
   (x * (\sum_(i <- r | P i) F i)%RR) = (\sum_(i <- r | P i) (x * F i)%R)%RR.
-Proof. by apply: (@GRing.mulr_sumr (GRing.Ring.clone _ R)). Qed.
-
-Search (Monoid.Law _).
-Locate RbaseSymbolsImpl_Rmult__canonical__Monoid_Law.
+Proof. by apply: (@GRing.mulr_sumr (GRing.PzRing.clone _ R)). Qed.
 

@@ -711,8 +711,7 @@ rewrite /coef_poly_atan size_poly_atan !ltnS.
 case: m => [|[|m]]; rewrite /= ?rm0.
 - by case: i => [|[|i]]; rewrite /= ?rm0 //; toR; lra.
 - case: i => [|[|[|i]]]; rewrite //= ?rm0; try (toR; lra).
-    by rewrite binn binSn !exprS !expr0 ?rm1; toR; lra.
-  rewrite -['C(3, _)]/3%nat binS ?rm1.
+  rewrite -['C(3, _)]/1%nat -['C(2, _)]/2%nat ?rm1.
   by toR; lra.
 case: i => [|[|i]]; rewrite ?rm0 !subSS !subn0 /=.
 - rewrite negbK binn binSn.
@@ -792,7 +791,7 @@ rewrite Derive_div; last 3 first.
  - by apply: pow_nonzero; nra.
 rewrite factS mulnC natrM ![in RHS]Rmult_assoc.
 rewrite (_ : k.+1%:R = k.+1%:R%:P.[x]); last by rewrite hornerE.
-rewrite -[_.[x] * _.[x]](@hornerM (GRing.ComRing.clone _ R)).
+rewrite -[_.[x] * _.[x]](@hornerM (GRing.ComPzRing.clone _ R)).
 rewrite poly_atan_deriv.
 rewrite ![in RHS]hornerE !Derive_scal !Derive_horner .
 rewrite Derive_pow; last first.

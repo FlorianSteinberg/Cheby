@@ -9,7 +9,7 @@ Import GRing.Theory.
 Local Open Scope ring_scope.
 
 Section CSHAW.
-Variable R : ringType.
+Variable R : nzRingType.
 Implicit Types (l : seq R) (p: {poly R}) .
 
 (* Interpret a list as Chebychev Coefficients of a polynomial: *)
@@ -113,13 +113,13 @@ rewrite pT0 pT1 !hornerE /=.
 case: (Cb _ _) => u1 u2 /=.
 rewrite !mulr2n !(mulrDl, mulrDr, opprB, opprD, mulNr ) -!addrA.
 do 41 (congr (_ + _); [idtac] || rewrite [RHS]addrC -![in RHS]addrA).
-by rewrite addrA subrK.
+by rewrite subrr addr0 opprK.
 Qed.
 
 End CSHAW.
 
 Section CP2P.
-Variable (R: ringType).
+Variable (R: nzRingType).
 
 Definition opp_Cpoly := lopp_poly.
 
@@ -196,7 +196,7 @@ congr (_ + _).
 rewrite -sumrN.
 rewrite -(@polybase_widen _ _ _ (size k)).
    by apply: eq_bigr => i _; rewrite coefN coef_Poly scaleNr.
-by rewrite size_opp; exact: size_Poly.
+by rewrite size_polyN; exact: size_Poly.
 Qed.
 
 Definition scl2_Cpoly (l : seq R) := [seq i *+ 2 | i <- l]. 
@@ -518,7 +518,7 @@ Fixpoint abs_mul_Cpoly (R : fieldType) n (a : R) acc l :=
    else (ncons n.+1 0 acc)
  else  add_Cpoly (0 :: acc) [seq (a * i) / 2%:R| i <- l].
 
-Lemma CPoly_rcons (R1 : ringType) (a : R1) l : 
+Lemma CPoly_rcons (R1 : nzRingType) (a : R1) l : 
   CPoly (rcons l a) = CPoly l + a *: 'T_(size l).
 Proof.
 rewrite /CPoly size_rcons big_ord_recr /=.
@@ -528,7 +528,7 @@ congr (_ + _).
 by rewrite nth_rcons ltnn eqxx.
 Qed. 
 
-Lemma CPoly_ncons0 (R1 : ringType) n  (a : R1) l : 
+Lemma CPoly_ncons0 (R1 : nzRingType) n  (a : R1) l : 
   CPoly (ncons n 0 (a :: l)) = CPoly (ncons n.+1 0 l) + a *: 'T_n.
 Proof.
 rewrite /CPoly !size_ncons addSnnS.

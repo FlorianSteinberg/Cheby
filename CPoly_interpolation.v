@@ -87,7 +87,7 @@ elim: l => /= [|a l IH].
 rewrite /prodl /=; case: (boolP (_ \in _)) => H.
   by apply: leq_trans IH _.
 rewrite big_cons.
-apply: leq_trans (size_mul_leq _ _) _.
+apply: leq_trans (size_polyMleq _ _) _.
 by rewrite size_XsubC.
 Qed.
 
@@ -111,7 +111,7 @@ Qed.
 Lemma size_prodl_uniq l : uniq l -> size (prodl l) = (size l).+1.
 Proof.  by move=> H; rewrite -{2}(undup_id H) size_prodl_undup. Qed.
 
-Lemma derivn_size (Q : ringType) (p : {poly Q}) :
+Lemma derivn_size (Q : nzRingType) (p : {poly Q}) :
   p ^`((size p).-1) = (lead_coef p *+ (size p).-1 `!)%:P.
 Proof.
 apply/polyP => [] [|i]; rewrite coef_derivn coefC /=.
@@ -198,7 +198,7 @@ elim: l => /= [|a l IH].
   by rewrite size_poly0.
 have [aIl|aNIl] := boolP (_ \in _).
   by apply: leq_trans IH _.
-apply: leq_trans (size_add _ _) _.
+apply: leq_trans (size_polyD _ _) _.
 rewrite geq_max (leq_trans IH _) // 
                 (leq_trans (size_scale_leq _ _)) //.
 by exact: size_prodl.
@@ -815,7 +815,7 @@ have E : GRing.lreg ((1 + 1) / (b - a)).
 have F1 : size p = n.+1.
   rewrite size_comp_poly2 ?size_pT //. 
     by move=> /= x /= y; rewrite -[2%:R]/2; toR; lra.
-  rewrite /Tab size_addl lreg_size ?size_polyX //.
+  rewrite /Tab size_polyDl lreg_size ?size_polyX //.
   by rewrite size_polyC; case: (_ == _).
 rewrite -coef_pTab; last first.
   apply/eqP; rewrite -[_%:R]/2; toR; lra.
@@ -970,8 +970,8 @@ pose u := x / 2.
 pose v i := INR i.*2.+1 * x / 2.
 suff <-: 2 * sin u * sum_cheby n x = sin (v n  + u).
   by rewrite /u; field; apply/eqP.
-rewrite Rmult_assoc [sin _ * _](@mulr_sumr (GRing.Ring.clone _ R)).
-rewrite [_ * _](@mulr_sumr (GRing.Ring.clone _ R)).
+rewrite Rmult_assoc [sin _ * _](@mulr_sumr (GRing.PzRing.clone _ R)).
+rewrite [_ * _](@mulr_sumr (GRing.PzRing.clone _ R)).
 pose f (i : 'I_n.+1) := sin (v i + u) - sin (v i - u).
 rewrite (eq_bigr f)=> [|i _]; last first.
   by rewrite /f -[_/2]/(v i) sin_minus sin_plus; toR; ring.
@@ -1037,14 +1037,14 @@ Proof. by apply: eq_bigr => i _; rewrite mulrC. Qed.
 
 Lemma dsprod_chebyZ n k f g : '<<k *: f, g>>_n = k * '<<f, g>>_ n.
 Proof.
-rewrite [_ * _](@mulr_sumr (GRing.Ring.clone _ R)).
+rewrite [_ * _](@mulr_sumr (GRing.PzRing.clone _ R)).
 by apply: eq_bigr => i _; rewrite hornerE mulrA.
 Qed.
 
 Lemma dsprod_cheby0 n g : '<<0, g>>_n = 0.
 Proof.
 rewrite -(@scale0r _ (GRing.Lmodule.clone R _ {poly R}) 0) dsprod_chebyZ.
-by rewrite [0 * _](@mul0r (GRing.Ring.clone _ R)).
+by rewrite [0 * _](@mul0r (GRing.PzRing.clone _ R)).
 Qed.
 
 Lemma dsprod_chebyN n f g : '<<-f, g>>_n = - '<<f, g >>_ n.
@@ -1055,7 +1055,7 @@ Qed.
 Lemma dsprod_chebyD n f1 f2 g : 
   '<<f1 + f2, g>>_n = '<<f1, g>>_n + '<<f2, g>>_n.
 Proof.
-rewrite -[_ + _](@big_split (GRing.Ring.clone _ R)) /=.
+rewrite -[_ + _](@big_split (GRing.PzRing.clone _ R)) /=.
 by apply: eq_bigr => i _; rewrite !hornerE mulrDl.
 Qed.
 
@@ -1180,7 +1180,7 @@ have p1Lk : (size p1 <= k)%nat.
   rewrite coefB coefZ.
   have /leq_sizeP/(_ j)->// := pLk.
   have  /(leq_trans)/(_ H)/leq_sizeP-> // := 
-        size_pT_leq (GRing.Ring.clone _ R) k.
+        size_pT_leq (GRing.PzRing.clone _ R) k.
   by rewrite !rm0.
 rewrite -{1}[p](subrK ((p`_k / lead_coef 'T_k) *: 'T_k)).
 rewrite -/p1 (IH _ p1Lk); last by apply: leq_trans kLn.
@@ -1226,14 +1226,14 @@ Proof. by apply: eq_bigr => i _; rewrite mulrC. Qed.
 Lemma sdsprod_chebyZ a b n k f g : 
   '<<k *: f, g>>[a, b]_n = k * '<<f, g>>[a, b]_ n.
 Proof.
-rewrite [_ * _](@mulr_sumr (GRing.Ring.clone _ R)).
+rewrite [_ * _](@mulr_sumr (GRing.PzRing.clone _ R)).
 by apply: eq_bigr => i _; rewrite hornerE mulrA.
 Qed.
 
 Lemma sdsprod_cheby0 a b n g : '<<0, g>>[a, b]_n = 0.
 Proof.
 rewrite -(@scale0r _ (GRing.Lmodule.clone R _ {poly R}) 0) sdsprod_chebyZ.
-by rewrite [0 * _](@mul0r (GRing.Ring.clone _ R)).
+by rewrite [0 * _](@mul0r (GRing.PzRing.clone _ R)).
 Qed.
 
 Lemma sdsprod_chebyN a b n f g : '<<-f, g>>[a, b]_n = - '<<f, g >>[a, b]_ n.
@@ -1242,7 +1242,7 @@ Proof. by rewrite -scaleN1r sdsprod_chebyZ /=; exact: mulN1r. Qed.
 Lemma sdsprod_chebyD a b n f1 f2 g : 
   '<<f1 + f2, g>>[a, b]_n = '<<f1, g>>[a, b]_n + '<<f2, g>>[a, b]_n.
 Proof.
-rewrite -[_ + _](@big_split (GRing.Ring.clone _ R)) /=.
+rewrite -[_ + _](@big_split (GRing.PzRing.clone _ R)) /=.
 by apply: eq_bigr => i _; rewrite !hornerE mulrDl.
 Qed.
 
@@ -1503,8 +1503,8 @@ apply/eqP; rewrite -subr_eq0.
 set p := (_ - _)%RR.
 case: eqP => // /eqP pNZ.
 have: (size p <= size l)%nat.
-  apply: leq_trans (size_add _ _) _.
-  rewrite size_opp geq_max interpolation_size //.
+  apply: leq_trans (size_polyD _ _) _.
+  rewrite size_polyN geq_max interpolation_size //.
   apply: leq_trans (size_sum _ _ _) _.
   rewrite (big_nth 0%RR) big_mkord.
   apply/bigmax_leqP=> i _.
@@ -2028,7 +2028,7 @@ Lemma ierror_cheby_diff n f x :
  ierror f (cheby_nodes n) x = /INR (2 ^ n.-1) * 
  ddiff f (rcons (cheby_nodes n) x) * ('T_n).[x].
 Proof.
-pose RC := (GRing.ComRing.clone _ R).
+pose RC := (GRing.ComPzRing.clone _ R).
 move=> xNIc.
 rewrite /ierror [_ - _](@error_ddiff (GRing.Field.clone _ R)); last first.
   by rewrite cons_uniq xNIc uniq_cheby_nodes.
@@ -2109,7 +2109,7 @@ Lemma ierror_scheby_diff n a b f x :
  ierror f (scheby_nodes a b n) x = (b - a) ^+ n/INR (2 ^ n.*2.-1) * 
  ddiff f (rcons (scheby_nodes a b n) x) * ('T^(a,b)_n).[x].
 Proof.
-pose RC := GRing.ComRing.clone _ R.
+pose RC := GRing.ComPzRing.clone _ R.
 move=> aLb xNIc.
 rewrite /ierror [_ - _](@error_ddiff (GRing.Field.clone _ R)); last first.
   by rewrite cons_uniq xNIc uniq_scheby_nodes.

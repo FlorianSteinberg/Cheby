@@ -10,7 +10,7 @@ Local Open Scope ring_scope.
 
 Section RBase.
 
-Variable R : ringType.
+Variable R : nzRingType.
 Variable F : nat -> {poly R}.
 
 Lemma polybase_widen (p : {poly R}) n :
@@ -18,7 +18,7 @@ Lemma polybase_widen (p : {poly R}) n :
 Proof.
 move=> Hs.
 rewrite -(big_mkord xpredT (fun i => p`_i *: F i)).
-rewrite (big_cat_nat _ _ _ _ Hs) //= big_mkord.
+rewrite (big_cat_nat _ Hs) //= big_mkord.
 rewrite addrC big_nat_cond big1 ?add0r // => i.
 rewrite andbT => /andP[/(@leq_sizeP R) // H1 H2].
 by rewrite H1 ?scale0r.
@@ -27,7 +27,8 @@ Qed.
 Lemma sumrA (p q: {poly R}):
 	\sum_(i < size (p + q)) (p + q)`_i *: F i = \sum_(i < size p) p`_i *: F i + \sum_(i < size q) q`_i *: F i.
 Proof.
-rewrite -(@polybase_widen (p + q) (maxn (size p) (size q))); last exact: size_add.
+rewrite -(@polybase_widen (p + q) (maxn (size p) (size q))); last first.
+    by exact: size_polyD.
 rewrite -(@polybase_widen p (maxn (size p) (size q))); last by rewrite leq_maxl.
 rewrite -(@polybase_widen q (maxn (size p) (size q))); last by rewrite leq_maxr.
 elim: (maxn (size p) (size q)) => [ | n ih]; first by rewrite !big_ord0 rm0.
@@ -65,11 +66,11 @@ have lp : l`_ n * (F n)`_n != 0.
 have Hs: size (l`_n *: F n) = n.+1.
 	suff/leP: (n.+1 <= size (l`_n *: F n))%nat.
 		have/leP:= @size_scale_leq _ (l`_n) (F n).
-		rewrite F_size; lia.
+		rewrite F_size; set u := GRing.scale; lia.
 	by apply gtn_size; rewrite coefZ.
 case: (n) Hs IH => [Hs _|n1 Hs IH].
   by rewrite !big_ord0 add0r Hs.
-rewrite addrC size_addl Hs.
+rewrite addrC size_polyDl Hs.
   rewrite (maxn_idPr _) //.
   apply/bigmax_leqP=> i _.
   by apply: leq_trans (ltn_ord i) _; rewrite ltnW.

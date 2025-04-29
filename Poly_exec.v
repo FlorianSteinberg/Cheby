@@ -9,7 +9,7 @@ Import GRing.Theory.
 Local Open Scope ring_scope.
 
 Section Poly_exec.
-Variable R : ringType.
+Variable R : nzRingType.
 Implicit Type p : {poly R}.
 
 Lemma Poly_cons (a: R) K:

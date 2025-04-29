@@ -1917,7 +1917,7 @@ elim: n acc Acc l L => [acc Acc [|b l] [|B L] H1 H2 H3 H4 H5 i|
   have /=-> := @nth_map _ I0 _ I0 F _ (_ :: _); last first.
     by case: H2 => <-.
   rewrite (_ :  f _ = (a * (b :: l)`_i1) / 2)%R; last first.
-    rewrite /f /=; toR; rewrite /Rinvx ifT //.
+    rewrite /f /=; toR; rewrite /Rinvx ifT //; first by lra.
     by apply/eqP; toR; lra.
   by apply/div2_correct/mul_correct.
 - rewrite !nth_ncons; case: leqP => _ //.
@@ -3898,7 +3898,7 @@ case: l => [/=|c [/=|d [|e l]]] //=.
 by toR; rewrite Rminus_0_r.
 Qed.
 
-Lemma coef_add_Cpoly (K : ringType) (l1 l2 : seq K) i :
+Lemma coef_add_Cpoly (K : nzRingType) (l1 l2 : seq K) i :
   (add_Cpoly l1 l2)`_i = l1`_i + l2`_i.
 Proof.
 elim: l1 l2 i => //=.
@@ -3914,7 +3914,7 @@ Proof.
 case: l => // c [|d [|e l]] //.
   case: j => //= _; toR.
   rewrite (_ : (2 + 2 = 4)%R); last by lra.
-  rewrite (_ : (2 * (1 + 1) = 4)%R); last by lra.
+  rewrite (_ : (2 * (0 + 1 + 1) = 4)%R); last by lra.
   by lra.
 move=> sH; rewrite /= !ltnS in sH.
 rewrite /int_Cpoly int_Cpoly_recSS.
@@ -3947,8 +3947,9 @@ case: l => [|c [|d l]].
 - rewrite /CPolyab /= big_ord_recr /= !big_ord1 /= scale0r add0r.
   rewrite mulrC -scalerA derivZ; congr (_ _ _); first by toR; lra.
   rewrite -deriv_pTab0 //.
-  congr ((_ *: _)^`()).
-    by toR; rewrite /Rinvx ifT //; apply/eqP; lra.
+    congr ((_ *: _)^`()).
+    toR; rewrite /Rinvx ifT //; first by field; lra.
+    by apply/eqP; lra.
   by apply/eqP; toR; lra.
 rewrite /CPolyab size_int_Cpoly !size_cons.
 have <- := @big_mkord _ _ _ _ predT 
@@ -5048,9 +5049,9 @@ Lemma mk_iexpr_ieval_correct n k e :
 Proof.
 move=> eW; apply: iexpr_ieval_correct => //.
   suff ->: INR n.+2 = IZR (Z.of_nat n.+2) by apply: I.fromZ_correct.
-  by rewrite IZR_Zof_nat; toR.
+  by rewrite INR_IZR_INZ.
 suff ->: (2 * INR n.+2)%R = IZR (Z.of_nat (n.+2).*2) by apply: I.fromZ_correct.
-by rewrite IZR_Zof_nat -addnn natrD; toR; lra.
+by rewrite -(mult_INR 2) INR_IZR_INZ -mul2n.
 Qed.
 
 Lemma mk_iexpr_ieval_correct_r n k a b e :

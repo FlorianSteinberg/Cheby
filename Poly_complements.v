@@ -14,7 +14,7 @@ Definition rm0 :=
 Definition rm1 := (mulr1, mul1r, mulr1n, expr1).
 
 Section Poly_complements.
-Variable R : ringType.
+Variable R : nzRingType.
 
 Lemma gtn_size (p : {poly R}) i : p`_i != 0 -> (i < size p)%N.
 Proof.

@@ -38,8 +38,8 @@ license:
   identifier: MIT
 
 supported_coq_versions:
-  text: '8.20 or later'
-  opam: '{(>= "8.20")}'
+  text: '9.0 or later'
+  opam: '{(>= "9.0")}'
 
 dependencies:
 - opam:
@@ -63,7 +63,7 @@ dependencies:
     [Flocq 4.2.1 or later](https://gitlab.inria.fr/flocq/flocq.git)
 - opam:
     name: coq-interval
-    version: '{(>= "4.11.1")}'
+    version: '{(>= "4.11.2")}'
   description: |-
     [Interval 4.11.1 or later](https://gitlab.inria.fr/coqinterval/interval)
 - opam:
@@ -74,7 +74,7 @@ dependencies:
 
 
 tested_coq_opam_versions:
-- version: '2.4.0-coq-8.20'
+- version: '2.4.0-rocq-prover-9.0'
   repo: 'mathcomp/mathcomp'
 
 namespace: cheby

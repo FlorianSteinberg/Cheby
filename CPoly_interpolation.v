@@ -1,6 +1,6 @@
 From mathcomp Require Import all_ssreflect.
 From mathcomp Require Import all_algebra.
-
+Declare Scope bigQ_scope.
 Require Import Rstruct CPoly CPoly_trigo atan_asin_acos.
 Import Rtrigo_def.
 Import Rtrigo1.
@@ -215,7 +215,8 @@ Qed.
 
 End Interpolation.
 
-Require Import Reals Coquelicot.Coquelicot Interval.Missing.Coquelicot Psatz.
+From Stdlib Require Import Reals Psatz.
+Require Import Coquelicot.Coquelicot Interval.Missing.Coquelicot.
 Require Import Rstruct.
 
 Lemma is_derive_horner p x :

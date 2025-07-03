@@ -1,5 +1,6 @@
 From mathcomp Require Import all_ssreflect all_algebra.
-Require Import String Rstruct Reals Psatz.
+From Stdlib Require Import String Reals Psatz.
+Require Import Rstruct.
 Require Import Poly_complements CPoly CPoly_exec CPoly_interpolation.
 Require Import Coquelicot.Coquelicot.
 Require Import CFun_interpolation.
@@ -9,7 +10,7 @@ Import Prenex Implicits.
 
 Import GRing.Theory.
 Local Open Scope ring_scope.
-Require Import ZArith.
+From Stdlib Require Import ZArith.
 From Interval Require Import Specific_ops Missing.Stdlib Xreal.
 From Interval Require Import Basic Float Sig Interval.
 
@@ -5191,7 +5192,8 @@ have z2nE : z2n = Pos.of_nat (n.+1).*2.+1.
 apply: fexpr_cms_correct => //.
   rewrite /vn /zn INR_IZR_INZ /Z.of_nat Pos.of_nat_succ.
   by apply: I.fromZ_correct.
-rewrite {vl1 vl2}// /v2n z2nE INR_IZR_INZ /Z.of_nat Pos.of_nat_succ.
+rewrite {vl1 vl2}// [in I.convert _]/v2n.
+rewrite z2nE INR_IZR_INZ /Z.of_nat Pos.of_nat_succ.
 rewrite Nat2Pos.inj_succ // Pplus_one_succ_r.
 rewrite -muln2 Nat2Pos.inj_mul // [Pos.of_nat 2]/=.
 rewrite [Pos.of_nat n.+2]Nat2Pos.inj_succ // Pplus_one_succ_r.
@@ -5371,7 +5373,7 @@ have [HI aLxLb _|] := boolP (I.subset _ _).
         rewrite /vn /zn INR_IZR_INZ /Z.of_nat Pos.of_nat_succ.
         by apply: I.fromZ_correct.
       rewrite {vl1 vl2 IH}//.
-      rewrite  /v2n z2nE INR_IZR_INZ /Z.of_nat Pos.of_nat_succ.
+      rewrite  [in I.convert _]/v2n z2nE INR_IZR_INZ /Z.of_nat Pos.of_nat_succ.
       rewrite Nat2Pos.inj_succ // Pplus_one_succ_r.
       rewrite -muln2 Nat2Pos.inj_mul // [Pos.of_nat 2]/=.
       rewrite [Pos.of_nat n.+2]Nat2Pos.inj_succ // Pplus_one_succ_r.

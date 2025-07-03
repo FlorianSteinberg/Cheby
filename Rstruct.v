@@ -19,14 +19,15 @@ liability. See the COPYING file for more details.
 *)
 
 From HB Require Import structures.
-Require Import Rdefinitions Raxioms RIneq Rbasic_fun Zwf.
-Require Import Epsilon FunctionalExtensionality Ranalysis1 Rsqrt_def.
+From Stdlib Require Import Rdefinitions Raxioms RIneq Rbasic_fun Zwf.
+From Stdlib  Require Import Epsilon FunctionalExtensionality Ranalysis1 Rsqrt_def.
 From mathcomp Require Import ssreflect ssrfun ssrbool.
 From mathcomp Require Import eqtype ssrnat seq choice bigop.
 From mathcomp Require Import archimedean ssrnum ssralg fintype poly mxpoly.
 From mathcomp Require Import div order.
-Require Import Rtrigo1 Reals Lra.
-Require Import Reals Coquelicot.Coquelicot Psatz.
+From Stdlib Require Import Rtrigo1 Reals Lra Psatz.
+Require Import Coquelicot.Coquelicot.
+Import Zabs ZArith_dec Zorder.
 
 Delimit Scope ring_scope with RR.
 
@@ -67,7 +68,7 @@ Proof. by rewrite /pickR; case: (boolP (P _)) => // Px [<-]. Qed.
 
 Fact pickR_ex (P : pred R) :
   (exists x : R, P x) -> exists n, pickR P n.
-Proof. by rewrite /pickR; move=> /(epsilon_spec inhR)->; exists 0%N. Qed.
+Proof. by rewrite /pickR; move=> /(epsilon_spec inhR)->; exists 0%nat. Qed.
 
 Fact pickR_ext (P Q : pred R) : P =1 Q -> pickR P =1 pickR Q.
 Proof.
@@ -302,7 +303,7 @@ apply/RltbP/Rabs_def1.
   apply: (Rlt_le_trans _ (IZR (up x)))=> //.
   elim/(well_founded_ind (Zwf_well_founded 0)): (up x) => z IHz.
   case: (Z_lt_le_dec 0 z) => [zp | zn].
-    rewrite [z]Hz plus_IZR Zabs_nat_Zplus //; last exact: Zlt_0_le_0_pred.
+    rewrite [z]Hz plus_IZR Zabs.Zabs_nat_Zplus //; last exact: Zlt_0_le_0_pred.
     rewrite plusE mulrnDr.
     apply/Rplus_le_compat_r/IHz; split; first exact: Zlt_le_weak.
     exact: Zlt_pred.
@@ -465,7 +466,7 @@ End ssreal_struct.
 (* More theorems to make Reals and ssreflect work together *)
 
 Ltac toR := rewrite -?natr1 /GRing.add /GRing.opp /GRing.zero /GRing.mul /GRing.inv
-  /GRing.one ?mulr1n ?natr_INR //=.
+  /GRing.one ?S_INR ?mulr1n ?natr_INR //=.
 
 Lemma pow_expn x n : Nat.pow x n = expn x n.
 Proof. by elim: n => //= n ->; rewrite expnS. Qed.

@@ -5,7 +5,8 @@
 (******************************************************************************)
 
 From mathcomp Require Import ssreflect.
-Require Import Reals Coquelicot.Coquelicot Psatz generalities.
+From Stdlib Require Import Reals Psatz.
+Require Import Coquelicot.Coquelicot generalities.
 
 (*****************************************************************************)
 (* Definition of a < filter                                                  *)

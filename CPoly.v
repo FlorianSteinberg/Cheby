@@ -1,5 +1,6 @@
 From mathcomp Require Import all_ssreflect all_algebra.
-Require Import Psatz Poly_complements seq_base.
+From Stdlib Require Import Psatz.
+Require Import Poly_complements seq_base.
 
 Set Implicit Arguments.
 Unset Strict Implicit.

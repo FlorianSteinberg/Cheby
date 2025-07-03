@@ -4,7 +4,8 @@
 (******************************************************************************)
 
 From mathcomp Require Import all_ssreflect.
-Require Import Reals Coquelicot.Coquelicot Interval.Missing.Stdlib Psatz.
+From Stdlib Require Import Reals Psatz.
+Require Import Coquelicot.Coquelicot Interval.Missing.Stdlib.
 Require Import filter_Rlt generalities.
 
 Set Bullet Behavior "None". 

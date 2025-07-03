@@ -1,7 +1,8 @@
 From mathcomp Require Import all_ssreflect  all_algebra.
 Require Import Rstruct CPoly CPoly_trigo CPoly_interpolation.
 Import Rtrigo_def Rtrigo1.
-Require Import Reals Coquelicot.Coquelicot Interval.Tactic Psatz.
+From Stdlib Require Import Reals Psatz.
+Require Import Coquelicot.Coquelicot Interval.Tactic.
 
 Set Implicit Arguments.
 Unset Strict Implicit.
@@ -236,7 +237,7 @@ suff -> : (-1) ^ k * INR k`! = \big[Rmult/1]_(i < k)  - INR (1 + i).
   by apply/is_derive_n_unique/(Coquelicot.is_derive_n_inv _).
 elim: k => [|k IH].
   by rewrite big_ord0 fact0 Rmult_1_r.
-rewrite factS mult_INR big_ord_recr -IH.
+rewrite factS mult_INR big_ord_recr [Monoid.Law.sort _]/= [nat_of_ord _]/= -IH.
 by toR; lra.
 Qed.
 

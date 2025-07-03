@@ -1,4 +1,4 @@
-Require Import Reals Psatz.
+From Stdlib Require Import Reals Psatz.
 Open Scope R_scope.
 
 Lemma Rminus_eq_0 x : x - x = 0.

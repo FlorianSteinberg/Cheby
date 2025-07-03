@@ -1,4 +1,5 @@
-Require Import Reals Coquelicot.Coquelicot Psatz.
+From Stdlib Require Import Reals Psatz.
+Require Import Coquelicot.Coquelicot.
 Require Import arcsinh.
 Import mathcomp.ssreflect.ssreflect.
 

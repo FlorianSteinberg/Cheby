@@ -1,5 +1,6 @@
 From mathcomp Require Import all_ssreflect all_algebra.
-Require Import Reals Coquelicot.Coquelicot Interval.Tactic Psatz CPoly.
+From Stdlib Require Import Reals Psatz.
+Require Import Coquelicot.Coquelicot Interval.Tactic CPoly.
 Require Import Rstruct filter_Rlt generalities atan_asin_acos.
 
 Import GRing.Theory.
@@ -65,7 +66,7 @@ have HP := PI2_1;
 have [k [r [-> Hr]]] : exists k, exists r, v = r + INR k * PI /\ (0 <= r <= PI).
   pose k := Z.to_nat (up (v / PI) - 1).
   exists k; exists (v - INR k * PI); split; try lra.
-  rewrite INR_IZR_INZ Z2Nat.id; last first.
+  rewrite INR_IZR_INZ Znat.Z2Nat.id; last first.
     suff : (0 < up (v / PI))%Z by lia.
     apply: lt_0_IZR.
     suff : 0 <= v / PI by case: (archimed (v / PI)); lra.
@@ -112,7 +113,7 @@ Qed.
 
 Lemma RInt_cos_cos_0_PI (n m : nat) :
   RInt (fun y => cos (INR n * y) * cos (INR m * y)) 0 PI = 
-           if (n == m) then if (n == 0%N) then PI else PI/2 else 0.
+           if (n == m) then if (n == 0%nat) then PI else PI/2 else 0.
 Proof.
 apply is_RInt_unique.
 case: eqP=> [->|/= nDm].

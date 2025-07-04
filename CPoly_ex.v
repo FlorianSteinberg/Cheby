@@ -1,8 +1,8 @@
-Require Import Psatz.
+From Stdlib Require Import Psatz.
 From mathcomp Require Import all_ssreflect.
 Require Import CPoly_I.
 From Bignums Require Import BigZ.
-Require Import Lra SplitAbsolu.
+From Stdlib Require Import Lra SplitAbsolu.
 Import Rtrigo_def Rdefinitions Rpower Rpow_def R_sqrt Ratan Rbasic_fun.
 
 Notation "x ^ y" := (pow x y) : R_scope.

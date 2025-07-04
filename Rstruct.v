@@ -332,7 +332,6 @@ rewrite /Rminus Rplus_assoc [- _ + _]Rplus_comm -Rplus_assoc -!/(Rminus _ _).
 exact: Rle_minus.
 Qed.
 
-Locate archimedian_axiom.
 HB.instance Definition _ := 
   Num.NumDomain_bounded_isArchimedean.Build R Rarchimedean_axiom.
 

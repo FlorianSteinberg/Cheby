@@ -1,4 +1,4 @@
-Require Import Psatz.
+From Stdlib Require Import Psatz.
 Require Import Coquelicot.Coquelicot.
 From mathcomp Require Import all_ssreflect.
 Require Import CPoly_I.

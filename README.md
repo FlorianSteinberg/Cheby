@@ -32,7 +32,7 @@ The file CPoly_ex.v contains some examples of what we can do with this library.
   - Laurent Théry
 - License: [MIT License](LICENSE)
 - Additional dependencies:
-  - [Bignums](https://github.com/coq/bignums) same version as Coq
+  - [Bignums](https://github.com/coq/bignums) same version as Rocq
   - [MathComp ssreflect 2.5 or later](https://math-comp.github.io)
   - [MathComp algebra 2.5 or later](https://math-comp.github.io)
   - [Flocq 4.2.1 or later](https://gitlab.inria.fr/flocq/flocq.git)

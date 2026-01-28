@@ -45,7 +45,7 @@ dependencies:
 - opam:
     name: coq-bignums
   description: |-
-    [Bignums](https://github.com/coq/bignums) same version as Coq
+    [Bignums](https://github.com/coq/bignums) same version as Rocq
 - opam:
     name: rocq-mathcomp-ssreflect
     version: '{(>= "2.5.0")}'

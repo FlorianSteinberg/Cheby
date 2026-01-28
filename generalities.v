@@ -1,7 +1,7 @@
 From Stdlib Require Import Reals Psatz.
 Require Import Coquelicot.Coquelicot.
 Require Import arcsinh.
-Import mathcomp.ssreflect.ssreflect.
+From mathcomp Require Import ssreflect.
 
 Global Hint Mode ProperFilter' - + : typeclass_instances.
 

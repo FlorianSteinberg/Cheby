@@ -1,6 +1,6 @@
 From Stdlib Require Import Psatz.
 Require Import Coquelicot.Coquelicot.
-From mathcomp Require Import all_ssreflect.
+From mathcomp Require Import all_boot.
 Require Import CPoly_I.
 From Bignums Require Import BigZ.
 Import Rtrigo_def Rdefinitions Rpower Rpow_def R_sqrt Ratan.

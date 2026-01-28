@@ -1,5 +1,5 @@
 From Stdlib Require Import Psatz.
-From mathcomp Require Import all_ssreflect.
+From mathcomp Require Import all_boot.
 Require Import CPoly_I.
 From Bignums Require Import BigZ.
 From Stdlib Require Import Lra SplitAbsolu.

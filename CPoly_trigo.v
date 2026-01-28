@@ -1,4 +1,4 @@
-From mathcomp Require Import all_ssreflect all_algebra.
+From mathcomp Require Import all_boot all_algebra.
 From Stdlib Require Import Reals Psatz.
 Require Import Coquelicot.Coquelicot Interval.Tactic CPoly.
 Require Import Rstruct filter_Rlt generalities atan_asin_acos.

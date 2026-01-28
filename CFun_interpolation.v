@@ -1,4 +1,4 @@
-From mathcomp Require Import all_ssreflect  all_algebra.
+From mathcomp Require Import all_boot  all_algebra.
 Require Import Rstruct CPoly CPoly_trigo CPoly_interpolation.
 Import Rtrigo_def Rtrigo1.
 From Stdlib Require Import Reals Psatz.

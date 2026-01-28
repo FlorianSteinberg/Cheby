@@ -1,4 +1,4 @@
-From mathcomp Require Import all_ssreflect all_algebra.
+From mathcomp Require Import all_boot all_algebra.
 From Stdlib Require Import String Reals Psatz.
 Require Import Rstruct.
 Require Import Poly_complements CPoly CPoly_exec CPoly_interpolation.

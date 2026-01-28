@@ -1,4 +1,4 @@
-From mathcomp Require Import all_ssreflect all_algebra.
+From mathcomp Require Import all_boot all_algebra.
 From Stdlib Require Import Psatz.
 Require Import Poly_complements.
 

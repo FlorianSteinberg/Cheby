@@ -1,4 +1,4 @@
-From mathcomp Require Import all_ssreflect all_algebra.
+From mathcomp Require Import all_boot all_algebra.
 
 Set Implicit Arguments.
 Unset Strict Implicit.
@@ -41,8 +41,7 @@ apply /subr0_eq /eqP.
 by rewrite -lead_coef_eq0 lead_coefE coefB prp addrC -[_ + _]add0r addrA subrK.
 Qed.
 
-Lemma XnX i:
-	('X^i * 'X =('X^i.+1: {poly R}))%R.
+Lemma XnX i: ('X^i * 'X =('X^(i.+1): {poly R}))%R.
 Proof.
 apply coef_eq => n.
 rewrite coefMX !coefXn.

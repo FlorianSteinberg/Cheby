@@ -1,4 +1,4 @@
-From mathcomp Require Import all_ssreflect.
+From mathcomp Require Import all_boot.
 From mathcomp Require Import all_algebra.
 Declare Scope bigQ_scope.
 Require Import Rstruct CPoly CPoly_trigo atan_asin_acos.

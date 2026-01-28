@@ -1,4 +1,4 @@
-From mathcomp Require Import all_ssreflect all_algebra.
+From mathcomp Require Import all_boot all_algebra.
 From Stdlib Require Import Psatz.
 Require Import Poly_complements seq_base.
 
@@ -130,9 +130,8 @@ rewrite !(mulrnAl, mulrnAr) -!mulrnA.
 set x := 'X * _; set y := pU n.
 rewrite -[x *+ _ + _ *+ _]addrC -3!addrA addrC.
 rewrite addrA -[(2 * 2)%N]/(2 + 2)%N mulrnDr.
-rewrite mulNrn addrK.
-rewrite -mulrnDr mulnC; rewrite -addrA; congr (_ + _)=> //.
-  congr (_ *+ _); rewrite !mul2n //.
+rewrite mulNrn addrK addrA -mulrnDr -addrA; congr (_ + _).
+  by congr (_ *+ _); rewrite -mulSn mulnC.
 by rewrite -mulNrn -mulrnDr addnC.
 Qed.
 
@@ -176,7 +175,7 @@ set u := (n - i)./2.
 rewrite !subSS subSn.
   rewrite binS mulnDr mulrnDr mulrDr; congr (_ + _).
     by rewrite -mulrnAr -mulr_natl -natrM mulnA expnS.
-  by rewrite -mulN1r mulrA exprS.
+  by rewrite exprS -mulrA mulN1r.
 apply: (leq_trans (half_leq (leq_subr i n))).
 by rewrite -{2}[n]odd_double_half -addnn addnA leq_addl.
 Qed.
@@ -735,7 +734,8 @@ rewrite big_ltn // big_ltn //.
 rewrite [\sum_(_ <= _ < _.+3) _]big_nat_recr //= fk2 mul0r scale0r addr0.
 rewrite [\sum_(_ <= _ < _.+2) _]big_nat_recr //= fk1 mul0r scale0r addr0.
 rewrite -!addrA -sumrB.
-under eq_bigr do rewrite -!scalerA -scalerBr.
+set u := GRing.inv.
+under [in LHS]eq_bigr do rewrite -!scalerA -scalerBr.
 rewrite !derivE !deriv_pT0 -[_ *: _^`()]scalerA -derivE deriv_pT1 //.
 have -> : 1.*2%:R = 2 :> R by [].
 rewrite addrA -scalerDl -mulrDr -mulr2n -[_ *+ 2]mulr_natl mulfV ?Hf // mulr1.
@@ -764,13 +764,13 @@ rewrite big_ltn // big_ltn //.
 rewrite [\sum_(_ <= _ < _.+3) _]big_nat_recr //= fk2 mulr0 mul0r scale0r addr0.
 rewrite [\sum_(_ <= _ < _.+2) _]big_nat_recr //= fk1 mulr0 mul0r scale0r addr0.
 rewrite -!addrA -sumrB.
-under eq_bigr do rewrite -!scalerA -scalerBr.
+under [in LHS] eq_bigr do rewrite -!scalerA -scalerBr.
 rewrite !derivE.
 rewrite addrA -scalerDl mulrA -[1.*2%:R]/2 -mulrDr -mulrA mulrC.
-rewrite -[_ *:  'T^(a,b)_1^`()]scalerA.
+rewrite -[_ *:  ('T^(a,b)_1)^`()]scalerA.
 rewrite -mulr2n -[_ *+ 2]mulr_natl mulfV ?Hf // scale1r.
-rewrite mulrA mulrC -[_ *: 'T^(a,b)_1^`()]scalerA /=.
-rewrite -[_ *: 'T^(a,b)_1^`()]derivE  deriv_pTab0 ?Hf //.
+rewrite mulrA mulrC -[_ *: ('T^(a,b)_1)^`()]scalerA /=.
+rewrite -[_ *: ('T^(a,b)_1)^`()]derivE  deriv_pTab0 ?Hf //.
 rewrite [RHS]big_ltn //; congr (_ _ _).
 rewrite [_ * f 1]mulrC -2!mulrA -invfM ?Hf // -natrM -scalerA.
 rewrite -derivE deriv_pTab1 //.

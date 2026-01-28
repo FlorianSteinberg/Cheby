@@ -1,4 +1,4 @@
-From mathcomp Require Import all_ssreflect all_algebra.
+From mathcomp Require Import all_boot all_algebra.
 Require Import Poly_complements.
 
 Set Implicit Arguments.
@@ -12,8 +12,7 @@ Section Poly_exec.
 Variable R : nzRingType.
 Implicit Type p : {poly R}.
 
-Lemma Poly_cons (a: R) K:
-	Poly (a :: K) = cons_poly a (Poly K).
+Lemma Poly_cons (a: R) K :	Poly (a :: K) = cons_poly a (Poly K).
 Proof. done. Qed.
 
 Definition lopp_poly : seq R -> seq R := map -%R.
@@ -43,7 +42,7 @@ Lemma ladd_poly_spec l1 l2 : Poly (ladd_poly l1 l2) = Poly l1 + Poly l2.
 Proof.
 elim: l1 l2 => [l2| a l1 IH [|b l2]]; rewrite /= ?rm0 //.
 rewrite !cons_poly_def IH  polyCD mulrDl.
-by rewrite -addrA [Poly l2 * _ + _]addrCA addrA.
+by rewrite -addrA [Poly l2 * _ + (_ + _)]addrCA addrA.
 Qed.
 
 (* l1 - l2 *)

@@ -28,13 +28,13 @@ The file CPoly_ex.v contains some examples of what we can do with this library."
 build: [make "-j%{jobs}%"]
 install: [make "install"]
 depends: [
-  "coq" {(>= "9.0")}
+  "coq" 
   "coq-bignums" 
-  "coq-mathcomp-ssreflect" {(>= "2.4.0")}
-  "coq-mathcomp-algebra" {(>= "2.4.0")}
+  "rocq-mathcomp-ssreflect" {(>= "2.5.0")}
+  "rocq-mathcomp-algebra" {(>= "2.5.0")}
   "coq-flocq" {(>= "4.2.1")}
-  "coq-interval" {(>= "4.11.2")}
-  "coq-coquelicot" {(>= "3.4.3")}
+  "coq-interval" {(>= "4.11.3")}
+  "coq-coquelicot" {(>= "3.4.4")}
 ]
 
 tags: [

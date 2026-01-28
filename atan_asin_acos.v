@@ -3,7 +3,7 @@
 (* Coquelicot                                                                 *)
 (******************************************************************************)
 
-From mathcomp Require Import all_ssreflect.
+From mathcomp Require Import all_boot.
 From Stdlib Require Import Reals Psatz.
 Require Import Coquelicot.Coquelicot Interval.Missing.Stdlib.
 Require Import filter_Rlt generalities.

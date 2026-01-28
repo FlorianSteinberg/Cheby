@@ -10,9 +10,9 @@ dev-repo: "git+https://github.com/FlorianSteinberg/Cheby.git"
 bug-reports: "https://github.com/FlorianSteinberg/Cheby/issues"
 license: "MIT"
 
-synopsis: "Chebyshev polynomials in Coq"
+synopsis: "Chebyshev polynomials in Rocq"
 description: """
-This repository contains Coq-proofs about some basic facts about Chebyshev
+This repository contains Rocq-proofs about some basic facts about Chebyshev
 polynomials. It started as a branch of the coqrep library and the early 
 version history can still be found in the corresponding repository.
 

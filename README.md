@@ -12,7 +12,7 @@ Follow the instructions on https://github.com/coq-community/templates to regener
 
 
 
-This repository contains Coq-proofs about some basic facts about Chebyshev
+This repository contains Rocq-proofs about some basic facts about Chebyshev
 polynomials. It started as a branch of the coqrep library and the early 
 version history can still be found in the corresponding repository.
 
